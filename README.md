@@ -29,6 +29,7 @@ resultado pronto em tela, Excel ou imagem.
 | Módulo | O que faz |
 |---|---|
 | 🚛 **Abastecimento CD** | Painel das carretas que as fábricas faturaram para o CD. Cruza as notas do ERP com o rastreador de frota pela placa e mostra, por carreta, posição, km restante, temperatura do baú, previsão de chegada e de descarga (com horário de corte e dias úteis), as NFs e os pedidos, a validação de regra de data e o mapa. |
+| 🚚 **Entregas** | Uma linha por veículo de distribuição e uma bolinha por cliente, na sequência programada: entregue, reentrega, devolução (total ou parcial), baixa fora do raio do cliente, entrega fora de sequência, parada não prevista e o trajeto com a temperatura do baú no mapa. Na operação os dados chegam por uma extensão do Chrome que coleta o portal de rastreamento com a sessão do operador. |
 | 🧭 **Expedito** (com IA) | Cruza o follow up de pedidos do ERP com o estoque do WMS e monta o **plano de abastecimento do picking**: quais pallets descer, em que ordem (FEFO), o que já está no chão e o que vai faltar. A conversa com IA (Gemini) analisa a operação da noite. |
 | 🧊 **Adensamento FEFO** | Sugere empilhar pallets inteiros do mesmo código, local, temperatura e janela de produção, respeitando o limite de caixas e de peso por código e a capacidade de cada box. Sobras viram pallets mistos. |
 | 📦 **Devolução & Vencimento** | Separa o que está no local de devolução e o que vence dentro de uma janela configurável, agrupado por reserva e produto. |
@@ -67,6 +68,7 @@ app/database.py         SQLite (WAL), usuários, preferências, chaves criptogra
 app/services/           regras de negócio, uma por arquivo, sem Flask
 demo/gerar_dados.py     gera os relatórios fictícios com as datas de hoje
 mobile/                 app Android do coletor + servidor (Kotlin), ver mobile/README.md
+web/templates/coletor.html  simulador do app do coletor no navegador (/demo/coletor)
 ```
 
 - **Stack:** Python, Flask, SQLite, pandas, openpyxl; front-end em HTML/CSS/JS puro.
@@ -76,8 +78,8 @@ mobile/                 app Android do coletor + servidor (Kotlin), ver mobile/R
 
 ### O que ficou fora da versão pública
 
-Em produção o sistema também tem rastreamento de carretas e entregas integrado aos portais de
-rastreamento de frota, monitoramento de temperatura das câmaras por sensores, alertas
+Em produção o sistema também tem a coleta automática dos portais de rastreamento de frota,
+monitoramento de temperatura das câmaras por sensores, alertas
 automáticos por Telegram, SLAs e termos contratuais. Esses módulos dependem de credenciais e
 dados reais da operação, então aparecem aqui só como arquivos de contorno
 (ver o cabeçalho de `app/services/xsense_service.py`, por exemplo).
@@ -89,6 +91,15 @@ Na primeira requisição de cada instância, `web/demo.py` gera os arquivos de e
 existe atalho direto no banco para os resultados: o que aparece na tela é o cálculo de produção.
 
 Os arquivos podem ser baixados na página `/demo` e enviados de novo em qualquer módulo.
+
+### Simulador do app do coletor
+
+Em `/demo/coletor` o app Android da separação de redespacho roda no navegador, num aparelho
+desenhado na tela. Ao lado, um painel sugere os códigos para simular o bipe, de acordo com a tela
+aberta: caixa do item certo, caixa de outro produto, código sem cadastro, pallet livre, pallet de
+outra NF ou encerrado, duplo disparo do gatilho. As respostas seguem a mesma ordem de validação
+do app (`mobile/docs/TELAS-COLETOR.md`, §5.1), com os sons distintos para acerto e erro, e o
+cartão pallet sai "impresso" ao encerrar.
 
 ## Rodar localmente
 

@@ -33,7 +33,7 @@ SENHA = "demo"
 NOME = "Visitante da demo"
 
 # módulos que aparecem no menu lateral da demo
-MODULOS_DEMO = ["monitoramento", "adensamento", "armazem", "fifo", "expedito"]
+MODULOS_DEMO = ["monitoramento", "entregas", "adensamento", "armazem", "fifo", "expedito"]
 
 # rotas liberadas (prefixos). O resto devolve para a página da demo.
 _LIBERADOS = (
@@ -43,6 +43,7 @@ _LIBERADOS = (
     "/api/monitoramento/fonte", "/api/cds/coordenadas", "/api/rota_maps", "/api/temperatura",
     "/api/romaneio_regra", "/api/preferencias", "/api/opentech/status", "/api/ravex/status",
     "/api/descarga", "/api/limpar", "/api/exportar_excel",
+    "/entregas", "/api/entregas",
     "/adensamento", "/api/adensamento",
     "/armazem", "/api/armazem",
     "/fifo", "/api/fifo",
@@ -165,9 +166,16 @@ def _semear(app):
     ok(cli.post("/api/processar", headers=h, content_type="multipart/form-data",
                 data={"estoque": (io.BytesIO(arqs["estoque_faturado.xlsx"].read_bytes()),
                                   "estoque_faturado.xlsx"),
+                      "controle": (io.BytesIO(arqs["controle_distribuicao.xlsx"].read_bytes()),
+                                   "controle_distribuicao.xlsx"),
                       "monitoramento": (io.BytesIO(arqs["painel_rastreio.xlsx"].read_bytes()),
                                         "painel_rastreio.xlsx")}),
        "painel das carretas")
+
+    # 0b. Entregas: viagens de distribuição do dia, com as notas, os itens e
+    #     o trajeto. Na operação chegam pela extensão "Coletor" do Chrome e
+    #     entram por estas mesmas funções de gravação.
+    _semear_entregas()
 
     # 1. Painel do Armazém: o local de devolução é classificado como tal
     #    (é o que alimenta o relatório de Devolução & Vencimento)
@@ -222,6 +230,47 @@ def _semear(app):
        "painel da noite")
 
 
+def _semear_entregas():
+    from app.database import get_db
+    from app.services import entregas_ravex as er
+    from app.services.entregas_pnp import conexao_posicoes
+    from app.utils.text_utils import normalize_plate
+    from demo.gerar_dados import UNIDADE_ENTREGAS, entregas
+    dados = entregas(er._agora())
+    uid = UNIDADE_ENTREGAS["Id"]
+    dia = dados["dia"].isoformat()
+    agora = er._agora_txt()
+    with get_db() as db:
+        er.garantir_tabelas(db)
+        er.gravar_catalogo(db, [UNIDADE_ENTREGAS])
+        notas = er.ler_csv(dados["notas"], er.COLUNAS_NF, er.OBRIGATORIAS_NF)
+        er.gravar_notas(db, notas, [uid], dia, dia)
+        itens = er.ler_csv(dados["itens"], er.COLUNAS_ITENS, er.OBRIGATORIAS_ITENS)
+        er.gravar_itens(db, itens, [uid], dia, dia)
+        er.salvar_filtro(db, USUARIO, [uid])
+        db.execute("INSERT OR REPLACE INTO entregas_unidade_coleta(unidade_id, desde) VALUES(?, ?)",
+                   (uid, dia))
+        try:
+            db.execute("""INSERT OR REPLACE INTO ravex_coleta_tarefas(tarefa, feito_em, feito_por)
+                          VALUES(?, ?, ?)""", (f"notas:{uid}", agora, "demo"))
+            db.execute("""INSERT OR REPLACE INTO ravex_coleta_tarefas(tarefa, feito_em, feito_por)
+                          VALUES(?, ?, ?)""", (f"itens:{uid}", agora, "demo"))
+        except Exception:
+            pass
+    # situação da última coleta, como a extensão deixaria (fora do bloco
+    # acima: set_preferencia abre outra conexão e o SQLite estaria travado)
+    from app.database import set_preferencia
+    set_preferencia(er.PREF_COLETA, {"em": agora, "ok": True, "ultima_ok_em": agora,
+                                     "mensagem": "Demonstração: dados fictícios gerados para hoje",
+                                     "periodo": [dia, dia], "unidades": [uid]})
+    with conexao_posicoes() as cx:
+        for placa, em, lat, lon, ignicao, temp in dados["posicoes"]:
+            cx.execute("""INSERT INTO entregas_posicoes(placa, em, lat, lon, endereco, ignicao, visto_ate, temp)
+                          VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(placa, em) DO NOTHING""",
+                       (normalize_plate(placa), em.strftime("%Y-%m-%d %H:%M:%S"), lat, lon, "",
+                        ignicao, "", temp))
+
+
 # ── integração com a aplicação ───────────────────────────────────────
 def instalar(app):
     if not ATIVO:
@@ -261,6 +310,15 @@ def instalar(app):
 
     @app.after_request
     def _demo_faixa(resp):
+        # Entregas: na operação o aviso de "nenhuma extensão coletando" é
+        # importante; na demo não existe extensão, os dados são gerados
+        if request.path == "/api/entregas/estado" and resp.is_json:
+            try:
+                d = resp.get_json()
+                d["sem_cobertura"] = []
+                resp.set_data(__import__("json").dumps(d, ensure_ascii=False))
+            except Exception:
+                pass
         try:
             if (resp.mimetype == "text/html" and resp.status_code == 200
                     and not request.path.startswith("/demo") and not resp.direct_passthrough):
@@ -273,7 +331,7 @@ def instalar(app):
 
 
 _FAIXA = """
-<style>#btn-espelhar,#btn-exportar,[onclick^="abrirEspelho"]{display:none!important}</style>
+<style>#btn-espelhar,#btn-exportar,[onclick^="abrirEspelho"],[onclick^="abrirColetor"]{display:none!important}</style>
 <a id="demo-faixa" href="/demo" title="Sobre esta demonstração"
    style="position:fixed;right:14px;bottom:14px;z-index:99999;background:#111827;color:#fff;
           padding:8px 14px;border-radius:999px;font:600 12.5px system-ui,sans-serif;
@@ -291,6 +349,13 @@ def pagina():
         semear(current_app._get_current_object())
     return render_template("demo.html", status=_status, hoje=_hoje().strftime("%d/%m/%Y"),
                            repo=os.environ.get("DEMO_REPO_URL", "https://github.com/giancarloabreu/cd-demo-logistica-ia"))
+
+
+@demo_bp.route("/demo/coletor")
+def coletor():
+    """Simulador do app Android do coletor (Separação Redespacho): roda todo
+    no navegador, sem o servidor Kotlin — as regras de leitura são as do app."""
+    return render_template("coletor.html")
 
 
 @demo_bp.route("/demo/status")

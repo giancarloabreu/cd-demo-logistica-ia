@@ -71,6 +71,18 @@
          pergunte ao Expedito sobre a operação: a conversa usa Gemini com mascaramento de dados.</p>
       <span class="ir">Ver plano de amanhã →</span>
     </a>
+    <a class="card" href="/entregas">
+      <h3>🚚 Entregas</h3>
+      <p>Uma linha por veículo e uma bolinha por cliente, na sequência programada: entregue,
+         reentrega, devolução, baixa fora do raio do cliente, parada não prevista e o trajeto no mapa.</p>
+      <span class="ir">Ver entregas do dia →</span>
+    </a>
+    <a class="card ia" href="/demo/coletor">
+      <h3>📱 App do coletor <span class="pill">simulador</span></h3>
+      <p>O app Android da separação de redespacho, navegável no navegador. Um painel ao lado traz os
+         códigos para simular o bipe: caixa certa, item errado, código sem cadastro, pallet de outra NF.</p>
+      <span class="ir">Abrir o simulador →</span>
+    </a>
     <a class="card" href="/adensamento">
       <h3>🧊 Adensamento FEFO</h3>
       <p>Sugere empilhar pallets fracos do mesmo produto, local e janela de produção para liberar
@@ -102,6 +114,8 @@
         — follow up de pedidos do ERP (Excel com 2 linhas de cabeçalho).</li>
     <li><a href="/demo/planilhas/estoque_faturado.xlsx" style="color:var(--acc)">estoque_faturado.xlsx</a>
         — notas faturadas para o CD, uma linha por produto (Excel com cabeçalho em dois níveis).</li>
+    <li><a href="/demo/planilhas/controle_distribuicao.xlsx" style="color:var(--acc)">controle_distribuicao.xlsx</a>
+        — controle de distribuição do ERP: a instrução de entrada no CD de cada pedido.</li>
     <li><a href="/demo/planilhas/painel_rastreio.xlsx" style="color:var(--acc)">painel_rastreio.xlsx</a>
         — exportação do painel do rastreador de frota (posição, km restante, temperatura do baú).</li>
     <li><a href="/demo/planilhas/painel_wms_noite.xlsx" style="color:var(--acc)">painel_wms_noite.xlsx</a>
@@ -120,7 +134,8 @@
     <li>Em produção roda numa VM no Google Cloud (Gunicorn + Nginx), com integrações de rastreamento
         de frota, sensores de temperatura e alertas automáticos por Telegram. Essas integrações ficam fora da demo.</li>
     <li>Também existe um app Android para coletor de código de barras (Kotlin) com servidor próprio.
-        O código e a documentação estão no repositório.</li>
+        O código e a documentação estão no repositório, e o <a href="/demo/coletor" style="color:var(--acc)">simulador</a>
+        reproduz o fluxo de separação no navegador.</li>
     <li>Construído com desenvolvimento assistido por IA, a partir de 12 anos de operação logística.</li>
   </ul>
 

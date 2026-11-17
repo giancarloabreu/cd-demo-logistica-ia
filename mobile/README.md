@@ -25,6 +25,11 @@ O pedido original está em [`Requisitos.txt`](Requisitos.txt).
   autenticação por PIN numérico com PBKDF2 (o operador digita com luva, no teclado numérico),
   atualização do APK pelo próprio servidor e pacote de instalação para Windows (`server/pacote`).
 
+## Simulador
+
+O fluxo de separação pode ser testado no navegador, sem coletor: `/demo/coletor` na demo online
+(arquivo `web/templates/coletor.html` na raiz do repositório).
+
 ## Estrutura
 
 ```

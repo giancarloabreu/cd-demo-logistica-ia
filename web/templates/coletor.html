@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Separação Redespacho — simulador do coletor</title>
+<style>
+  :root{
+    --verde:#14532D; --verde2:#166534; --verde-claro:#DCFCE7; --vermelho:#B91C1C; --amarelo:#B45309;
+    --tinta:#0F172A; --sub:#64748B; --linha:#E2E8F0; --fundo:#0B1220;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(1200px 600px at 20% -10%,#1e3a5f 0,#0b1220 55%) fixed;
+       color:#E6EBF5;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  a{color:#7DD3FC}
+  .topo{max-width:1200px;margin:0 auto;padding:22px 22px 0;display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
+  .topo h1{margin:0;font-size:24px}
+  .topo p{margin:4px 0 0;color:#9FB0CC;font-size:14px;max-width:720px}
+  .topo .voltar{margin-left:auto;font-size:13px}
+  .palco{max-width:1200px;margin:0 auto;padding:22px;display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:start}
+  @media (max-width:900px){.palco{grid-template-columns:1fr}}
+
+  /* ── aparelho ───────────────────────────────────────────── */
+  .aparelho{width:392px;padding:18px 16px 26px;border-radius:38px;background:linear-gradient(160deg,#2b2f36,#121418);
+            box-shadow:0 30px 60px rgba(0,0,0,.55), inset 0 0 0 2px #3a3f47;position:relative;margin:0 auto}
+  .aparelho .marca{display:flex;justify-content:space-between;align-items:center;color:#9aa3ad;font-size:11px;
+                   letter-spacing:.12em;padding:0 10px 10px}
+  .aparelho .marca b{color:#d6dbe1}
+  .led{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e}
+  .tela{width:360px;height:600px;border-radius:14px;overflow:hidden;position:relative;background:#F8FAFC;color:var(--tinta);
+        box-shadow:inset 0 0 0 2px #000}
+  .gatilho{display:block;margin:16px auto 0;width:150px;height:46px;border-radius:23px;border:none;cursor:pointer;
+           background:linear-gradient(#f59e0b,#d97706);color:#3b2400;font-weight:800;letter-spacing:.08em;
+           box-shadow:0 6px 0 #92400e, 0 10px 20px rgba(0,0,0,.4)}
+  .gatilho:active{transform:translateY(4px);box-shadow:0 2px 0 #92400e}
+  .gatilho:disabled{opacity:.45;cursor:not-allowed}
+  .dica-gatilho{text-align:center;color:#9aa3ad;font-size:11.5px;margin-top:10px}
+  .tremer{animation:tremer .32s}
+  @keyframes tremer{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+  .laser{position:absolute;left:10%;right:10%;top:50%;height:3px;background:#ef4444;box-shadow:0 0 14px 3px rgba(239,68,68,.75);
+         opacity:0;pointer-events:none;z-index:50}
+  .laser.on{animation:laser .25s}
+  @keyframes laser{0%{opacity:0}30%{opacity:1}100%{opacity:0}}
+
+  /* barra de status do Android */
+  .status{height:24px;background:#0f172a;color:#e2e8f0;font-size:11px;display:flex;align-items:center;padding:0 10px;gap:8px}
+  .status .esp{flex:1}
+  /* ── telas do app ────────────────────────────────────────── */
+  .app{position:absolute;inset:24px 0 0 0;display:flex;flex-direction:column}
+  .vidro{background:radial-gradient(420px 260px at 10% 0%,#bae6fd 0,transparent 70%),
+                     radial-gradient(380px 300px at 100% 100%,#bbf7d0 0,transparent 70%),#e2e8f0}
+  .barra{height:52px;display:flex;align-items:center;gap:8px;padding:0 10px;background:var(--verde);color:#fff;flex-shrink:0}
+  .barra .tit{font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  .barra button{background:none;border:none;color:#fff;font-size:22px;width:40px;height:40px;border-radius:10px;cursor:pointer}
+  .barra button:hover{background:rgba(255,255,255,.12)}
+  .corpo{flex:1;overflow:auto;padding:12px}
+  .rodape{flex-shrink:0;padding:10px 12px 12px;background:#fff;border-top:1px solid var(--linha)}
+  .btn{width:100%;min-height:56px;border:none;border-radius:14px;background:var(--verde);color:#fff;font-weight:700;font-size:16px;cursor:pointer}
+  .btn.sec{background:#fff;color:var(--verde);border:2px solid var(--verde)}
+  .btn.peq{min-height:44px;font-size:14px}
+  .btn:disabled{opacity:.45}
+  .cartao{background:rgba(255,255,255,.82);border:1px solid rgba(255,255,255,.9);border-radius:16px;padding:14px;
+          box-shadow:0 6px 18px rgba(15,23,42,.08)}
+  .campo{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+  .campo label{font-size:12px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}
+  .campo input{height:52px;border:2px solid #cbd5e1;border-radius:12px;padding:0 14px;font-size:18px;background:#fff}
+  .pin{letter-spacing:.5em}
+  .teclado{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px}
+  .teclado button{height:48px;border-radius:12px;border:1px solid #cbd5e1;background:#fff;font-size:20px;font-weight:700;cursor:pointer}
+  .menu{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .menu button{min-height:74px;border:1px solid rgba(255,255,255,.9);border-radius:16px;background:rgba(255,255,255,.78);
+               text-align:left;padding:10px 12px;cursor:pointer;font-size:14px;font-weight:700;color:var(--tinta);
+               box-shadow:0 4px 12px rgba(15,23,42,.06)}
+  .menu button small{display:block;font-weight:500;color:var(--sub);font-size:11.5px;margin-top:2px}
+  .menu button .ic{font-size:20px;display:block;margin-bottom:2px}
+  .menu button.off{opacity:.55}
+  .ativo{margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--verde-claro);color:var(--verde);font-weight:700;font-size:14px}
+  .lista{display:flex;flex-direction:column;gap:8px}
+  .linha{background:#fff;border:1px solid var(--linha);border-radius:14px;padding:12px;cursor:pointer;display:flex;gap:10px;align-items:center}
+  .linha:hover{border-color:var(--verde)}
+  .linha .p{flex:1;min-width:0}
+  .linha .t{font-weight:800}
+  .linha .s{font-size:12.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .linha .n{font-weight:800;font-variant-numeric:tabular-nums;text-align:right}
+  .barrinha{height:6px;border-radius:3px;background:#e2e8f0;overflow:hidden;margin-top:6px}
+  .barrinha i{display:block;height:100%;background:var(--verde)}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 6px;background:#fef3c7;color:#92400e}
+  .cad{font-size:22px}
+  .prod{padding:12px 14px;background:#fff;border-bottom:1px solid var(--linha)}
+  .prod .cod{font-weight:800;font-size:18px}
+  .prod .desc{font-weight:600;color:#334155;font-size:14px}
+  .contador{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff}
+  .contador .num{font-size:76px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1}
+  .contador .num span{color:#94a3b8;font-weight:700}
+  .contador .un{color:var(--sub);font-weight:700;margin-top:6px}
+  .mola{animation:mola .45s cubic-bezier(.3,1.8,.5,1)}
+  @keyframes mola{0%{transform:scale(1)}35%{transform:scale(1.18)}100%{transform:scale(1)}}
+  .onda{height:8px;margin:14px 30px 0;border-radius:4px;background:repeating-linear-gradient(90deg,var(--verde) 0 14px,#86efac 14px 28px);
+        background-size:28px 8px;opacity:.25;width:220px}
+  .onda.viva{opacity:1;animation:onda .6s linear infinite}
+  @keyframes onda{to{background-position:28px 0}}
+  .faixa{padding:12px 14px;font-weight:800;font-size:15px;background:var(--verde-claro);color:var(--verde)}
+  .faixa.sem{background:#FEE2E2;color:var(--vermelho)}
+  .vazio{text-align:center;color:var(--sub);padding:40px 16px}
+  /* diálogo bloqueante */
+  .dlg-fundo{position:absolute;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:18px;z-index:40}
+  .dlg{background:#fff;border-radius:18px;padding:18px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,.35);border-top:8px solid var(--vermelho)}
+  .dlg.ok{border-top-color:var(--verde)} .dlg.aviso{border-top-color:#F59E0B}
+  .dlg h3{margin:0 0 6px;font-size:18px}
+  .dlg p{margin:0 0 14px;color:#334155}
+  .toast{position:absolute;left:12px;right:12px;bottom:76px;background:#0f172a;color:#fff;border-radius:12px;padding:10px 12px;
+         font-size:13.5px;font-weight:600;z-index:30;opacity:0;transform:translateY(8px);transition:.2s}
+  .toast.on{opacity:1;transform:none}
+  .menu3{position:absolute;right:8px;top:58px;background:#fff;border-radius:14px;box-shadow:0 14px 30px rgba(0,0,0,.25);z-index:35;overflow:hidden;min-width:220px}
+  .menu3 button{display:block;width:100%;text-align:left;padding:14px 16px;border:none;background:#fff;font-size:15px;cursor:pointer;border-bottom:1px solid var(--linha)}
+  .menu3 button:hover{background:#f1f5f9}
+
+  /* ── painel lateral ─────────────────────────────────────── */
+  .painel{background:rgba(18,26,43,.92);border:1px solid #22304a;border-radius:18px;padding:18px;position:sticky;top:16px}
+  .painel h2{margin:0 0 4px;font-size:18px}
+  .painel .ctx{color:#9FB0CC;font-size:13.5px;margin-bottom:14px}
+  .grupo{margin-bottom:16px}
+  .grupo h4{margin:0 0 8px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#7DD3FC}
+  .codigos{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+  .codigo{display:flex;gap:10px;align-items:center;background:#0f172a;border:1px solid #22304a;border-radius:12px;padding:9px 10px;
+          cursor:pointer;color:#E6EBF5;text-align:left;font:inherit}
+  .codigo:hover{border-color:#38bdf8;background:#13213a}
+  .codigo.sel{border-color:#f59e0b;box-shadow:0 0 0 2px rgba(245,158,11,.35)}
+  .codigo .bars{width:62px;height:34px;flex-shrink:0;background:#fff;border-radius:4px;padding:3px 4px}
+  .codigo .info{min-width:0}
+  .codigo .info b{display:block;font-size:13.5px;font-family:ui-monospace,Consolas,monospace}
+  .codigo .info span{display:block;font-size:12px;color:#9FB0CC;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .codigo.ok .info span{color:#86efac} .codigo.erro .info span{color:#fca5a5} .codigo.aviso .info span{color:#fcd34d}
+  .acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .acoes button{background:#1e293b;border:1px solid #334155;color:#E6EBF5;border-radius:10px;padding:8px 12px;cursor:pointer;font:inherit;font-size:13px}
+  .acoes button:hover{border-color:#38bdf8}
+  .log{max-height:170px;overflow:auto;font:12.5px ui-monospace,Consolas,monospace;background:#0b1220;border:1px solid #22304a;border-radius:10px;padding:8px 10px}
+  .log div{padding:2px 0;border-bottom:1px dashed #1f2a3f}
+  .log .ok{color:#86efac}.log .erro{color:#fca5a5}.log .aviso{color:#fcd34d}
+  .som{display:flex;align-items:center;gap:8px;color:#9FB0CC;font-size:13px;margin-top:8px}
+  /* cartão pallet impresso */
+  .impressao{margin-top:14px;background:#fff;color:#000;border-radius:6px;padding:10px;display:none}
+  .impressao.on{display:block;animation:sai .5s ease-out}
+  @keyframes sai{from{transform:translateY(-14px);opacity:0}to{transform:none;opacity:1}}
+  .cp{display:grid;grid-template-columns:1fr 1.25fr 1fr;border:2px solid #000;font:11px/1.3 ui-monospace,Consolas,monospace}
+  .cp .itens{grid-column:1/-1;border-bottom:2px solid #000;padding:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px 10px}
+  .cp .col{padding:6px;border-right:2px solid #000} .cp .col:last-child{border-right:none}
+  .cp .nf{background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:26px;font-weight:900}
+  .cp .nf small{font-size:10px;letter-spacing:.2em}
+  .cp .grande{font-size:15px;font-weight:900}
+</style>
+</head>
+<body>
+<div class="topo">
+  <div>
+    <h1>📱 Separação Redespacho — simulador do coletor</h1>
+    <p>Réplica navegável do app Android que roda nos coletores Zebra. Na operação, a leitura vem do gatilho
+       do scanner; aqui, clique num código do painel ao lado (ou selecione e aperte <b>GATILHO</b>) para simular o bipe.
+       Dados fictícios.</p>
+  </div>
+  <a class="voltar" href="/demo">← Sobre o projeto</a>
+</div>
+
+<div class="palco">
+  <div>
+    <div class="aparelho" id="aparelho">
+      <div class="marca"><span><b>ZEBRA</b> · TC8300 (simulado)</span><span class="led" title="Wi-Fi"></span></div>
+      <div class="tela" id="tela">
+        <div class="status"><span id="hora">--:--</span><span class="esp"></span><span>📶 Wi-Fi</span><span>🔋 87%</span></div>
+        <div class="laser" id="laser"></div>
+        <div class="app" id="app"></div>
+      </div>
+      <button class="gatilho" id="btn-gatilho" onclick="gatilho()" disabled>GATILHO</button>
+      <div class="dica-gatilho">selecione um código no painel e aperte o gatilho</div>
+    </div>
+  </div>
+
+  <div class="painel">
+    <h2>Leituras sugeridas</h2>
+    <div class="ctx" id="ctx">—</div>
+    <div id="sugestoes"></div>
+    <div class="grupo">
+      <h4>Registro das leituras</h4>
+      <div class="log" id="log"><div>Nenhuma leitura ainda.</div></div>
+      <label class="som"><input type="checkbox" id="som" checked> Som do coletor (bipes diferentes para acerto e erro)</label>
+    </div>
+    <div class="impressao" id="impressao"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   Estado (fictício). Espelha o modelo do servidor: instrução → NFs →
+   itens; pallet CRIADO / EM_USO (amarrado a uma NF e a um separador) /
+   ENCERRADO. As regras de cada leitura seguem a tabela §5.1 de
+   docs/TELAS-COLETOR.md, na mesma ordem de avaliação.
+   ═══════════════════════════════════════════════════════════════════ */
+const USUARIO = {login: 'joao', nome: 'JOÃO SILVA', pin: '1234'};
+const CATALOGO = {   // GTIN da caixa → produto
+  '17890000268501': '2685', '17890000271201': '2712', '17890000272001': '2720',
+  '17890000269001': '2690', '17890000273501': '2735', '17890000281101': '2811', '17890000282401': '2824',
+};
+const PRODUTOS = {
+  '2685': 'CARNE BOVINA CONSERVA MARCA DEMO 24X320G',
+  '2712': 'PATE DE FRANGO MARCA DEMO 24X100G',
+  '2720': 'APRESUNTADO MARCA DEMO 12X200G',
+  '2690': 'CARNE BOVINA GOLD MARCA DEMO 24X320G',
+  '2735': 'SALSICHA MARCA DEMO 24X180G',
+  '2811': 'FEIJOADA MARCA DEMO 12X830G',
+  '2824': 'ALMONDEGA AO MOLHO MARCA DEMO 24X420G',
+};
+const GTIN = Object.fromEntries(Object.entries(CATALOGO).map(([g, c]) => [c, g]));
+const est = {
+  tela: 'login', pilha: [], instrucao: null, nf: null, item: null, palletAtivo: null, ultimoBipe: {cod: '', t: 0},
+  sequencial: 126,
+  pallets: {
+    'P-RED-000123': {status: 'CRIADO', nf: null, dono: null, caixas: {}},
+    'P-RED-000124': {status: 'EM_USO', nf: '952918', dono: 'MARIA', caixas: {'2690': 15}},
+    'P-RED-000125': {status: 'ENCERRADO', nf: '952501', dono: 'JOÃO SILVA', caixas: {'2811': 12}},
+  },
+  instrucoes: [
+    {id: 'RED-045', data: '17/11', cliente: 'SUPERMERCADO DEMO LTDA', nfs: [
+      {nf: '952463', cliente: 'SUPERMERCADO DEMO LTDA', cidade: 'S.J. RIO PRETO/SP', itens: [
+        {cod: '2685', prev: 20, sep: 12, fechado: false},
+        {cod: '2712', prev: 11, sep: 0, fechado: false},
+        {cod: '2720', prev: 18, sep: 18, fechado: true},
+      ]},
+      {nf: '952501', cliente: 'EMPORIO SAO JUDAS', cidade: 'MIRASSOL/SP', itens: [
+        {cod: '2811', prev: 12, sep: 12, fechado: true},
+        {cod: '2824', prev: 8, sep: 0, fechado: false},
+      ]},
+    ]},
+    {id: 'RED-046', data: '17/11', cliente: 'REDE MAIS VAREJO', nfs: [
+      {nf: '952918', cliente: 'REDE MAIS VAREJO', cidade: 'CATANDUVA/SP', itens: [
+        {cod: '2690', prev: 30, sep: 15, fechado: false},
+        {cod: '2735', prev: 24, sep: 0, fechado: false},
+      ]},
+    ]},
+  ],
+};
+
+/* ── utilidades ─────────────────────────────────────────────────── */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const somaNF = nf => nf.itens.reduce((a, i) => [a[0] + i.sep, a[1] + i.prev], [0, 0]);
+const somaInst = ins => ins.nfs.reduce((a, nf) => { const [s, p] = somaNF(nf); return [a[0] + s, a[1] + p]; }, [0, 0]);
+const caixasPallet = p => Object.values(p.caixas).reduce((a, b) => a + b, 0);
+function hora(){ const d = new Date(); return d.toTimeString().slice(0, 5); }
+setInterval(() => $('#hora').textContent = hora(), 1000); $('#hora').textContent = hora();
+
+let _ctxAudio = null;
+function tom(freq, ms, quando = 0, tipo = 'square', vol = .05){
+  if(!$('#som').checked) return;
+  try{
+    _ctxAudio = _ctxAudio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = _ctxAudio.createOscillator(), g = _ctxAudio.createGain();
+    o.type = tipo; o.frequency.value = freq; g.gain.value = vol;
+    o.connect(g); g.connect(_ctxAudio.destination);
+    const t = _ctxAudio.currentTime + quando / 1000;
+    o.start(t); o.stop(t + ms / 1000);
+  }catch(e){}
+}
+const SOM = {   // a mesma tabela de sons e vibração do app (§0)
+  aceita: () => { tom(1900, 70); vibra(50); },
+  errado: () => { tom(260, 160); tom(220, 200, 230); vibra(300); },
+  naoCadastrado: () => { tom(700, 90); tom(700, 90, 140); tom(700, 90, 280); vibra(200); },
+  completo: () => { tom(523, 120, 0, 'sine', .08); tom(659, 120, 110, 'sine', .08); tom(784, 220, 220, 'sine', .08); vibra(100); },
+};
+function vibra(ms){
+  if(navigator.vibrate) navigator.vibrate(ms);
+  if(ms >= 200){ const a = $('#aparelho'); a.classList.remove('tremer'); void a.offsetWidth; a.classList.add('tremer'); }
+}
+function registrar(txt, tipo){
+  const log = $('#log');
+  if(log.dataset.vazio !== '0'){ log.innerHTML = ''; log.dataset.vazio = '0'; }
+  log.insertAdjacentHTML('afterbegin', `<div class="${tipo || ''}">${hora()}  ${esc(txt)}</div>`);
+}
+function toast(txt){
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = txt;
+  $('#app').appendChild(t); requestAnimationFrame(() => t.classList.add('on'));
+  setTimeout(() => { t.classList.remove('on'); setTimeout(() => t.remove(), 300); }, 1900);
+}
+function dialogo(titulo, texto, tipo = 'erro', botoes = [{rotulo: 'OK'}]){
+  const f = document.createElement('div'); f.className = 'dlg-fundo';
+  f.innerHTML = `<div class="dlg ${tipo}"><h3>${esc(titulo)}</h3><p>${texto}</p><div class="lista"></div></div>`;
+  const lista = f.querySelector('.lista');
+  botoes.forEach((b, i) => {
+    const el = document.createElement('button'); el.className = 'btn peq' + (i ? ' sec' : ''); el.textContent = b.rotulo;
+    el.onclick = () => { f.remove(); est.dialogo = false; b.acao && b.acao(); };
+    lista.appendChild(el);
+  });
+  est.dialogo = true;
+  $('#app').appendChild(f);
+}
+
+/* ── navegação ──────────────────────────────────────────────────── */
+function ir(tela, empilhar = true){
+  if(empilhar && est.tela !== tela) est.pilha.push(est.tela);
+  est.tela = tela; render();
+}
+function voltar(){ est.tela = est.pilha.pop() || 'menu'; render(); }
+function barra(titulo, extra = ''){
+  return `<div class="barra"><button onclick="voltar()" title="Voltar">←</button><div class="tit">${titulo}</div>${extra}</div>`;
+}
+
+const TELAS = {
+  login(){
+    return `<div class="app vidro" style="inset:0">
+      <div class="corpo" style="display:flex;flex-direction:column;justify-content:center">
+        <div style="text-align:center;margin-bottom:14px">
+          <div style="font-size:40px">📦</div>
+          <div style="font-weight:900;font-size:20px;color:var(--verde)">Separação Redespacho</div>
+          <div style="color:var(--sub);font-size:13px">CD Demo · coletor 03</div>
+        </div>
+        <div class="cartao">
+          <div class="campo"><label>Usuário</label><input id="f-user" value="${USUARIO.login}" autocomplete="off"></div>
+          <div class="campo"><label>Senha (PIN)</label><input id="f-pin" class="pin" type="password" inputmode="numeric" maxlength="6" readonly></div>
+          <div class="teclado">${[1,2,3,4,5,6,7,8,9,'⌫',0,'✓'].map(k => `<button onclick="tecla('${k}')">${k}</button>`).join('')}</div>
+        </div>
+        <div style="text-align:center;color:var(--sub);font-size:12px;margin-top:10px">v0.6.0 · servidor 192.168.0.10:8080 ● online</div>
+      </div></div>`;
+  },
+  menu(){
+    const p = est.palletAtivo;
+    const itens = [
+      ['📋', 'Instruções em aberto', 'separar NFs', "ir('instrucoes')"],
+      ['🏷️', 'Criar pallet', 'imprimir etiquetas', "ir('criar')"],
+      ['📍', 'Endereçamento', 'de pallets', ''], ['↩️', 'Conferir', 'devolução e retorno', ''],
+      ['🔀', 'Repaletização', 'juntar ou por caixa', ''], ['🔎', 'Consultar pallet', 'NF e onde estão', "ir('consulta')"],
+      ['🧱', 'Conferência de box', 'o que há em cada nível', ''], ['🖨️', 'Reimprimir', 'etiqueta ou cartão', ''],
+    ];
+    return `<div class="app vidro" style="inset:0">
+      <div class="barra" style="background:rgba(20,83,45,.92)"><div class="tit">${USUARIO.nome}</div><span style="font-size:12px">● online</span></div>
+      <div class="corpo">
+        <div class="menu">${itens.map(([ic, t, s, a]) => `<button class="${a ? '' : 'off'}" onclick="${a || "toast('Fora desta demonstração: veja docs/TELAS-COLETOR.md')"}"><span class="ic">${ic}</span>${t}<small>${s}</small></button>`).join('')}</div>
+        ${p ? `<div class="ativo">Pallet ativo: ${p}</div>` : ''}
+      </div>
+      <div class="rodape"><button class="btn sec peq" onclick="sair()">Sair</button></div></div>`;
+  },
+  instrucoes(){
+    return `${barra('Instruções em aberto')}<div class="corpo"><div class="lista">${est.instrucoes.map((ins, i) => {
+      const [s, p] = somaInst(ins); const pronta = ins.nfs.every(nf => nf.itens.every(it => it.fechado));
+      return `<div class="linha" onclick="abrirInstrucao(${i})"><div class="p"><div class="t">${ins.id} <span style="color:var(--sub);font-weight:600">· ${ins.data}</span></div>
+        <div class="s">${esc(ins.cliente)}</div>${pronta ? '<span class="tag">AGUARDANDO CONFERÊNCIA</span>' : ''}
+        <div class="barrinha"><i style="width:${Math.round(100 * s / p)}%"></i></div></div><div class="n">${s}/${p}<div class="s">caixas</div></div></div>`;
+    }).join('')}</div></div>`;
+  },
+  nfs(){
+    const ins = est.instrucao;
+    return `${barra('Instrução ' + ins.id)}<div class="corpo"><div class="lista">${ins.nfs.map((nf, i) => {
+      const [s, p] = somaNF(nf); const ok = nf.itens.every(it => it.fechado);
+      return `<div class="linha" onclick="abrirNF(${i})"><div class="p"><div class="t">NF ${nf.nf}</div><div class="s">${esc(nf.cliente)}</div>
+        <div class="barrinha"><i style="width:${Math.round(100 * s / p)}%"></i></div></div><div class="n">${s}/${p}<div class="s">${ok ? '🔒 completa' : 'caixas'}</div></div></div>`;
+    }).join('')}</div></div>`;
+  },
+  itens(){
+    const nf = est.nf;
+    return `${barra('NF ' + nf.nf)}<div class="corpo"><div class="lista">${nf.itens.map((it, i) => `
+      <div class="linha" onclick="abrirItem(${i})"><div class="cad">${it.fechado ? '🔒' : '🔓'}</div><div class="p"><div class="t">${it.cod}</div>
+      <div class="s">${esc(PRODUTOS[it.cod])}</div></div><div class="n">${it.sep}/${it.prev}</div></div>`).join('')}</div></div>`;
+  },
+  separacao(){
+    const it = est.item, nf = est.nf, p = est.palletAtivo;
+    const idx = nf.itens.indexOf(it) + 1;
+    return `${barra(`NF ${nf.nf} · Item ${idx}`, `<span style="font-size:22px">${it.fechado ? '🔒' : '🔓'}</span><button onclick="menu3()" title="Mais">⋮</button>`)}
+      <div class="prod"><div class="cod">${it.cod}</div><div class="desc">${esc(PRODUTOS[it.cod])}</div></div>
+      <div class="contador"><div class="num" id="num">${it.sep}<span> / ${it.prev}</span></div><div class="un">caixas</div>
+        <div class="onda" id="onda"></div></div>
+      <div class="faixa ${p ? '' : 'sem'}">${p ? 'Pallet: ' + p : 'Selecione um pallet'}</div>
+      <div class="rodape"><button class="btn" onclick="fecharCadeado()" ${it.fechado ? 'disabled' : ''}>${it.fechado ? 'Item fechado' : '🔒 Fechar cadeado'}</button></div>`;
+  },
+  criar(){
+    return `${barra('Criar pallet')}<div class="corpo">
+      <div class="cartao"><div class="campo"><label>Tipo</label><div style="font-weight:700">Separação (P-RED-…)</div></div>
+      <div class="campo"><label>Quantidade</label><div class="teclado" style="grid-template-columns:repeat(3,1fr)">
+        ${[1, 5, 10].map(n => `<button onclick="criarPallets(${n})">${n}</button>`).join('')}</div></div>
+      <div class="campo"><label>Impressora</label><div style="font-weight:700">ZEBRA ZT231 · Doca 3</div></div></div>
+      <p style="color:var(--sub);font-size:13px;margin-top:12px">Os sequenciais são reservados e as etiquetas saem na impressora térmica. Elas aparecem no painel ao lado para você bipar.</p></div>`;
+  },
+  consulta(){
+    return `${barra('Consultar pallet')}<div class="corpo"><div class="vazio">🔎<br><br>Bipe a etiqueta de um pallet<br>para ver NF, caixas e status.</div><div id="res-consulta"></div></div>`;
+  },
+};
+
+function render(){
+  $('#app').outerHTML = '<div class="app" id="app"></div>';
+  $('#app').innerHTML = TELAS[est.tela]();
+  if(est.tela === 'login' || est.tela === 'menu'){ $('#app').style.inset = '24px 0 0 0'; }
+  sugerir();
+}
+
+/* ── ações das telas ────────────────────────────────────────────── */
+function tecla(k){
+  const f = $('#f-pin');
+  if(k === '⌫') f.value = f.value.slice(0, -1);
+  else if(k === '✓') entrar();
+  else if(f.value.length < 6) f.value += k;
+}
+function entrar(){
+  const u = $('#f-user').value.trim().toLowerCase(), pin = $('#f-pin').value;
+  if(u !== USUARIO.login || pin !== USUARIO.pin){ SOM.errado(); dialogo('Usuário ou senha inválidos', 'Na demo: usuário <b>joao</b>, PIN <b>1234</b>.'); return; }
+  SOM.aceita(); registrar('login joao', 'ok'); est.pilha = []; ir('menu', false);
+}
+function sair(){ est.palletAtivo = null; est.pilha = []; ir('login', false); }
+function abrirInstrucao(i){ est.instrucao = est.instrucoes[i]; ir('nfs'); }
+function abrirNF(i){ est.nf = est.instrucao.nfs[i]; ir('itens'); }
+function abrirItem(i){ est.item = est.nf.itens[i]; ir('separacao'); }
+function criarPallets(n){
+  const novos = [];
+  for(let k = 0; k < n; k++){
+    est.sequencial += 1; const cod = 'P-RED-' + String(est.sequencial).padStart(6, '0');
+    est.pallets[cod] = {status: 'CRIADO', nf: null, dono: null, caixas: {}}; novos.push(cod);
+  }
+  SOM.aceita(); registrar(`impressas ${n} etiqueta(s): ${novos[0]}${n > 1 ? ' a ' + novos[n - 1] : ''}`, 'ok');
+  dialogo('Etiquetas impressas', `${novos[0]}${n > 1 ? ' a ' + novos[n - 1] : ''} impressos.`, 'ok');
+  mostrarEtiqueta(novos[0]); sugerir();
+}
+function menu3(){
+  if(est.dialogo) return;
+  const m = document.createElement('div'); m.className = 'menu3';
+  m.innerHTML = `<button onclick="encerrarPallet()">Encerrar pallet</button><button onclick="trocarPallet()">Trocar pallet de separação</button>
+                 <button onclick="excluirCaixa()">Excluir caixas</button><button onclick="this.parentNode.remove()">Cancelar</button>`;
+  $('#app').appendChild(m);
+}
+function fecharCadeado(){
+  const it = est.item;
+  if(it.sep !== it.prev){ SOM.errado(); dialogo('Item não coletado por completo', `Faltam caixas (${it.sep}/${it.prev}). Fechamento incompleto só pelo supervisor, na retaguarda.`); return; }
+  it.fechado = true; SOM.completo(); registrar(`cadeado fechado: ${it.cod} (${it.sep}/${it.prev})`, 'ok');
+  toast('Item fechado 🔒'); render();
+}
+function encerrarPallet(){
+  document.querySelector('.menu3')?.remove();
+  const cod = est.palletAtivo;
+  if(!cod){ dialogo('Nenhum pallet aberto neste aparelho', 'Bipe um pallet primeiro.', 'aviso'); return; }
+  const p = est.pallets[cod]; p.status = 'ENCERRADO';
+  est.palletAtivo = null; SOM.completo(); registrar(`pallet ${cod} encerrado · cartão impresso`, 'ok');
+  imprimirCartao(cod); render();
+}
+function trocarPallet(){ encerrarPallet(); toast('Bipe o próximo pallet'); }
+function excluirCaixa(){
+  document.querySelector('.menu3')?.remove();
+  const it = est.item, cod = est.palletAtivo;
+  if(!cod || !(est.pallets[cod].caixas[it.cod] > 0)){ dialogo('Nada a excluir', 'Este pallet não tem caixas deste item.', 'aviso'); return; }
+  est.pallets[cod].caixas[it.cod] -= 1; it.sep -= 1; it.fechado = false;
+  registrar(`excluída 1 caixa de ${it.cod} do ${cod}`, 'aviso'); toast('1 caixa excluída'); render();
+}
+
+/* ── a leitura (o "bipe") ───────────────────────────────────────── */
+let _selecionado = null;
+function selecionar(cod, el){
+  _selecionado = cod;
+  document.querySelectorAll('.codigo').forEach(c => c.classList.toggle('sel', c === el));
+  $('#btn-gatilho').disabled = false;
+}
+function gatilho(){ if(_selecionado) bipar(_selecionado); }
+
+function bipar(cod){
+  if(est.dialogo) return;                                   // diálogo bloqueante: confirme antes
+  const agora = Date.now();
+  if(cod === est.ultimoBipe.cod && agora - est.ultimoBipe.t < 400){ registrar(`${cod} ignorado (duplo disparo < 400 ms)`, 'aviso'); return; }
+  est.ultimoBipe = {cod, t: agora};
+  const l = $('#laser'); l.classList.remove('on'); void l.offsetWidth; l.classList.add('on');
+
+  if(est.tela === 'login'){ SOM.errado(); registrar(`${cod}: faça login primeiro`, 'erro'); toast('Faça login primeiro'); return; }
+  if(est.tela === 'consulta') return consultar(cod);
+  if(est.tela !== 'separacao'){
+    if(cod.startsWith('P-')) return consultarRapido(cod);
+    SOM.errado(); registrar(`${cod}: abra um item para separar`, 'erro'); toast('Abra um item da NF para separar'); return;
+  }
+  const it = est.item, nf = est.nf;
+
+  // 1. formato de pallet: tenta selecionar (§5.2)
+  if(/^P-(RED|DEV)-\d{6}$/.test(cod)){
+    const p = est.pallets[cod];
+    if(!p){ SOM.errado(); registrar(`${cod}: pallet inexistente`, 'erro'); return dialogo('Pallet não encontrado', cod); }
+    if(p.status === 'ENCERRADO'){ SOM.errado(); registrar(`${cod}: encerrado`, 'erro'); return dialogo('Pallet encerrado', `${cod} já foi encerrado e não recebe caixas.`); }
+    if(p.status === 'EM_USO' && p.nf !== nf.nf){ SOM.errado(); registrar(`${cod}: pertence à NF ${p.nf}`, 'erro'); return dialogo('Trava anti-mistura', `Este pallet pertence à NF ${p.nf}.`); }
+    if(p.status === 'EM_USO' && p.dono !== USUARIO.nome){ SOM.errado(); registrar(`${cod}: em uso por ${p.dono}`, 'erro'); return dialogo('Pallet de outro separador', `Pallet em uso por ${p.dono}.`); }
+    est.palletAtivo = cod; SOM.aceita(); registrar(`pallet ${cod} selecionado`, 'ok'); toast('Pallet ' + cod); render(); return;
+  }
+  // 2. sem pallet
+  if(!est.palletAtivo){ SOM.errado(); registrar(`${cod}: sem pallet`, 'erro'); return dialogo('Sem pallet', 'Nenhum pallet de separação selecionado.'); }
+  // 3. item fechado
+  if(it.fechado){ SOM.errado(); registrar(`${cod}: item fechado`, 'erro'); return dialogo('Item fechado', 'Este item já está com o cadeado fechado.'); }
+  // 4. código não cadastrado
+  const prodLido = CATALOGO[cod];
+  if(!prodLido){ SOM.naoCadastrado(); registrar(`${cod}: não cadastrado → fila de pendências`, 'aviso'); return dialogo('Código não cadastrado', `${cod} foi enviado à fila de pendências da retaguarda.`, 'aviso'); }
+  // 5. outro produto
+  if(prodLido !== it.cod){ SOM.errado(); registrar(`${cod}: item errado (${prodLido})`, 'erro'); return dialogo('Item errado', esc(PRODUTOS[prodLido])); }
+  // 6. quantidade completa
+  if(it.sep >= it.prev){ SOM.errado(); registrar(`${cod}: quantidade completa`, 'erro'); return dialogo('Quantidade já completa', `(${it.sep}/${it.prev})`); }
+  // 7. aceita
+  const p = est.pallets[est.palletAtivo];
+  if(p.status === 'CRIADO'){ p.status = 'EM_USO'; p.nf = nf.nf; p.dono = USUARIO.nome; registrar(`${est.palletAtivo} amarrado à NF ${nf.nf}`, 'ok'); }
+  p.caixas[it.cod] = (p.caixas[it.cod] || 0) + 1;
+  it.sep += 1;
+  const num = $('#num'); num.innerHTML = `${it.sep}<span> / ${it.prev}</span>`;
+  num.classList.remove('mola'); void num.offsetWidth; num.classList.add('mola');
+  const onda = $('#onda'); onda.classList.add('viva'); clearTimeout(onda._t); onda._t = setTimeout(() => onda.classList.remove('viva'), 2500);
+  if(it.sep === it.prev){ SOM.completo(); registrar(`${it.cod}: +1 → ${it.sep}/${it.prev} · item completo, feche o cadeado`, 'ok'); toast('Item completo: feche o cadeado'); }
+  else { SOM.aceita(); registrar(`${it.cod}: +1 → ${it.sep}/${it.prev}`, 'ok'); }
+  sugerir();
+}
+function consultar(cod){
+  const p = est.pallets[cod];
+  if(!p){ SOM.errado(); registrar(`${cod}: não é pallet`, 'erro'); return dialogo('Não é um pallet', cod); }
+  SOM.aceita(); registrar(`consulta ${cod}`, 'ok');
+  $('#res-consulta').innerHTML = `<div class="cartao" style="margin-top:-20px"><div class="t" style="font-weight:900;font-size:18px">${cod}</div>
+    <div>Status: <b>${p.status}</b></div><div>NF: <b>${p.nf || '—'}</b></div><div>Separador: <b>${p.dono || '—'}</b></div>
+    <div>Caixas: <b>${caixasPallet(p)}</b></div>${Object.entries(p.caixas).map(([c, n]) => `<div class="s">${c} ${esc(PRODUTOS[c])} · ${n}</div>`).join('')}</div>`;
+  document.querySelector('.vazio').style.display = 'none';
+}
+function consultarRapido(cod){ ir('consulta'); setTimeout(() => consultar(cod), 50); }
+
+/* ── etiqueta e cartão impressos ────────────────────────────────── */
+function barras(texto, alt = 28){
+  let x = 0, svg = '';
+  for(const ch of texto){ const c = ch.charCodeAt(0); for(let b = 0; b < 4; b++){ const w = 1 + ((c >> b) & 1) + (b % 2); if(b % 2 === 0) svg += `<rect x="${x}" width="${w}" height="${alt}"/>`; x += w; } }
+  return `<svg viewBox="0 0 ${x} ${alt}" preserveAspectRatio="none" style="width:100%;height:100%">${svg}</svg>`;
+}
+function mostrarEtiqueta(cod){
+  const el = $('#impressao');
+  el.innerHTML = `<div style="font:700 12px system-ui;color:#555;margin-bottom:6px">🖨️ ZEBRA ZT231 · etiqueta 80 × 50 mm</div>
+    <div style="border:2px solid #000;padding:10px;text-align:center;max-width:320px"><div style="height:46px">${barras(cod, 46)}</div>
+    <div style="font:900 24px ui-monospace,Consolas,monospace;margin-top:6px">${cod}</div><div style="font-weight:700">Pallet Separação</div></div>`;
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+}
+function imprimirCartao(cod){
+  const p = est.pallets[cod];
+  const nf = est.instrucoes.flatMap(i => i.nfs.map(n => ({...n, ins: i.id}))).find(n => n.nf === p.nf) || {};
+  const el = $('#impressao');
+  el.innerHTML = `<div style="font:700 12px system-ui;color:#555;margin-bottom:6px">🖨️ ZEBRA ZT231 · cartão pallet 80 × 220 mm</div>
+    <div class="cp"><div class="itens">${Object.entries(p.caixas).map(([c, n]) => `<div>${c} ${esc(PRODUTOS[c].slice(0, 22))} <b>${n}</b></div>`).join('')}</div>
+      <div class="col"><div class="grande">${caixasPallet(p)} caixas</div><div>${new Date().toLocaleString('pt-BR').slice(0, 17)}</div>
+        <div>${esc(p.dono || USUARIO.nome)}</div><div>Instrução ${esc(nf.ins || '—')}</div><div><b>${cod}</b></div><div style="height:22px">${barras(cod, 22)}</div></div>
+      <div class="col"><b>${esc(nf.cliente || '')}</b><br>QUADRA 4 LOTE 12<br>DISTRITO INDUSTRIAL<br>${esc(nf.cidade || '')}</div>
+      <div class="col nf"><small>NF</small>${esc(p.nf || '')}</div></div>`;
+  el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+}
+
+/* ── painel de leituras sugeridas, conforme a tela ──────────────── */
+function cartaoCodigo(cod, rot, tipo){
+  return `<button class="codigo ${tipo}" onclick="selecionar('${cod}', this); bipar('${cod}')" ondblclick="event.preventDefault()">
+    <div class="bars">${barras(cod)}</div><div class="info"><b>${cod}</b><span>${esc(rot)}</span></div></button>`;
+}
+function sugerir(){
+  const ctx = $('#ctx'), box = $('#sugestoes');
+  _selecionado = null; $('#btn-gatilho').disabled = true;
+  const palletsHtml = Object.entries(est.pallets).map(([c, p]) => {
+    const rot = p.status === 'CRIADO' ? 'novo · livre para usar' : p.status === 'EM_USO' ? `em uso · NF ${p.nf} · ${p.dono}` : 'encerrado';
+    const tipo = p.status === 'CRIADO' || (p.status === 'EM_USO' && p.dono === USUARIO.nome && est.nf && p.nf === est.nf.nf) ? 'ok' : 'erro';
+    return cartaoCodigo(c, rot, tipo);
+  }).join('');
+  if(est.tela === 'login'){
+    ctx.innerHTML = 'Tela de login. Usuário <b>joao</b>, PIN <b>1234</b> (digite no teclado do aparelho).';
+    box.innerHTML = '';
+    return;
+  }
+  if(est.tela === 'separacao'){
+    const it = est.item;
+    const outro = Object.keys(PRODUTOS).find(c => c !== it.cod && GTIN[c]);
+    ctx.innerHTML = `Separando <b>${it.cod}</b> da NF <b>${est.nf.nf}</b>. ${est.palletAtivo ? 'Pallet ativo: <b>' + est.palletAtivo + '</b>.' : 'Primeiro bipe um <b>pallet</b>.'}`;
+    box.innerHTML = `<div class="grupo"><h4>Caixas</h4><div class="codigos">
+        ${cartaoCodigo(GTIN[it.cod], 'caixa deste item (' + it.cod + ')', 'ok')}
+        ${cartaoCodigo(GTIN[outro], 'caixa de outro produto (' + outro + ')', 'erro')}
+        ${cartaoCodigo('7891234567895', 'código sem cadastro', 'aviso')}
+      </div><div class="acoes"><button onclick="rajada('${GTIN[it.cod]}', 5)">Bipar 5 caixas deste item</button>
+        <button onclick="rajada('${GTIN[it.cod]}', ${Math.max(1, it.prev - it.sep)})">Completar o item</button>
+        <button onclick="duploDisparo('${GTIN[it.cod]}')">Simular duplo disparo</button></div></div>
+      <div class="grupo"><h4>Pallets</h4><div class="codigos">${palletsHtml}</div></div>`;
+    return;
+  }
+  if(est.tela === 'consulta' || est.tela === 'menu' || est.tela === 'criar'){
+    ctx.innerHTML = est.tela === 'consulta' ? 'Bipe um pallet para consultar.' :
+      est.tela === 'criar' ? 'Escolha a quantidade no aparelho: as etiquetas novas aparecem aqui.' :
+      'Menu principal. Entre em <b>Instruções em aberto</b> e escolha uma NF e um item para separar.';
+    box.innerHTML = `<div class="grupo"><h4>Pallets</h4><div class="codigos">${palletsHtml}</div></div>`;
+    return;
+  }
+  ctx.innerHTML = 'Escolha no aparelho: instrução → NF → item. As leituras aparecem quando um item estiver aberto.';
+  box.innerHTML = `<div class="grupo"><h4>Pallets</h4><div class="codigos">${palletsHtml}</div></div>`;
+}
+function rajada(cod, n){
+  let k = 0;
+  const passo = () => { if(k++ >= n || est.dialogo) return; bipar(cod); setTimeout(passo, 450); };
+  passo();
+}
+function duploDisparo(cod){ bipar(cod); setTimeout(() => bipar(cod), 120); }
+
+document.addEventListener('keydown', e => { if(e.key === 'Enter' && est.tela === 'login') entrar(); });
+render();
+</script>
+</body>
+</html>

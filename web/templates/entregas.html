@@ -1,0 +1,2125 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitoramento de Entregas — CD Demo</title>
+<link rel="stylesheet" href="/static/css/painel.css">
+<style>
+/* ── Monitoramento de Entregas (13/11/2026) ──────────────────────────
+   Cores pedidas pelo usuário: cinza pendente, verde entregue, rosa
+   reentrega, vermelho devolução; devolução parcial = duas cores na mesma
+   bolinha; anel branco = baixa fora do raio do cliente (o contorno escuro
+   fino é o que deixa o anel branco visível sobre o fundo branco). */
+:root{ --e-pend:#a3adbb; --e-ok:#16a34a; --e-reent:#ec4899; --e-dev:#dc2626; }
+.body{flex:1;overflow:auto}
+
+/* seletor de unidades */
+.uni-wrap{position:relative}
+.uni-btn{border:1px solid var(--line);background:#fff;border-radius:6px;height:32px;padding:0 10px;font:inherit;
+  font-size:12.5px;color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px;min-width:170px;
+  max-width:340px;justify-content:space-between}
+.uni-btn:hover{border-color:#cbd5e1}
+.uni-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uni-btn .seta{color:var(--ink-3);font-size:10px}
+.uni-pop{position:absolute;top:36px;left:0;z-index:60;background:#fff;border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 12px 32px rgba(15,23,42,.16);width:300px;display:flex;flex-direction:column;max-height:420px}
+.uni-pop .topo{padding:10px 10px 6px;border-bottom:1px solid var(--line-2)}
+.uni-pop .topo input{width:100%;height:30px;border:1px solid var(--line);border-radius:6px;padding:0 8px;font:inherit;font-size:12.5px;background:#fff}
+.uni-lista{overflow:auto;padding:6px 4px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px 4px}
+.uni-lista label{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:6px;font-size:12.5px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink);margin:0}
+.uni-lista label:hover{background:#f4f7fb}
+.uni-lista label.longo{grid-column:1 / -1}
+.uni-lista input{margin:0;accent-color:var(--brand)}
+.uni-pop .rodape{display:flex;gap:8px;justify-content:space-between;align-items:center;padding:8px 10px;border-top:1px solid var(--line-2)}
+.uni-pop .rodape .nota{margin-right:auto}
+.busca{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 9px;font:inherit;font-size:12.5px;
+  color:var(--ink);height:32px;width:210px}
+
+/* KPIs */
+.kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+.kp.faixa{box-shadow:inset 3px 0 0 var(--fx, var(--line))}
+.kp .val.mini{font-size:22px}
+
+/* legenda */
+.leg-e{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11.5px;color:var(--ink-2);align-items:center}
+.leg-e span{display:inline-flex;align-items:center;gap:7px}
+.leg-e .dot{cursor:default;width:13px;height:13px}
+.leg-e .dot:hover{transform:none}
+
+/* viagens */
+.grupo-uni{display:flex;align-items:center;gap:10px;padding:14px 4px 2px;font-size:11px;font-weight:650;
+  color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px}
+.grupo-uni:first-child{padding-top:4px}
+.grupo-uni .ct{font-weight:600;color:var(--ink-3);text-transform:none;letter-spacing:0}
+/* cada veículo é um cartão: borda forte, cantos arredondados, faixa lateral na cor
+   da situação e fundo alternado (pedido do usuário 13/11/2026: mais contraste entre carros) */
+.vg{--st-cor:#94a3b8;display:grid;grid-template-columns:270px minmax(0,1fr) 92px;gap:16px;align-items:center;
+  padding:12px 16px 12px 20px;margin-top:8px;background:#fff;border:1px solid #cfd8e3;border-radius:12px;
+  box-shadow:inset 4px 0 0 var(--st-cor),0 1px 2px rgba(15,23,42,.06);
+  transition:border-color .15s ease,box-shadow .15s ease;animation:entra .28s ease both}
+.vg.alt{background:#f4f7fb}
+.vg:hover{border-color:#94acc9;box-shadow:inset 4px 0 0 var(--st-cor),0 4px 14px rgba(15,23,42,.09)}
+.vg.st-transito{--st-cor:#0b4f9c}
+.vg.st-cliente{--st-cor:#d97706}
+.vg.st-reinicio{--st-cor:#5b3fc4}
+.vg.st-parado{--st-cor:#b42318}
+.vg.st-outro{--st-cor:#0f766e}
+.vg.st-fim{--st-cor:#cbd5e1}
+.vg .id{min-width:0}
+.vg .placa{font-size:14px;font-weight:700;letter-spacing:.4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vg .sub{font-size:11.5px;color:var(--ink-2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vg .prog{text-align:right}
+.vg .prog b{font-size:15px;font-weight:650}
+.vg .prog small{color:var(--ink-2);font-size:11.5px}
+.vg .barra{height:5px;border-radius:3px;background:var(--line-2);overflow:hidden;margin-top:5px;display:flex}
+.vg .barra i{display:block;height:100%;background:var(--e-ok)}
+.vg.fin .placa{color:var(--ink-2)}
+/* placa = botão da viagem com a situação de agora, a temperatura e o gráfico;
+   logo à frente, temperatura do baú e eficiência do frio (pedido do usuário 16/11/2026) */
+.vplaca{display:inline-flex;align-items:center;gap:7px;border:none;background:none;padding:2px 5px;margin:-2px -5px;
+  border-radius:6px;font:inherit;color:inherit;letter-spacing:inherit;cursor:pointer;transition:background .12s ease}
+.vplaca:hover,.vplaca:focus-visible{background:var(--brand-soft);outline:none}
+.vplaca:focus-visible{box-shadow:0 0 0 2px var(--brand-2)}
+.vtemp{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:650;letter-spacing:0;color:var(--ink);
+  background:#fff;border:1px solid var(--line);border-radius:4px;padding:1px 6px 1px 4px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vtemp .ico{width:12px;height:12px;color:var(--brand)}
+.vtemp .ef{color:var(--ink-2);font-weight:600}
+.vtemp .tv + .ef{padding-left:5px;margin-left:2px;border-left:1px solid var(--line)}
+.vtemp .ef.fora{color:#b42318;font-weight:700}
+.vtemp.antiga{color:var(--ink-3);border-style:dashed}
+.vtemp.antiga .ico{color:var(--ink-3)}
+.chip.reent{background:#fde7f3;color:#be185d}
+/* situação da viagem (pedido do usuário 13/11/2026: uma cor por situação) */
+.chip.st{border:1px solid transparent}
+.chip.st-transito{background:#e8f0fb;color:#0b4f9c;border-color:#c9dbf3}
+.chip.st-cliente{background:#fff5e6;color:#b45309;border-color:#f6d9a8}
+.chip.st-reinicio{background:#efeafd;color:#5b3fc4;border-color:#dcd2fa}
+.chip.st-parado{background:#fdecea;color:#b42318;border-color:#f5c2bd}
+.chip.st-outro{background:#e6f6f4;color:#0f766e;border-color:#bfe5df}
+.chip.st-fim{background:var(--line-2);color:var(--ink-2);border-color:var(--line)}
+.nf-busca{display:flex;gap:6px;align-items:center}
+/* Visualizar (pedido do usuário 14/11/2026): recorte da tela entre as unidades da coleta, sem mudar a
+   coleta — caixinhas de seleção, qualquer combinação ("duas de todas as unidades de Goiás") */
+.uni-pop{max-width:calc(100vw - 16px)}
+.uni-pop .rodape .acoes{display:flex;gap:8px}
+.fl-ver.hidden{display:none}
+.nf-busca .busca{width:190px}
+.nf.alvo{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.nf.alvo .nf-h{background:var(--brand-soft)}
+.chip.loc{background:var(--brand);color:#fff}
+.res-nf tbody tr{cursor:pointer}
+.res-nf tbody tr:hover,.res-nf tbody tr:focus-visible{background:var(--brand-soft);outline:none}
+@keyframes entra{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* bolinhas */
+.dots{display:flex;flex-wrap:wrap;gap:7px 8px;align-items:center;min-width:0;padding:4px 0}
+.dot{display:inline-block;width:18px;height:18px;border-radius:50%;border:none;padding:0;cursor:pointer;position:relative;flex-shrink:0;
+  background:var(--e-pend);transition:transform .12s ease}
+.dot:hover,.dot:focus-visible{transform:scale(1.28);outline:none;z-index:2}
+.dot.anel{box-shadow:0 0 0 2.5px #fff,0 0 0 4px #334155}
+/* em atendimento: anel âmbar pulsando (pedido do usuário 15/11/2026: mais
+   contraste que o cinza; o triângulo da PNP é amarelo, o "!" é azul-marinho) */
+.dot.atend::after,.dot.noraio::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:2.5px solid #f59e0b;
+  animation:pulso 1.6s ease-out infinite;pointer-events:none}
+/* veículo no raio do cliente, atendimento não iniciado: bolinha da situação
+   (cinza, pendente) com o mesmo anel âmbar — em atendimento a bolinha fica âmbar */
+/* entrega feita fora da sequência programada (pedido do usuário 15/11/2026) */
+.dot.fseq::before{content:"!";position:absolute;top:-6px;right:-7px;width:12px;height:12px;border-radius:50%;
+  background:var(--ink);color:#fff;font:800 9px/12px system-ui,sans-serif;text-align:center;text-shadow:none;
+  box-shadow:0 0 0 1.5px #fff;z-index:1;pointer-events:none}
+/* bandeiras de início e fim da viagem e triângulo de parada não prevista */
+.ico{width:16px;height:16px;display:inline-block;vertical-align:middle;flex-shrink:0}
+.vf,.vpnp{display:inline-flex;align-items:center;gap:2px;border:none;background:none;padding:1px;cursor:pointer;border-radius:5px;
+  flex-shrink:0;line-height:1;transition:transform .12s ease}
+.vf:hover,.vf:focus-visible,.vpnp:hover,.vpnp:focus-visible{transform:scale(1.18);outline:none;background:var(--brand-soft)}
+.vf.ini{color:var(--brand)}
+.vf.fim{color:var(--ink)}
+.vf .ico{width:17px;height:17px}
+.vpnp .ico{width:18px;height:18px}
+.vpnp b{font-size:11px;font-weight:700;color:#a16207}
+.vpnp.agora .ico{animation:pisca 1.4s ease-in-out infinite}
+@keyframes pisca{50%{opacity:.45}}
+@keyframes pulso{0%{transform:scale(.75);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+
+#tip{position:fixed;z-index:300;pointer-events:none;background:#0f172a;color:#fff;font-size:12px;line-height:1.4;
+  padding:7px 10px;border-radius:7px;box-shadow:0 8px 24px rgba(15,23,42,.25);max-width:420px;display:none}
+
+/* detalhe da entrega */
+.modal.lg{width:min(860px,96vw)}
+.det-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px;margin-bottom:16px}
+.det-grid .rot{font-size:10.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px}
+.det-grid .v{font-size:13px;font-weight:600;margin-top:3px;word-break:break-word}
+.det-grid .larga{grid-column:span 2}
+.nf{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.nf-h{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 12px;background:#f8fafc;font-size:12px}
+.nf-h b{font-size:13px}
+.nf-h .k{color:var(--ink-2)}
+.nf .tb td,.nf .tb th{padding:6px 12px}
+.nf .vz{padding:10px 12px;font-size:12px;color:var(--ink-2)}
+/* mapa ao lado do detalhe (pedido do usuário 15/11/2026): clientes da viagem e posição do veículo */
+.modal.lg.com-mapa{width:min(1240px,96vw)}
+.det-dupla{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,42%);gap:18px;align-items:start}
+.det-mapa{position:sticky;top:0}
+.det-mapa-c{height:440px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#f8fafc}
+.det-mapa-c.vazio{display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;font-size:12.5px;color:var(--ink-2)}
+.det-mapa-leg{font-size:12px;color:var(--ink-2);margin-top:8px;line-height:1.5}
+.det-mapa-leg b{color:var(--ink)}
+.det-mapa-leg .antiga{color:#b45309;font-weight:600}
+.mk-cli{width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(15,23,42,.45);
+  color:#fff;font:700 10.5px/18px system-ui,sans-serif;text-align:center;box-sizing:border-box}
+.mk-cli.atual{width:30px;height:30px;line-height:26px;font-size:12px;box-shadow:0 0 0 3px var(--brand),0 2px 6px rgba(15,23,42,.5)}
+.mk-vei{width:32px;height:32px;border-radius:50%;background:#fff;border:2px solid var(--ink);display:flex;align-items:center;
+  justify-content:center;font-size:17px;box-shadow:0 2px 6px rgba(15,23,42,.45);box-sizing:border-box}
+.mk-cli.ir{cursor:pointer}
+.mk-cli.atend,.mk-cli.noraio{position:relative}
+.mk-cli.atend::after,.mk-cli.noraio::after{content:"";position:absolute;inset:-7px;border-radius:50%;border:2.5px solid #f59e0b;
+  animation:pulso 1.6s ease-out infinite;pointer-events:none}
+.mk-ico{width:30px;height:30px;display:flex;align-items:flex-end;justify-content:center;filter:drop-shadow(0 1px 2px rgba(15,23,42,.55))}
+.mk-ico .ico{width:28px;height:28px}
+.mk-ico.ini{color:var(--brand)} .mk-ico.fim{color:var(--ink)}
+.mk-ico.pnp{cursor:pointer}
+/* janela da viagem: dados, local do início e do fim e paradas não previstas */
+.vg-loc{font-size:12px;font-weight:500;color:var(--ink-2);margin-top:2px}
+.det-grid .rot .ico{width:13px;height:13px;vertical-align:-2px;margin-right:4px}
+.pnp-t{display:flex;align-items:center;gap:8px}
+.pnp-t .ico{width:18px;height:18px}
+/* agora: situação do veículo na viagem em andamento (clique na placa, 16/11/2026) */
+.ag-box{border:1px solid var(--line);border-radius:8px;background:#f8fafc;padding:12px 14px;margin-bottom:16px}
+.ag-box .det-grid{margin-bottom:0}
+.ag-box .grp-t{margin:0 0 10px}
+.ag-box .antiga{color:#b45309}
+.ag-sit{display:flex;align-items:center;gap:9px}
+.ag-sit .dot{cursor:default;width:13px;height:13px;margin:0 3px;flex-shrink:0}
+.ag-sit .dot:hover{transform:none}
+.ag-sit .ico{width:17px;height:17px}
+.ag-pt{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin:0 4px}
+/* gráfico da temperatura do baú: série única, faixas = atendimento nos clientes */
+.tg-t{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tg-t .ico{width:16px;height:16px;color:var(--brand)}
+.tg{position:relative;margin:6px 0 4px;touch-action:pan-y}
+.tg:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px;border-radius:6px}
+.tg svg{display:block;width:100%;overflow:visible}
+.tg .gx{stroke:var(--line);stroke-width:1}
+.tg .eixo{stroke:#cbd5e1;stroke-width:1}
+.tg text{fill:var(--ink-2);font-size:10.5px;font-family:inherit;font-variant-numeric:tabular-nums}
+.tg .fx-at{fill:#fff5e6}
+.tg .fx-at-l{stroke:#f6d9a8;stroke-width:1}
+.tg text.fx-n{fill:#b45309;font-weight:650;font-size:10px}
+.tg .linha{fill:none;stroke:var(--brand);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.tg .pt1{fill:var(--brand)}
+.tg .lim{stroke:#e5a29b;stroke-width:1;stroke-dasharray:4 3}
+.tg text.lim-t{fill:#b42318;font-size:10px;font-weight:600}
+.tg .mira{stroke:var(--ink-3);stroke-width:1}
+.tg .mira-p{fill:var(--brand);stroke:#fff;stroke-width:2}
+.tg-tip{position:absolute;top:0;pointer-events:none;background:#0f172a;color:#fff;font-size:12px;line-height:1.4;
+  padding:6px 9px;border-radius:7px;box-shadow:0 8px 24px rgba(15,23,42,.25);white-space:nowrap;display:none;z-index:2}
+.tg-tip b{font-size:13px;font-variant-numeric:tabular-nums}
+.tg-tip span{display:block;color:#cbd5e1}
+.tg-res{margin-bottom:6px}
+.tb.pnp-tb tbody tr{cursor:pointer}
+.tb.pnp-tb tbody tr:hover,.tb.pnp-tb tbody tr:focus-visible{background:var(--brand-soft);outline:none}
+.chip.fseq{background:var(--line-2);color:var(--ink);border:1px solid #cbd5e1}
+.chip.pnp{background:#fef9c3;color:#854d0e;border:1px solid #fde68a}
+.det-nav .nv-vg{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.det-nav .nv-vg .ico{width:14px;height:14px;color:var(--brand)}
+.det-nav .nv-vg.atual{background:var(--brand-soft);color:var(--brand);border-color:#c9dbf3}
+/* faixa de navegação entre as entregas da viagem, no topo do detalhe
+   (pedido do usuário 15/11/2026: trocar de entrega sem fechar o pop-up) */
+.det-nav{display:flex;align-items:center;gap:10px;padding:9px 20px;border-bottom:1px solid var(--line);background:#f8fafc}
+.det-nav[hidden]{display:none}
+.det-nav .rot{font-size:10.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+.det-nav .nv-lista{display:flex;flex-wrap:wrap;gap:6px 7px;align-items:center;min-width:0;flex:0 1 auto;padding:3px 2px}
+.det-nav .nv-ct{margin-left:auto}
+.det-nav .nv-seta{min-width:30px;font-size:16px;line-height:1;padding:3px 8px}
+.det-nav .nv-seta:disabled{opacity:.35;cursor:default}
+.det-nav .nv-ct{font-size:12px;color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.det-nav .dot{width:24px;height:24px;color:#fff;font:700 10.5px/24px system-ui,sans-serif;text-align:center;
+  text-shadow:0 1px 1px rgba(15,23,42,.35)}
+.det-nav .dot:hover,.det-nav .dot:focus-visible{transform:scale(1.14)}
+.det-nav .dot:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px}
+.det-nav .dot.atual{outline:3px solid var(--brand);outline-offset:2px;transform:scale(1.1);cursor:default}
+#det-corpo.trocando{opacity:.5;pointer-events:none;transition:opacity .12s ease}
+#ov-det .modal:focus{outline:none}
+@media (max-width:980px){
+  .det-dupla{grid-template-columns:minmax(0,1fr)}
+  .det-mapa{position:static;order:-1}
+  .det-mapa-c{height:260px}
+}
+
+/* parâmetros da coleta (pedido do usuário 14/11/2026: horário e intervalos na tela, não no código) */
+.modal.par{width:min(540px,96vw)}
+.par-linha{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin:8px 0 8px}
+.par-linha .fl input,.par-linha .fl select{width:100%}
+.par-cat{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:8px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#f8fafc}
+.par-cat .nota{margin:0}
+.par-alt{margin-top:14px;padding-top:10px;border-top:1px solid var(--line-2)}
+.par-erro{margin-top:12px}
+
+/* filtro de veículos (pedido do usuário 15/11/2026): a pessoa marca os veículos que acompanha */
+.vei-lista{overflow:auto;padding:6px 4px;display:flex;flex-direction:column;gap:1px}
+.vei-lista label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:12.5px;cursor:pointer;
+  text-transform:none;letter-spacing:0;font-weight:600;color:var(--ink);margin:0}
+.vei-lista label:hover{background:#f4f7fb}
+.vei-lista label small{font-weight:500;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vei-lista input{margin:0;accent-color:var(--brand)}
+.vei-pop{width:340px}
+
+/* Minha conta Ravex: extensão do Chrome (15/11/2026) */
+.modal.col{width:min(720px,96vw)}
+.col-sit{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;margin-bottom:14px}
+.col-sit i{width:10px;height:10px;border-radius:50%;background:var(--ink-3);margin-top:5px;flex-shrink:0}
+.col-sit.ok i{background:var(--e-ok)} .col-sit.at i{background:#d97706} .col-sit.er i{background:var(--e-dev)}
+.col-sit b{display:block;font-size:13.5px}
+.col-sit .nota{margin:3px 0 0}
+.col-dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 16px;margin:6px 0 12px}
+.col-dl .rot{font-size:10.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px}
+.col-dl .v{font-size:12.5px;font-weight:600;margin-top:3px;word-break:break-word}
+.col-cod{width:100%;height:64px;resize:none;border:1px solid var(--line);border-radius:6px;padding:8px;
+  font:11.5px/1.35 Consolas,monospace;color:var(--ink);background:#fff}
+.col-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.col-passos{margin:6px 0 0 18px;padding:0;font-size:12.5px;color:var(--ink-2)}
+.col-passos li{margin:3px 0}
+.col-sec{margin-top:18px}
+.pt.clic{cursor:pointer}
+
+@media (max-width:1100px){ .kpis{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:760px){
+  .vg{grid-template-columns:minmax(0,1fr) 80px;gap:8px 12px;padding:10px 12px 10px 16px}
+  .vg .dots{grid-column:1 / -1;grid-row:2}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .det-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .busca{width:100%}
+  .det-nav{padding:8px 12px;gap:8px}
+  .det-nav .rot{display:none}
+  /* uma linha com rolagem: viagem com muitas entregas não toma o pop-up */
+  .det-nav .nv-lista{flex:1 1 auto;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;padding:15px 10px;scrollbar-width:thin}
+}
+@media (prefers-reduced-motion: reduce){
+  .vg{animation:none}
+  .dot{transition:none}
+  .dot.atend::after,.dot.noraio::after,.mk-cli.atend::after,.mk-cli.noraio::after{animation:none;opacity:.6}
+  .vpnp.agora .ico{animation:none}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR DE MÓDULOS -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Xsense</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm icon" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/">‹ Painel</a>
+    <span class="topbar-logo">🚚</span>
+    <span class="topbar-title">Entregas</span>
+  </div>
+
+  <div class="body">
+    <div class="pg-head">
+      <div class="pg">
+        <div class="pg-titulo">
+          <div>
+            <h1>Monitoramento de Entregas</h1>
+            <div class="sub" id="sub-pg">Situação de cada entrega por veículo — dados da Ravex</div>
+          </div>
+          <div class="pg-acoes">
+            <button class="btn-c" onclick="abrirColetor()" title="Extensão do Chrome que coleta a Ravex pela sua sessão">🔌 Minha conta Ravex</button>
+            <button class="btn-c hidden" id="btn-par" onclick="abrirParametros()" title="Horário e intervalos da coleta">⚙ Parâmetros</button>
+            <button class="btn-c" id="btn-atu" onclick="atualizarAgora(true)" title="Pede uma consulta nova à Ravex das unidades na tela e relê os dados">⟳ Atualizar</button>
+          </div>
+        </div>
+        <div class="filtros">
+          <div class="fl"><label title="Fica salvo no seu acesso e define as unidades que o sistema coleta da Ravex">Unidades na coleta</label>
+            <div class="uni-wrap" id="uni-wrap">
+              <button class="uni-btn" id="uni-btn" type="button" onclick="abrirUnidades()"><span id="uni-rot">Carregando…</span><span class="seta">▾</span></button>
+              <div class="uni-pop hidden" id="uni-pop">
+                <div class="topo"><input id="uni-busca" placeholder="Buscar unidade" oninput="filtrarUnidades()" autocomplete="off"></div>
+                <div class="uni-lista" id="uni-lista"></div>
+                <div class="rodape">
+                  <span class="nota" id="uni-cont"></span>
+                  <button class="btn-c" type="button" onclick="limparUnidades()">Limpar</button>
+                  <button class="btn-c pri" type="button" onclick="aplicarUnidades()">Aplicar</button>
+                </div>
+              </div>
+            </div></div>
+          <div class="fl fl-ver hidden" id="fl-ver"><label title="Muda o que a tela mostra; a coleta continua com todas as unidades marcadas">Visualizar</label>
+            <div class="uni-wrap" id="ver-wrap">
+              <button class="uni-btn" id="ver-btn" type="button" onclick="abrirVer()"><span id="ver-rot">Todas</span><span class="seta">▾</span></button>
+              <div class="uni-pop hidden" id="ver-pop">
+                <div class="topo hidden" id="ver-topo"><input id="ver-busca" placeholder="Buscar unidade" oninput="desenharListaVer()" autocomplete="off"></div>
+                <div class="uni-lista" id="ver-lista"></div>
+                <div class="rodape">
+                  <span class="nota" id="ver-cont"></span>
+                  <div class="acoes">
+                    <button class="btn-c" type="button" onclick="todasVer()">Marcar todas</button>
+                    <button class="btn-c pri" type="button" onclick="aplicarVer()">Aplicar</button>
+                  </div>
+                </div>
+              </div>
+            </div></div>
+          <div class="fl"><label title="Fica salvo no seu acesso; muda o que a tela mostra, nunca a coleta">Veículos</label>
+            <div class="uni-wrap" id="vei-wrap">
+              <button class="uni-btn" id="vei-btn" type="button" onclick="abrirVeiculos()"><span id="vei-rot">Todos</span><span class="seta">▾</span></button>
+              <div class="uni-pop vei-pop hidden" id="vei-pop">
+                <div class="topo"><input id="vei-busca" placeholder="Buscar placa ou motorista" oninput="desenharVeiculos()" autocomplete="off"></div>
+                <div class="vei-lista" id="vei-lista"></div>
+                <div class="rodape">
+                  <span class="nota" id="vei-cont"></span>
+                  <div class="acoes">
+                    <button class="btn-c" type="button" onclick="todosVeiculos()" title="Remove o filtro: a tela mostra todos os veículos">Todos</button>
+                    <button class="btn-c pri" type="button" onclick="aplicarVeiculos()">Aplicar</button>
+                  </div>
+                </div>
+              </div>
+            </div></div>
+          <div class="fl"><label>Período</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="date" id="dt-de" min="2020-01-01" max="2100-12-31" onchange="mudouData()">
+              <span class="nota">até</span>
+              <input type="date" id="dt-ate" min="2020-01-01" max="2100-12-31" onchange="mudouData()">
+            </div></div>
+          <div class="fl"><label>Intervalo rápido</label>
+            <div class="seg" id="seg-per">
+              <button data-v="hoje" onclick="periodo('hoje')">Hoje</button>
+              <button data-v="ontem" onclick="periodo('ontem')">Ontem</button>
+              <button data-v="7" onclick="periodo(7)">7 dias</button>
+            </div></div>
+          <div class="fl"><label>Situação da viagem</label>
+            <div class="seg" id="seg-sit">
+              <button data-v="todas" class="on" onclick="setSituacao('todas')">Todas</button>
+              <button data-v="abertas" onclick="setSituacao('abertas')">Em aberto</button>
+              <button data-v="finalizadas" onclick="setSituacao('finalizadas')">Finalizadas</button>
+            </div></div>
+          <div class="fl"><label>Busca</label>
+            <input class="busca" id="busca" placeholder="Placa, motorista ou viagem" oninput="mudouBusca()" autocomplete="off"></div>
+          <div class="fl"><label>Nota fiscal</label>
+            <div class="nf-busca">
+              <input class="busca" id="busca-nf" placeholder="Número ou chave da NF" inputmode="numeric" autocomplete="off"
+                     onkeydown="if(event.key==='Enter') localizarNF()">
+              <button class="btn-c" type="button" onclick="localizarNF()">Localizar</button>
+            </div></div>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+    </div>
+
+    <div class="pg" style="padding-top:20px">
+      <div id="avisos"></div>
+      <div class="grid kpis mb" id="kpis"></div>
+      <div class="cx">
+        <div class="cx-h"><div><h2>Viagens</h2>
+          <div class="d">Uma linha por veículo e uma bolinha por entrega (cliente), na ordem da sequência programada. Clique na bolinha para ver as notas e os produtos; nas bandeiras ou no triângulo, os dados da viagem.</div></div>
+          <div class="dir leg-e">
+            <span><i class="dot" style="background:var(--e-pend)"></i>Pendente</span>
+            <span><i class="dot" style="background:var(--e-ok)"></i>Entregue</span>
+            <span><i class="dot" style="background:var(--e-reent)"></i>Reentrega</span>
+            <span><i class="dot" style="background:var(--e-dev)"></i>Devolução</span>
+            <span><i class="dot" style="background:conic-gradient(var(--e-ok) 0 50%,var(--e-dev) 0 100%)"></i>Devolução parcial</span>
+            <span><i class="dot anel" style="background:var(--e-ok)"></i>Baixa fora do raio ou sem GPS</span>
+            <span><i class="dot noraio" style="background:var(--e-pend)"></i>Veículo no raio do cliente</span>
+            <span><i class="dot atend" style="background:#f59e0b"></i>Em atendimento</span>
+            <span><i class="dot fseq" style="background:var(--e-ok)"></i>Fora da sequência</span>
+            <span><svg class="ico" style="color:var(--brand)"><use href="#ico-ini"/></svg><svg class="ico" style="color:var(--ink);margin-left:-4px"><use href="#ico-fim"/></svg>Início e fim da viagem</span>
+            <span><svg class="ico"><use href="#ico-pnp"/></svg>Parada não prevista (PNP)</span>
+          </div></div>
+        <div class="cx-b" style="padding:6px 14px 14px" id="lista"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<!-- ícones: bandeira de início, bandeira quadriculada de fim e triângulo de parada não prevista -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="xadrez" width="3.2" height="3.2" patternUnits="userSpaceOnUse">
+      <rect width="3.2" height="3.2" fill="#fff"/><rect width="1.6" height="1.6" fill="#0f172a"/>
+      <rect x="1.6" y="1.6" width="1.6" height="1.6" fill="#0f172a"/>
+    </pattern>
+    <symbol id="ico-ini" viewBox="0 0 16 16">
+      <path d="M3.6 1.4v13.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+      <path d="M4.4 1.9h8.9l-2.3 3.2 2.3 3.2H4.4z" fill="currentColor"/>
+    </symbol>
+    <symbol id="ico-fim" viewBox="0 0 16 16">
+      <path d="M3.6 1.4v13.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" fill="none"/>
+      <rect x="4.8" y="1.6" width="9.6" height="6.4" fill="url(#xadrez)" stroke="currentColor" stroke-width=".7"/>
+    </symbol>
+    <symbol id="ico-pnp" viewBox="0 0 16 16">
+      <path d="M8 1.5 15.3 14.3H.7z" fill="#facc15" stroke="#a16207" stroke-width="1.1" stroke-linejoin="round"/>
+      <path d="M8 5.9v4.2" stroke="#422006" stroke-width="1.7" stroke-linecap="round"/>
+      <circle cx="8" cy="12.2" r="1" fill="#422006"/>
+    </symbol>
+    <symbol id="ico-term" viewBox="0 0 16 16">
+      <path d="M6.2 9.3V3.2a1.8 1.8 0 0 1 3.6 0v6.1a3.2 3.2 0 1 1-3.6 0z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+      <circle cx="8" cy="11.9" r="1.6" fill="currentColor"/>
+      <path d="M8 11.6V5.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="modal-bg" id="ov-det" onclick="if(event.target===this) fecharModal('ov-det')">
+  <div class="modal lg">
+    <h2><span id="det-tit">Entrega</span><span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('ov-det')" title="Fechar">✕</button></h2>
+    <nav class="det-nav" id="det-nav" aria-label="Entregas da viagem" hidden></nav>
+    <div class="mbody" id="det-corpo"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="ov-par" onclick="if(event.target===this) fecharModal('ov-par')">
+  <div class="modal par" role="dialog" aria-labelledby="par-tit">
+    <h2><span id="par-tit">Parâmetros da coleta</span><span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('ov-par')" title="Fechar">✕</button></h2>
+    <div class="mbody">
+      <div class="grp-t">Horário da coleta</div>
+      <div class="par-linha">
+        <div class="fl"><label for="par-ini">Início</label><input type="time" id="par-ini" step="300"></div>
+        <div class="fl"><label for="par-fim">Término</label><input type="time" id="par-fim" step="300"></div>
+      </div>
+      <div class="nota">Fora desse horário o sistema não consulta a Ravex. O painel segue disponível com os dados da última coleta.</div>
+
+      <div class="grp-t" style="margin-top:16px">Intervalos</div>
+      <div class="par-linha">
+        <div class="fl"><label for="par-iv">Notas e entregas</label><select id="par-iv"></select></div>
+        <div class="fl"><label for="par-it">Produtos das notas</label><select id="par-it"></select></div>
+      </div>
+      <div class="nota">A extensão Coletor Ravex confere a coleta a cada 30 segundos e consulta a Ravex quando o intervalo escolhido é atingido. Ao abrir o painel (ou no botão Atualizar), as unidades na tela atualizadas há mais de 1 minuto são consultadas na conferência seguinte. O relatório de produtos é o mais pesado: o intervalo dele é igual ou maior que o das notas. Com a coleta pelo servidor ligada, o intervalo mínimo efetivo é de 5 minutos.</div>
+
+      <div class="grp-t pnp-t" style="margin-top:16px"><svg class="ico" aria-hidden="true"><use href="#ico-pnp"/></svg>Parada não prevista (PNP)</div>
+      <div class="par-linha">
+        <div class="fl"><label for="par-pnp">Tempo parado (minutos)</label>
+          <input type="number" id="par-pnp" min="5" max="240" step="1" inputmode="numeric"></div>
+        <div class="fl"><label for="par-pnp-raio">Raio do cliente (metros)</label>
+          <input type="number" id="par-pnp-raio" min="100" max="5000" step="50" inputmode="numeric"></div>
+      </div>
+      <div class="nota" id="par-pnp-nota"></div>
+
+      <div class="grp-t" style="margin-top:16px">Lista de unidades da Ravex</div>
+      <div class="par-cat">
+        <div class="nota" id="par-cat"></div>
+        <button class="btn-c" type="button" id="par-cat-btn" onclick="pedirCatalogo()">Atualizar na próxima coleta</button>
+      </div>
+
+      <div class="nota par-alt" id="par-alt"></div>
+      <div class="bnr er par-erro hidden" id="par-erro"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn-c" type="button" onclick="fecharModal('ov-par')">Cancelar</button>
+      <button class="btn-c pri" type="button" id="par-salvar" onclick="salvarParametros()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="ov-col" onclick="if(event.target===this) fecharModal('ov-col')">
+  <div class="modal col" role="dialog" aria-labelledby="col-tit">
+    <h2><span id="col-tit">Minha conta Ravex</span><span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('ov-col')" title="Fechar">✕</button></h2>
+    <div class="mbody" id="col-corpo"><div class="nota">Carregando…</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Xsense (Câmaras)', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebar-overlay').classList.add('show');}
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebar-overlay').classList.remove('show');}
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+function montarConfigSidebar(perfil, isMaster){
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+}
+function escHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+const esc = escHtml;
+function abrirModal(id){ document.getElementById(id).classList.add('show'); }
+function fecharModal(id){
+  const ov = document.getElementById(id);
+  const aberto = ov.classList.contains('show');
+  ov.classList.remove('show');
+  const volta = ov._volta; ov._volta = null;
+  if(!aberto || !volta) return;
+  // o foco volta para quem abriu; se a lista foi redesenhada pela
+  // atualização automática, para o mesmo controle na lista nova
+  const alvo = volta.el.isConnected ? volta.el : achaFoco(volta.chave);
+  alvo?.focus({preventScroll:true});
+}
+// identificação estável de um controle da lista (viagem + cliente), para
+// achar o mesmo botão depois de a lista ser redesenhada
+function chaveFoco(el){
+  if(!el.closest?.('#lista') || el.dataset.v == null) return null;
+  const v = _dados?.viagens?.[+el.dataset.v]; if(!v) return null;
+  return {viagem: v.id_viagem, cliente: el.dataset.e != null ? v.entregas[+el.dataset.e]?.cliente_cod : null,
+          tipo: el.dataset.viagem || ''};
+}
+function achaFoco(c){
+  if(!c) return null;
+  const vi = (_dados?.viagens || []).findIndex(v=>v.id_viagem === c.viagem);
+  if(vi < 0) return null;
+  if(c.tipo) return document.querySelector(`#lista [data-v="${vi}"][data-viagem="${c.tipo}"]`);
+  const ei = _dados.viagens[vi].entregas.findIndex(e=>e.cliente_cod === c.cliente);
+  return ei < 0 ? null : document.querySelector(`#lista .dot[data-v="${vi}"][data-e="${ei}"]`);
+}
+function toast(msg, tipo, duracao){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.display='block';
+  t.style.background = tipo==='err' ? '#b91c1c' : '#1a1a2e';
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(()=>{ t.style.display='none'; }, duracao || 3200);
+}
+function _lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function _lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+/* ── estado ───────────────────────────────────────────────────── */
+let _csrf = '', _admin = false, _estado = null, _dados = null, _hoje = '';
+let _sel = [], _selTmp = [], _sit = 'todas', _buscaT = null, _seq = 0, _timer = null;
+let _ver = null, _verTmp = [];   // unidades em exibição (null = todas as da coleta); não altera a coleta
+let _placas = [], _placasTmp = [];   // filtro de veículos do login (vazio = todos); não altera a coleta
+const COR = {ok:'var(--e-ok)', reent:'var(--e-reent)', dev:'var(--e-dev)', pend:'var(--e-pend)'};
+const ROT_COR = {ok:'Entregue', reent:'Reentrega', dev:'Devolução', pend:'Pendente'};
+
+function fmtNum(v, d){ return (v==null||isNaN(v)) ? '—' : Number(v).toLocaleString('pt-BR',{minimumFractionDigits:d||0, maximumFractionDigits:d||0}); }
+function fmtDH(s){ // '2026-11-13 05:21' → '13/11 05:21'
+  if(!s) return '—';
+  const m = String(s).match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2}))?/);
+  if(!m) return esc(s);
+  return m[4] ? `${m[3]}/${m[2]} ${m[4]}:${m[5]}` : `${m[3]}/${m[2]}/${m[1]}`;
+}
+function fmtHora(s){ const m = String(s||'').match(/(\d{2}):(\d{2})/); return m ? `${m[1]}:${m[2]}` : '—'; }
+function addDias(iso, n){ const d = new Date(iso+'T12:00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+function pct(a, b){ return b ? Math.round(a*100/b) : 0; }
+
+// em atendimento (pedido do usuário 15/11/2026): a parte pendente da bolinha
+// fica âmbar, a mesma cor do anel que pulsa
+const COR_ATEND = '#f59e0b';
+function fundoDot(cores, atend){
+  const cor = c => (atend && (c === 'pend' || !COR[c])) ? COR_ATEND : (COR[c] || COR.pend);
+  if(!cores || !cores.length) return cor('pend');
+  if(cores.length===1) return cor(cores[0]);
+  const passo = 100/cores.length;
+  return 'conic-gradient(' + cores.map((c,i)=>`${cor(c)} ${(i*passo).toFixed(2)}% ${((i+1)*passo).toFixed(2)}%`).join(',') + ')';
+}
+// anel âmbar: em atendimento (bolinha âmbar) ou veículo no raio do cliente
+// sem atendimento iniciado (bolinha cinza) — pedido do usuário 15/11/2026
+function marcaAtend(e){
+  return e?.em_atendimento ? 'Em atendimento' : e?.no_raio ? 'Veículo no raio do cliente' : '';
+}
+function classeAtend(e){
+  return e?.em_atendimento ? ' atend' : e?.no_raio ? ' noraio' : '';
+}
+
+/* ── unidades ─────────────────────────────────────────────────── */
+function nomeUnidade(id){ const u = (_estado?.unidades||[]).find(x=>x.id===id); return u ? u.sigla : String(id); }
+function rotuloUnidades(){
+  const el = document.getElementById('uni-rot');
+  if(!_estado){ el.textContent = 'Carregando…'; return; }
+  if(!(_estado.unidades||[]).length){ el.textContent = _estado.catalogo_vazio ? 'Lista em carregamento' : 'Sem unidade liberada'; return; }
+  el.textContent = _sel.length ? _sel.map(nomeUnidade).sort().join(', ') : 'Selecione';
+}
+function abrirUnidades(){
+  const pop = document.getElementById('uni-pop');
+  if(!pop.classList.contains('hidden')){ pop.classList.add('hidden'); return; }
+  if(!(_estado?.unidades||[]).length){
+    toast(_estado?.catalogo_vazio
+      ? `A lista de unidades da Ravex é carregada na primeira coleta, ${quandoProxima()}.`
+      : 'Nenhuma unidade da Ravex está liberada para o seu acesso. O gerente inclui os CDs no seu cadastro em Administração.');
+    return;
+  }
+  _selTmp = [..._sel];
+  document.getElementById('uni-busca').value = '';
+  desenharUnidades();
+  pop.classList.remove('hidden');
+  setTimeout(()=>document.getElementById('uni-busca').focus(), 30);
+}
+function desenharUnidades(){
+  const q = document.getElementById('uni-busca').value.trim().toLowerCase();
+  const lista = (_estado?.unidades||[]).slice().sort((a,b)=>a.sigla.localeCompare(b.sigla,'pt-BR'))
+    .filter(u=>!q || u.sigla.toLowerCase().includes(q) || u.nome.toLowerCase().includes(q));
+  document.getElementById('uni-lista').innerHTML = lista.map(u=>
+    `<label class="${u.sigla.length>8?'longo':''}" title="${esc(u.nome)}"><input type="checkbox" value="${u.id}" ${_selTmp.includes(u.id)?'checked':''}
+       onchange="marcarUnidade(${u.id}, this.checked)"> ${esc(u.sigla)}</label>`).join('')
+    || '<div class="nota" style="padding:8px">Nenhuma unidade encontrada.</div>';
+  document.getElementById('uni-cont').textContent = _selTmp.length ? `${_selTmp.length} selecionada${_selTmp.length>1?'s':''}` : '';
+}
+function filtrarUnidades(){ desenharUnidades(); }
+function marcarUnidade(id, on){
+  _selTmp = on ? [...new Set([..._selTmp, id])] : _selTmp.filter(x=>x!==id);
+  document.getElementById('uni-cont').textContent = _selTmp.length ? `${_selTmp.length} selecionada${_selTmp.length>1?'s':''}` : '';
+}
+function limparUnidades(){ _selTmp = []; desenharUnidades(); }
+async function aplicarUnidades(){
+  document.getElementById('uni-pop').classList.add('hidden');
+  try{
+    const r = await fetch('/api/entregas/filtro', {method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body: JSON.stringify({unidades:_selTmp})});
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'Não foi possível salvar o filtro.');
+    const antes = _sel;
+    _sel = j.selecionadas || [];
+    if(_ver) _ver = _ver.concat(_sel.filter(id=>!antes.includes(id)));   // incluída na coleta = visível
+    rotuloUnidades();
+    desenharVer();
+    if((j.novas||[]).length) _estado._novas = j.novas;   // o aviso aparece no quadro acima dos indicadores
+    recarregar(true);
+  }catch(e){ toast(e.message, 'err'); }
+}
+document.addEventListener('click', e=>{
+  const w = document.getElementById('uni-wrap');
+  if(w && !w.contains(e.target)) document.getElementById('uni-pop').classList.add('hidden');
+  const v = document.getElementById('ver-wrap');
+  if(v && !v.contains(e.target)) document.getElementById('ver-pop').classList.add('hidden');
+  const vv = document.getElementById('vei-wrap');
+  if(vv && !vv.contains(e.target)) document.getElementById('vei-pop').classList.add('hidden');
+});
+
+/* ── filtro de veículos ───────────────────────────────────────── */
+// fica salvo no login; a lista vem dos veículos do período e mantém os
+// marcados que não rodaram no período (a escolha não se perde)
+function rotuloVeiculos(){
+  const n = _placas.length;
+  document.getElementById('vei-rot').textContent = !n ? 'Todos' : n <= 2 ? _placas.join(', ') : `${n} veículos`;
+}
+function listaVeiculos(){
+  const vs = (_dados?.veiculos || []).slice();
+  const tem = new Set(vs.map(v=>v.placa));
+  _placas.filter(p=>!tem.has(p)).forEach(p=>vs.push({placa:p, motorista:'', unidade:'', fora:true}));
+  return vs;
+}
+function abrirVeiculos(){
+  const pop = document.getElementById('vei-pop');
+  if(!pop.classList.contains('hidden')){ pop.classList.add('hidden'); return; }
+  _placasTmp = _placas.slice();
+  document.getElementById('vei-busca').value = '';
+  desenharVeiculos();
+  pop.style.left = '0px';
+  pop.classList.remove('hidden');
+  const excesso = pop.getBoundingClientRect().right - (document.documentElement.clientWidth - 8);
+  if(excesso > 0) pop.style.left = `${-excesso}px`;
+  setTimeout(()=>document.getElementById('vei-busca').focus(), 30);
+}
+function desenharVeiculos(){
+  const q = semAcento(document.getElementById('vei-busca').value.trim());
+  const qp = q.replace(/[^a-z0-9]/gi, '');   // placa digitada com hífen ou espaço (ABC-1D23)
+  const vs = listaVeiculos().filter(v=>!q || semAcento(v.placa).includes(q) || (qp && semAcento(v.placa).includes(qp))
+    || semAcento(v.motorista).includes(q));
+  document.getElementById('vei-lista').innerHTML = vs.map(v=>
+    `<label><input type="checkbox" value="${esc(v.placa)}" ${_placasTmp.includes(v.placa)?'checked':''}
+       onchange="marcarVeiculo(this.value, this.checked)"> ${esc(v.placa)}
+       <small>${v.fora ? 'sem viagem no período' : esc([v.unidade, v.motorista].filter(Boolean).join(' · '))}</small></label>`).join('')
+    || `<div class="nota" style="padding:8px">${(_dados?.veiculos||[]).length ? 'Nenhum veículo encontrado.' : 'Nenhum veículo no período selecionado.'}</div>`;
+  contVeiculos();
+}
+function contVeiculos(){
+  const n = _placasTmp.length;
+  document.getElementById('vei-cont').textContent = n ? `${n} marcado${n>1?'s':''}` : 'Todos os veículos';
+}
+function marcarVeiculo(p, on){
+  _placasTmp = on ? [...new Set([..._placasTmp, p])] : _placasTmp.filter(x=>x!==p);
+  contVeiculos();
+}
+function todosVeiculos(){ _placasTmp = []; aplicarVeiculos(); }
+async function aplicarVeiculos(){
+  document.getElementById('vei-pop').classList.add('hidden');
+  try{
+    const r = await fetch('/api/entregas/veiculos', {method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body: JSON.stringify({placas:_placasTmp})});
+    if(r.status===401){ location.href='/login'; return; }
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'Não foi possível salvar o filtro de veículos.');
+    _placas = j.placas || [];
+    rotuloVeiculos();
+    recarregar(true);
+  }catch(e){ toast(e.message, 'err'); }
+}
+
+/* ── filtros ──────────────────────────────────────────────────── */
+function marcarSeg(id, v){ document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle('on', b.dataset.v===String(v))); }
+let _preset = 'hoje';   // atalho de período ativo ('' = datas escolhidas à mão)
+function aplicarDatasDoPreset(p){
+  let de = _hoje, ate = _hoje;
+  if(p==='ontem'){ de = ate = addDias(_hoje, -1); }
+  else if(p===7){ de = addDias(_hoje, -6); }
+  document.getElementById('dt-de').value = de;
+  document.getElementById('dt-ate').value = ate;
+}
+function periodo(p){
+  _preset = p;
+  aplicarDatasDoPreset(p);
+  marcarSeg('seg-per', p);
+  recarregar(true);
+}
+function mudouData(){
+  const de = document.getElementById('dt-de'), ate = document.getElementById('dt-ate');
+  if(de.value && ate.value && ate.value < de.value) ate.value = de.value;
+  _preset = '';
+  marcarSeg('seg-per', '');
+  recarregar(true);
+}
+function setSituacao(v){ _sit = v; _lsSet('entregas_sit', v); marcarSeg('seg-sit', v); recarregar(true); }
+function mudouBusca(){ clearTimeout(_buscaT); _buscaT = setTimeout(()=>recarregar(true), 280); }
+
+/* ── carga ────────────────────────────────────────────────────── */
+async function carregarEstado(){
+  const r = await fetch('/api/entregas/estado');
+  if(r.status===401){ location.href='/login'; return; }
+  const j = await r.json();
+  if(!r.ok) throw new Error(j.error || 'Não foi possível ler o estado do painel.');
+  const novas = _estado?._novas;
+  _estado = j; if(novas) _estado._novas = novas;
+  const virouODia = _hoje && j.hoje && j.hoje !== _hoje;
+  _hoje = j.hoje;
+  // painel aberto atravessando a meia-noite: o atalho ("Hoje", "Ontem",
+  // "7 dias") acompanha o dia novo; período escolhido à mão fica como está
+  if(virouODia && _preset) aplicarDatasDoPreset(_preset);
+  _sel = j.selecionadas || [];
+  _placas = j.placas || [];
+  rotuloUnidades();
+  rotuloVeiculos();
+  desenharVer();
+  textosDaColeta();
+}
+
+/* ── Visualizar: recorte entre as unidades da coleta ──────────── */
+// caixinhas: qualquer combinação das unidades da coleta (null = todas);
+// fica neste navegador e nunca muda o que o sistema coleta
+function verAtivas(){ return _ver ? _ver.filter(id=>_sel.includes(id)) : _sel.slice(); }
+function salvarVer(){ _lsSet('entregas_ver', _ver ? _ver.join(',') : ''); }
+function contVer(){
+  const n = _verTmp.length;
+  document.getElementById('ver-cont').textContent = n ? `${n} de ${_sel.length}` : 'Nenhuma marcada';
+}
+function desenharVer(){
+  if(_ver){
+    const v = verAtivas();
+    _ver = (!v.length || v.length === _sel.length) ? null : v;   // sem recorte efetivo = todas
+    salvarVer();
+  }
+  document.getElementById('fl-ver').classList.toggle('hidden', _sel.length < 2);
+  document.getElementById('ver-rot').textContent = _ver ? _ver.map(nomeUnidade).sort().join(', ') : 'Todas';
+}
+function abrirVer(){
+  const pop = document.getElementById('ver-pop');
+  if(!pop.classList.contains('hidden')){ pop.classList.add('hidden'); return; }
+  _verTmp = verAtivas();
+  document.getElementById('ver-busca').value = '';
+  document.getElementById('ver-topo').classList.toggle('hidden', _sel.length <= 8);
+  desenharListaVer();
+  pop.style.left = '0px';
+  pop.classList.remove('hidden');
+  // na borda direita (celular), o quadro abre para a esquerda
+  const excesso = pop.getBoundingClientRect().right - (document.documentElement.clientWidth - 8);
+  if(excesso > 0) pop.style.left = `${-excesso}px`;
+}
+function desenharListaVer(){
+  const q = document.getElementById('ver-busca').value.trim().toLowerCase();
+  const ids = _sel.slice().sort((a,b)=>nomeUnidade(a).localeCompare(nomeUnidade(b),'pt-BR'))
+    .filter(id=>!q || nomeUnidade(id).toLowerCase().includes(q));
+  document.getElementById('ver-lista').innerHTML = ids.map(id=>
+    `<label class="${nomeUnidade(id).length>8?'longo':''}"><input type="checkbox" value="${id}" ${_verTmp.includes(id)?'checked':''}
+       onchange="marcarVer(${id}, this.checked)"> ${esc(nomeUnidade(id))}</label>`).join('')
+    || '<div class="nota" style="padding:8px">Nenhuma unidade encontrada.</div>';
+  contVer();
+}
+function marcarVer(id, on){
+  _verTmp = on ? [...new Set([..._verTmp, id])] : _verTmp.filter(x=>x!==id);
+  contVer();
+}
+function todasVer(){ _verTmp = _sel.slice(); desenharListaVer(); }
+function aplicarVer(){
+  if(!_verTmp.length){ toast('Marque ao menos uma unidade para visualizar.', 'err'); return; }
+  _ver = _verTmp.length === _sel.length ? null : _verTmp.slice();
+  salvarVer();
+  document.getElementById('ver-pop').classList.add('hidden');
+  desenharVer();
+  recarregar(true);
+}
+function unidadesDaTela(){ const v = verAtivas(); return v.length ? v : _sel; }
+
+/* ── parâmetros da coleta ─────────────────────────────────────── */
+function par(){ return _estado?.parametros || {inicio:'06:00', fim:'20:00', intervalo_min:5, intervalo_itens_min:10, pnp_min:15, pnp_raio_m:500}; }
+// a PNP é medida pela grade de posição: com a grade mais espaçada que um
+// terço do tempo da PNP, paradas próximas do limite deixam de aparecer
+function textoPnpParametro(){
+  const min = Number(document.getElementById('par-pnp').value) || 15;
+  const g = Number(_estado?.intervalo_grade_min) || 0;
+  let t = 'Gera a PNP o veículo parado no mesmo lugar (até 200 m) pelo tempo informado ou mais, durante a viagem, '
+        + 'fora do raio dos clientes da viagem e dos CDs cadastrados. O mesmo raio acende o anel âmbar na bolinha cinza '
+        + '(veículo no raio do cliente, atendimento não iniciado). Vale para todas as unidades e para as viagens já exibidas.';
+  if(g){
+    t += ` A parada é medida pela grade de posição da Ravex, recebida a cada ${minutos(g)} (Configurações › Ravex).`;
+    if(g * 3 > min) t += ` <b>Para medir paradas de ${minutos(min)}, a grade precisa vir a cada ${minutos(Math.max(1, Math.floor(min/3)))} ou menos.</b>`;
+  }
+  document.getElementById('par-pnp-nota').innerHTML = t;
+}
+document.getElementById('par-pnp').addEventListener('input', textoPnpParametro);
+function minutos(n){ return n === 1 ? '1 minuto' : `${n} minutos`; }
+// quando a próxima consulta à Ravex acontece, dentro ou fora do horário
+function quandoProxima(){
+  const p = par();
+  if(_estado?.no_horario !== false) return `em até ${minutos(p.intervalo_min)}`;
+  return (_estado?.hora||'') < p.inicio ? `a partir das ${p.inicio}` : `amanhã, a partir das ${p.inicio}`;
+}
+function textosDaColeta(){
+  const p = par();
+  document.getElementById('sub-pg').textContent =
+    `Situação de cada entrega por veículo — dados da Ravex, atualizados a cada ${minutos(p.intervalo_min)}, das ${p.inicio} às ${p.fim}`;
+  document.getElementById('btn-par').classList.toggle('hidden', !_estado?.pode_editar);
+}
+function opcoes(sel, valores, atual){
+  sel.innerHTML = valores.map(v=>`<option value="${v}" ${v===atual?'selected':''}>${
+    v<60 ? `A cada ${minutos(v)}` : v===60 ? 'A cada 1 hora' : `A cada ${v/60} horas`}</option>`).join('');
+}
+function textoCatalogo(){
+  const c = _estado?.catalogo || {};
+  const quando = c.atualizado_em ? `Última atualização: <b>${fmtDH(c.atualizado_em)}</b>.` : 'Ainda não carregada.';
+  document.getElementById('par-cat').innerHTML =
+    `Atualizada automaticamente uma vez por dia, na primeira coleta do horário. ${quando}${
+      c.pendente ? ` <b>Atualização pedida</b>: acontece na próxima coleta, ${quandoProxima()}.` : ''}${
+      c.erro ? ` A última tentativa não foi concluída (${esc(String(c.erro).replace(/\.\s*$/, ''))}); a lista anterior segue valendo.` : ''}`;
+  const b = document.getElementById('par-cat-btn');
+  b.disabled = !!c.pendente;
+  b.textContent = c.pendente ? 'Atualização pedida' : 'Atualizar na próxima coleta';
+}
+function abrirParametros(){
+  const p = par();
+  document.getElementById('par-ini').value = p.inicio;
+  document.getElementById('par-fim').value = p.fim;
+  opcoes(document.getElementById('par-iv'), [1,2,3,5,10,15,20,30,60], p.intervalo_min);
+  opcoes(document.getElementById('par-it'), [5,10,15,20,30,60,120], p.intervalo_itens_min);
+  document.getElementById('par-pnp').value = p.pnp_min ?? 15;
+  document.getElementById('par-pnp-raio').value = p.pnp_raio_m ?? 500;
+  textoPnpParametro();
+  textoCatalogo();
+  const a = _estado?.parametros_alterados || {};
+  document.getElementById('par-alt').innerHTML = a.em
+    ? `Última alteração: <b>${fmtDH(a.em)}</b>${a.por ? ` por <b>${esc(a.por)}</b>` : ''}.`
+    : 'Valores padrão do sistema: coleta das 06:00 às 20:00, notas a cada 5 minutos, produtos a cada 10 minutos e parada não prevista a partir de 15 minutos, fora de 500 m do cliente.';
+  document.getElementById('par-erro').classList.add('hidden');
+  abrirModal('ov-par');
+}
+async function salvarParametros(){
+  const erro = document.getElementById('par-erro'), btn = document.getElementById('par-salvar');
+  const corpo = {
+    inicio: document.getElementById('par-ini').value,
+    fim: document.getElementById('par-fim').value,
+    intervalo_min: Number(document.getElementById('par-iv').value),
+    intervalo_itens_min: Number(document.getElementById('par-it').value),
+    pnp_min: Number(document.getElementById('par-pnp').value),
+    pnp_raio_m: Number(document.getElementById('par-pnp-raio').value),
+  };
+  erro.classList.add('hidden');
+  btn.disabled = true;
+  try{
+    const r = await fetch('/api/entregas/parametros', {method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body: JSON.stringify(corpo)});
+    if(r.status===401){ location.href='/login'; return; }
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'Não foi possível salvar os parâmetros.');
+    _estado.parametros = j.parametros;
+    _estado.intervalo_min = j.parametros.intervalo_min;
+    _estado.no_horario = j.no_horario;
+    _estado.parametros_alterados = j.parametros_alterados;
+    textosDaColeta(); renderStatus(); renderAvisos();
+    fecharModal('ov-par');
+    toast('Parâmetros salvos. A coleta usa os novos valores a partir do próximo ciclo; a parada não prevista já foi recalculada no painel.');
+    recarregar(true);
+  }catch(e){
+    erro.textContent = e.message;
+    erro.classList.remove('hidden');
+  }finally{ btn.disabled = false; }
+}
+async function pedirCatalogo(){
+  const b = document.getElementById('par-cat-btn');
+  b.disabled = true;
+  try{
+    const r = await fetch('/api/entregas/catalogo', {method:'POST', headers:{'X-CSRF-Token':_csrf}});
+    if(r.status===401){ location.href='/login'; return; }
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'Não foi possível pedir a atualização da lista.');
+    _estado.catalogo = j.catalogo;
+    textoCatalogo();
+  }catch(e){ b.disabled = false; toast(e.message, 'err'); }
+}
+// a atualização automática (a cada minuto) não empilha pedidos: com o
+// servidor ocupado, espera o anterior terminar (revisão 15/11/2026)
+let _emVoo = 0;
+async function recarregar(manual){
+  if(!manual && _emVoo) return;
+  _emVoo++;
+  try{ await _recarregar(manual); } finally{ _emVoo--; }
+}
+async function _recarregar(manual){
+  const seq = ++_seq;
+  try{
+    if(!manual){ await carregarEstado(); if(seq !== _seq) return; }
+    const de = document.getElementById('dt-de').value || _hoje;
+    const ate = document.getElementById('dt-ate').value || de;
+    const q = new URLSearchParams({de, ate, situacao:_sit, unidades:unidadesDaTela().join(','), busca:document.getElementById('busca').value.trim()});
+    const r = await fetch('/api/entregas/painel?'+q);
+    if(r.status===401){ location.href='/login'; return; }
+    const j = await r.json();
+    if(seq !== _seq) return;
+    if(!r.ok) throw new Error(j.error || 'Não foi possível ler as entregas.');
+    _dados = j;
+    render();
+  }catch(e){ if(seq===_seq) toast(e.message, 'err'); }
+}
+
+/* ── render ───────────────────────────────────────────────────── */
+function render(){
+  renderStatus(); renderAvisos(); renderKpis(); renderLista();
+}
+function renderStatus(){
+  const c = _dados?.coleta || _estado?.coleta || {};
+  const partes = [];
+  if(c.ultima_ok_em) partes.push(`<span class="pt ${c.ok?'ok':'at'}">Última coleta concluída: <b>${fmtDH(c.ultima_ok_em)}</b></span>`);
+  else partes.push(`<span class="pt at">Aguardando a primeira coleta</span>`);
+  const fr = _estado?.frescor || {};
+  if(!_estado?.coleta_vm && _sel.length && Object.keys(fr).length){
+    // coleta pela extensão: horário da última atualização de cada unidade
+    const it = _sel.slice().sort((a,b)=>nomeUnidade(a).localeCompare(nomeUnidade(b),'pt-BR'))
+      .map(id=>`${esc(nomeUnidade(id))} <b>${fr[id] ? fmtHora(fr[id].em) : '—'}</b>`);
+    partes.push(`<span title="Horário da última atualização das notas de cada unidade">Atualização por unidade: ${it.join(' · ')}</span>`);
+  }else{
+    const coletando = (c.unidades||[]).map(nomeUnidade).sort();
+    if(coletando.length) partes.push(`<span>Unidades na coleta: <b>${esc(coletando.join(', '))}</b></span>`);
+  }
+  const mc = _estado?.meu_coletor;
+  if(mc?.conectado){
+    const t = textoMeuColetor(mc);   // cor e texto da mesma regra (a tabela do gerente usa a mesma)
+    partes.push(`<span class="pt ${t.cls==='ok'?'ok':'at'} clic" onclick="abrirColetor()" title="Minha conta Ravex">Sua extensão: <b>${esc(t.curto)}</b></span>`);
+  }
+  if(_placas.length){
+    const n = (_dados?.viagens||[]).length;
+    partes.push(`<span class="pt at clic" onclick="abrirVeiculos();event.stopPropagation()">Filtro de veículos: <b>${_placas.length} marcado${_placas.length>1?'s':''}</b> · ${n} viage${n===1?'m':'ns'} na tela</span>`);
+  }
+  const ped = Object.entries(_estado?.pedidos || {}).filter(([id])=>_sel.includes(Number(id)));
+  if(ped.length){
+    const desde = ped.map(([,em])=>em).sort()[0];
+    partes.push(`<span class="pt at" title="${esc(ped.map(([id])=>nomeUnidade(Number(id))).sort().join(', '))}">Atualização em andamento: pedida às <b>${fmtHora(desde)}</b>, aguardando a extensão</span>`);
+  }
+  const p = par();
+  if(_estado?.no_horario === false)
+    partes.push(`<span class="pt at">Fora do horário de coleta (${p.inicio} às ${p.fim}): próxima coleta ${quandoProxima()}</span>`);
+  else
+    partes.push(`<span>Coleta automática a cada ${p.intervalo_min} min, das ${p.inicio} às ${p.fim}</span>`);
+  if(_admin && _estado?.sessao_ravex && _estado?.coleta_vm){   // sessão da VM: relevante com a coleta pelo servidor ligada
+    const s = _estado.sessao_ravex;
+    let txt = `Sessão Ravex: token desde <b>${esc(s.token_obtido_em||'—')}</b> · ${s.logins_24h} login${s.logins_24h===1?'':'s'} em 24 h`;
+    const teto = s.logins_24h_max && s.logins_24h >= s.logins_24h_max;
+    if(s.pausado_ate) txt += ` · consultas pausadas até <b>${esc(s.pausado_ate)}</b>`;
+    else if(teto) txt += ` · limite de ${s.logins_24h_max} logins em 24 h atingido; novo login a partir de <b>${esc(s.teto_ate||'—')}</b>`;
+    if(s.api_bloqueada_ate){
+      const nb = s.api_bloqueios||1;
+      txt += nb > 1
+        ? ` · ${nb} tipos de consulta pela API pausados; o último volta a partir de <b>${esc(s.api_bloqueada_ate)}</b> (${esc(s.api_bloqueio_motivo||'')})`
+        : ` · consulta pela API pausada até <b>${esc(s.api_bloqueada_ate)}</b> (${esc(s.api_bloqueio_motivo||'')})`;
+    }
+    if(!s.pausado_ate && !teto){
+      if(s.falhas_api) txt += ` · ${s.falhas_api} falha${s.falhas_api>1?'s':''} de login pela API${/cloudflare/i.test(s.erro_api||'')?' (barrado pelo Cloudflare)':''}; próximo a partir de <b>${esc(s.proximo_login_liberado||'—')}</b>`;
+      if(s.falhas_navegador) txt += ` · ${s.falhas_navegador} falha${s.falhas_navegador>1?'s':''} de login pelo navegador; próximo a partir de <b>${esc(s.proximo_login_navegador||'—')}</b>`;
+    }
+    partes.push(`<span class="pt ${s.pausado_ate||teto||s.api_bloqueada_ate||s.falhas_seguidas?'at':'ok'}">${txt}</span>`);
+  }
+  document.getElementById('status').innerHTML = partes.join('');
+}
+function renderAvisos(){
+  const av = [];
+  const c = _dados?.coleta || {};
+  if(c.em && c.ok===false){
+    av.push(`<div class="bnr er mb"><div><b>A última coleta não foi concluída.</b> ${esc(c.mensagem||'')}${
+      c.ultima_ok_em ? ` Os dados exibidos são da coleta de ${fmtDH(c.ultima_ok_em)}.` : ''}</div></div>`);
+  }else if(c.itens_erro){
+    av.push(`<div class="bnr at mb"><div><b>Os produtos das notas não foram atualizados na última coleta.</b> ${esc(String(c.itens_erro).replace(/\.?\s*$/, '.'))} As notas e as entregas seguem atualizadas.</div></div>`);
+  }
+  if(!(_estado?.unidades||[]).length){
+    av.push(_estado?.catalogo_vazio
+      ? `<div class="bnr in mb"><div>A lista de unidades da Ravex é carregada na primeira coleta, ${quandoProxima()}. Em seguida, selecione as unidades no filtro <b>Unidades na coleta</b>.</div></div>`
+      : `<div class="bnr at mb"><div><b>Nenhuma unidade da Ravex está liberada para o seu acesso.</b> O gerente inclui os CDs no seu cadastro em Administração.</div></div>`);
+  }else if(!_sel.length){
+    av.push(`<div class="bnr in mb"><div>Selecione ao menos uma unidade no filtro <b>Unidades na coleta</b>. A escolha fica salva no seu acesso e define as unidades que o sistema coleta da Ravex.</div></div>`);
+  }
+  const descob = (_estado?.sem_cobertura||[]).filter(u=>_sel.includes(u));
+  if(descob.length && !_estado?.coleta_vm && (_estado?.unidades||[]).length){
+    av.push(`<div class="bnr at mb"><div><b>${esc(descob.map(nomeUnidade).sort().join(', '))}</b>: nenhuma extensão Coletor Ravex em funcionamento coleta ${descob.length>1?'estas unidades':'esta unidade'} agora. Os dados seguem os da última coleta. A coleta é feita pela extensão do Chrome de quem acompanha a unidade, com a Ravex aberta: <a href="#" onclick="abrirColetor();return false">Minha conta Ravex</a>.</div></div>`);
+  }
+  const coletadas = new Set(_estado?.coletadas||[]);
+  const aguardando = _sel.filter(u=>!coletadas.has(u));
+  if(aguardando.length && (_estado?.unidades||[]).length){
+    av.push(`<div class="bnr at mb"><div><b>${esc(aguardando.map(nomeUnidade).join(', '))}</b>: incluída na coleta. Os dados aparecem após a próxima coleta, ${quandoProxima()}.</div></div>`);
+  }
+  document.getElementById('avisos').innerHTML = av.join('');
+}
+function kp(rot, val, rod, fx, mini){
+  return `<div class="cx kp faixa" style="--fx:${fx}"><div class="rot">${rot}</div>
+    <div class="val${mini?' mini':''}">${val}</div><div class="rod">${rod}</div></div>`;
+}
+function renderKpis(){
+  const k = _dados?.kpis || {};
+  const ent = k.entregas||0;
+  document.getElementById('kpis').innerHTML = [
+    kp('Viagens', fmtNum(k.viagens), `${fmtNum(k.viagens_abertas)} em aberto`, 'var(--brand)'),
+    kp('Entregas realizadas', `${pct(k.realizadas, ent)}<small>%</small>`, `${fmtNum(k.realizadas)} de ${fmtNum(ent)} · ${fmtNum(k.pendentes)} pendentes`, 'var(--e-ok)'),
+    kp('Reentregas', fmtNum(k.reentregas), ent ? `${pct(k.reentregas, ent)}% das entregas` : '—', 'var(--e-reent)'),
+    kp('Devoluções', fmtNum(k.devolucoes), `${fmtNum(k.devolucoes_parciais)} parcia${k.devolucoes_parciais===1?'l':'is'}`, 'var(--e-dev)'),
+    kp('Baixa fora do raio', `${pct(k.fora_raio, k.baixadas)}<small>%</small>`, `${fmtNum(k.fora_raio)} de ${fmtNum(k.baixadas)} baixas · inclui sem GPS`, '#334155'),
+  ].join('');
+}
+function semAcento(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+function classeStatus(st){
+  const n = semAcento(st);
+  if(n.includes('parado') && n.includes('entrega')) return 'st-cliente';   // parado no cliente
+  if(n.includes('parado')) return 'st-parado';                             // parado fora de entrega
+  if(n.includes('reinicio')) return 'st-reinicio';
+  if(n.includes('transito') || n.includes('viagem') || n.includes('desloc')) return 'st-transito';
+  return 'st-outro';
+}
+const SVG = id => `<svg class="ico" aria-hidden="true" focusable="false"><use href="#ico-${id}"/></svg>`;
+function textoPnp(n, min, agora){
+  return `${n} parada${n>1?'s':''} não prevista${n>1?'s':''}${min ? ` (${fmtDuracao(min)})` : ''}${agora ? ' · veículo parado agora' : ''}`;
+}
+function fmtDuracao(min){
+  min = Math.max(0, Math.round(min||0));
+  if(min < 60) return `${min} min`;
+  const h = Math.floor(min/60), m = min % 60;
+  return m ? `${h} h ${String(m).padStart(2,'0')} min` : `${h} h`;
+}
+// temperatura do baú com uma casa e o sinal de menos tipográfico: '−14,2 °C'
+function fmtTemp(t, casas){
+  if(t==null || isNaN(t)) return '—';
+  const c = casas==null ? 1 : casas;
+  const n = Math.abs(Number(t)).toLocaleString('pt-BR',{minimumFractionDigits:c, maximumFractionDigits:c});
+  return `${Number(t) < 0 && /[1-9]/.test(n) ? '−' : ''}${n} °C`;
+}
+// eficiência do frio com até 2 casas, como na Ravex (Grid Operacional: 98,90%)
+function fmtEfet(p){ return p==null || isNaN(p) ? '—' : `${Number(p).toLocaleString('pt-BR',{maximumFractionDigits:2})}%`; }
+function margemEfet(v){ return v.efet_margem != null ? ` de ${fmtEfet(v.efet_margem)}` : ''; }
+// texto da eficiência do frio (dica da placa e janela da viagem); vazio sem dado da Ravex
+function textoEfet(v){
+  if(v.efet_situacao === 'nao_rastreada') return 'Eficiência do frio: viagem não rastreada na Ravex';
+  if(v.efet_temp == null) return '';
+  const m = v.efet_situacao === 'fora' ? `, fora da margem${margemEfet(v)}`
+          : v.efet_situacao === 'dentro' ? `, dentro da margem${margemEfet(v)}` : '';
+  return `Eficiência do frio ${fmtEfet(v.efet_temp)} (Ravex${m})`;
+}
+function idadeTexto(min){ return min==null ? '' : min < 1 ? 'agora' : `há ${min < 120 ? minutos(min) : `${Math.round(min/60)} horas`}`; }
+// leitura de temperatura com mais de 1 hora: aparece esmaecida (sensor ou rastreador sem comunicação)
+const TEMP_ANTIGA_MIN = 60;
+function chipTemperatura(v){
+  const temT = v.temp != null, temE = v.efet_temp != null;
+  if(!temT && !temE) return '';
+  const antiga = temT && v.temp_idade_min != null && v.temp_idade_min > TEMP_ANTIGA_MIN;
+  return `<span class="vtemp${antiga?' antiga':''}">${SVG('term')}${temT ? `<span class="tv">${fmtTemp(v.temp)}</span>` : ''}${
+    temE ? `<span class="ef${v.efet_situacao === 'fora' ? ' fora' : ''}">${fmtEfet(v.efet_temp)}</span>` : ''}</span>`;
+}
+function textoPlaca(v){
+  const p = [v.placa || 'Veículo'];
+  if(v.temp != null) p.push(`Temperatura do baú ${fmtTemp(v.temp)}, leitura de ${fmtDH(v.temp_em)}${
+    v.temp_idade_min != null ? ` (${idadeTexto(v.temp_idade_min)})` : ''}`);
+  const te = textoEfet(v);
+  if(te) p.push(te);
+  p.push(v.corrente ? 'Clique para ver a situação atual, o gráfico da temperatura e o mapa'
+                    : 'Clique para ver os dados da viagem, o gráfico da temperatura e o mapa');
+  return p.join(' · ');
+}
+function linhaViagem(v, vi, alt){
+  const dots = v.entregas.map((e, ei)=>{
+    const cls = ['dot']; if(e.fora_raio) cls.push('anel');
+    const at = classeAtend(e).trim(); if(at) cls.push(at);
+    if(e.fora_seq) cls.push('fseq');
+    return `<button class="${cls.join(' ')}" style="background:${fundoDot(e.cores, e.em_atendimento)}" data-v="${vi}" data-e="${ei}"
+      aria-label="${esc([e.cliente, e.cidade, e.bairro, marcaAtend(e), e.fora_seq ? 'Fora da sequência' : ''].filter(Boolean).join(' | '))}"></button>`;
+  }).join('');
+  // bandeiras de início e fim e triângulo de PNP (pedido do usuário 15/11/2026)
+  const tIni = `Início da viagem${v.inicio ? ' · '+fmtDH(v.inicio) : ''}`;
+  const bIni = `<button class="vf ini" data-v="${vi}" data-viagem="1" data-tip="${esc(tIni)}" aria-label="${esc(tIni)}">${SVG('ini')}</button>`;
+  const tFim = `Fim da viagem${v.fim ? ' · '+fmtDH(v.fim) : ''}`;
+  const bFim = !v.aberta && v.fim
+    ? `<button class="vf fim" data-v="${vi}" data-viagem="1" data-tip="${esc(tFim)}" aria-label="${esc(tFim)}">${SVG('fim')}</button>` : '';
+  const tPnp = v.pnp ? textoPnp(v.pnp, v.pnp_minutos, v.pnp_andamento) : '';
+  const bPnp = v.pnp
+    ? `<button class="vpnp${v.pnp_andamento?' agora':''}" data-v="${vi}" data-viagem="pnp" data-tip="${esc(tPnp)}" aria-label="${esc(tPnp)}">${SVG('pnp')}${v.pnp>1?`<b>${v.pnp}</b>`:''}</button>` : '';
+  const pctR = pct(v.realizadas, v.total);
+  const st = v.aberta ? classeStatus(v.status_viagem) : 'st-fim';
+  const chip = `<span class="chip st ${st}">${esc(v.aberta ? (v.status_viagem||'Em aberto') : 'Finalizada')}</span>`;
+  const tPlaca = textoPlaca(v);
+  const sub = [v.motorista, v.inicio ? `início ${fmtDH(v.inicio)}` : '', !v.aberta && v.fim ? `fim ${fmtHora(v.fim)}` : '']
+    .filter(Boolean).map(esc).join(' · ');
+  return `<div class="vg ${st}${alt?' alt':''}${v.aberta?'':' fin'}" style="animation-delay:${Math.min(vi,20)*18}ms">
+    <div class="id"><div class="placa"><button class="vplaca" data-v="${vi}" data-viagem="agora" data-tip="${esc(tPlaca)}"
+        aria-label="${esc(tPlaca)}">${esc(v.placa||'—')}${chipTemperatura(v)}</button> ${chip}</div>
+      <div class="sub" title="${esc((v.transportadora?v.transportadora+' · ':'')+'Viagem '+v.id_viagem)}">${sub || '&nbsp;'}</div></div>
+    <div class="dots">${bIni}${dots || '<span class="nota">Sem notas registradas</span>'}${bFim}${bPnp}</div>
+    <div class="prog"><b>${v.realizadas}</b><small> / ${v.total}</small>
+      <div class="barra"><i style="width:${pctR}%"></i></div></div>
+  </div>`;
+}
+function renderLista(){
+  const el = document.getElementById('lista');
+  const vs = _dados?.viagens || [];
+  if(!vs.length){
+    el.innerHTML = `<div class="vazio-g">${!_sel.length ? 'Nenhuma unidade selecionada.'
+      : _placas.length ? 'Nenhuma viagem dos veículos marcados no período e na situação selecionados.'
+      : 'Nenhuma viagem no período e na situação selecionados.'}</div>`;
+    return;
+  }
+  const porUni = {};
+  vs.forEach((v,i)=>{ (porUni[v.unidade] = porUni[v.unidade] || []).push([v,i]); });
+  const unis = Object.keys(porUni).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  el.innerHTML = unis.map(u=>{
+    const linhas = porUni[u];
+    const ab = linhas.filter(([v])=>v.aberta).length;
+    return (unis.length>1 ? `<div class="grupo-uni">${esc(u)} <span class="ct">${linhas.length} viage${linhas.length===1?'m':'ns'} · ${ab} em aberto</span></div>` : '')
+      + linhas.map(([v,i], k)=>linhaViagem(v, i, k%2===1)).join('');
+  }).join('');
+}
+
+/* ── tooltip e detalhe ────────────────────────────────────────── */
+const _tip = document.getElementById('tip');
+function entregaDe(el){
+  const v = _dados?.viagens?.[+el.dataset.v]; if(!v) return [null,null];
+  return [v, v.entregas[+el.dataset.e]];
+}
+document.getElementById('lista').addEventListener('mouseover', ev=>{
+  const b = ev.target.closest('[data-tip]');
+  if(b){ _tip.textContent = b.dataset.tip; _tip.style.display = 'block'; return; }
+  const d = ev.target.closest('.dot'); if(!d) return;
+  const [, e] = entregaDe(d); if(!e) return;
+  _tip.textContent = [e.cliente||'—', e.cidade||'—', e.bairro||'—'].join(' | ')
+    + (marcaAtend(e) ? ' · ' + marcaAtend(e) : '') + (e.fora_seq ? ' · Fora da sequência' : '');
+  _tip.style.display = 'block';
+});
+document.getElementById('lista').addEventListener('mousemove', ev=>{
+  if(_tip.style.display!=='block') return;
+  const w = _tip.offsetWidth, h = _tip.offsetHeight;
+  let x = ev.clientX + 14, y = ev.clientY + 16;
+  if(x + w > innerWidth - 8) x = ev.clientX - w - 14;
+  if(y + h > innerHeight - 8) y = ev.clientY - h - 12;
+  _tip.style.left = x+'px'; _tip.style.top = y+'px';
+});
+document.getElementById('lista').addEventListener('mouseout', ev=>{
+  if(ev.target.closest('.dot,[data-tip]')) _tip.style.display = 'none';
+});
+document.getElementById('lista').addEventListener('click', ev=>{
+  const b = ev.target.closest('[data-viagem]');
+  if(b){
+    const v = _dados?.viagens?.[+b.dataset.v];
+    if(v) abrirViagem(v.id_viagem, `${v.placa||'Veículo'} · Viagem ${v.identificador||v.id_viagem}`, b.dataset.viagem==='pnp');
+    return;
+  }
+  const d = ev.target.closest('.dot'); if(!d) return;
+  const [v, e] = entregaDe(d); if(v && e) abrirEntrega(v, e);
+});
+
+function chipNota(n){
+  const m = {ok:'ok', reent:'reent', dev:'er', parc:'er', pend:'exp'};
+  return `<span class="chip ${m[n.categoria]||'exp'}">${esc(n.status_nf||'Sem situação')}</span>`;
+}
+function abrirEntrega(v, e){
+  return abrirEntregaPor(v.id_viagem, e.cliente_cod, `${v.placa||'Veículo'} · ${e.cliente||'Cliente'}`);
+}
+let _detSeq = 0;
+// viagem aberta no detalhe, para a faixa de navegação: {viagem, placa,
+// titulo, lista, atual}; atual = cliente da entrega aberta, null na janela
+// da viagem; _detNav null fora do detalhe
+let _detNav = null;
+function tituloViagem(vg){ return `${vg.placa||'Veículo'} · Viagem ${vg.identificador||vg.id_viagem}`; }
+// troca de conteúdo do pop-up: na mesma viagem, com o pop-up aberto, a faixa
+// marca o destino na hora e o conteúdo atual fica esmaecido até a resposta
+function prepararDetalhe(idViagem, titulo, atual){
+  _tip.style.display = 'none';
+  const seq = ++_detSeq;
+  document.getElementById('det-tit').textContent = titulo || 'Entrega';
+  const corpo = document.getElementById('det-corpo');
+  const trocando = !!_detNav && _detNav.viagem === idViagem
+    && document.getElementById('ov-det').classList.contains('show');
+  document.querySelector('#ov-det .modal').classList.add('com-mapa');
+  if(trocando){
+    _detNav.atual = atual; desenharNavDetalhe();
+    corpo.classList.add('trocando');
+  }else{
+    _detNav = null; desenharNavDetalhe();
+    fecharMapaDetalhe();
+    corpo.classList.remove('trocando');
+    corpo.innerHTML = '<div class="nota">Carregando…</div>';
+  }
+  abrirModal('ov-det');
+  focarModal('ov-det');
+  return {seq, corpo};
+}
+function mostrarDetalhe(corpo, h, j, atual){
+  fecharMapaDetalhe();
+  corpo.classList.remove('trocando');
+  corpo.innerHTML = `<div class="det-dupla"><div class="det-info">${h}</div>
+    <aside class="det-mapa"><div class="det-mapa-c" id="det-mapa"></div><div class="det-mapa-leg" id="det-mapa-leg"></div></aside></div>`;
+  corpo.scrollTop = 0;
+  const vg = j.viagem;
+  _detNav = {viagem: vg.id_viagem, placa: vg.placa, titulo: tituloViagem(vg), lista: j.sequencia || [], atual};
+  desenharNavDetalhe();
+}
+function falhaDetalhe(seq, corpo, err){
+  if(seq !== _detSeq) return;
+  fecharMapaDetalhe();
+  corpo.classList.remove('trocando');
+  corpo.innerHTML = `<div class="bnr er"><div>${esc(err.message)}</div></div>`;
+}
+async function abrirEntregaPor(idViagem, clienteCod, titulo, nfAlvo){
+  const {seq, corpo} = prepararDetalhe(idViagem, titulo, clienteCod);
+  try{
+    const r = await fetch('/api/entregas/entrega?' + new URLSearchParams({viagem:idViagem, cliente:clienteCod}));
+    if(r.status===401){ location.href='/login'; return; }
+    const j = await r.json();
+    if(seq !== _detSeq) return;
+    if(!r.ok) throw new Error(j.error || 'Não foi possível ler a entrega.');
+    const en = j.entrega, cl = j.cliente, vg = j.viagem;
+    document.getElementById('det-tit').textContent = `${vg.placa||'Veículo'} · ${cl.nome||'Cliente'}`;
+    const situacao = en.cores.map(c=>ROT_COR[c]).join(' + ');
+    const raio = en.com_baixa ? (en.fora_raio ? 'Fora do raio ou sem GPS' : 'Dentro do raio') : '—';
+    let h = `<div class="det-grid">
+      <div class="larga"><div class="rot">Cliente</div><div class="v">${esc(cl.nome||'—')} <span class="nota">· cód. ${esc(cl.codigo||'—')}</span></div></div>
+      <div class="larga"><div class="rot">Endereço</div><div class="v">${esc(cl.endereco||'—')}</div></div>
+      <div><div class="rot">Cidade</div><div class="v">${esc(cl.cidade||'—')}</div></div>
+      <div><div class="rot">Bairro</div><div class="v">${esc(cl.bairro||'—')}</div></div>
+      <div><div class="rot">Sequência</div><div class="v">${en.seq??'—'} programada · ${en.seq_real??'—'} real${
+        en.fora_seq ? '<div style="margin-top:4px"><span class="chip fseq">Fora da sequência</span></div>' : ''}</div></div>
+      <div><div class="rot">Situação</div><div class="v" style="display:flex;align-items:center;gap:8px">
+        <i class="dot${en.fora_raio?' anel':''}" style="cursor:default;width:14px;height:14px;background:${fundoDot(en.cores, en.em_atendimento)}"></i>${
+        esc(situacao)}${marcaAtend(en) ? ' · ' + marcaAtend(en).toLowerCase() : ''}</div></div>
+      <div><div class="rot">Baixa</div><div class="v">${en.fim ? fmtDH(en.fim) : '—'}</div></div>
+      <div><div class="rot">Raio do cliente</div><div class="v">${esc(raio)}</div></div>
+      <div><div class="rot">Viagem</div><div class="v">${esc(vg.id_viagem)} <span class="nota">· ${esc(vg.unidade)}</span></div></div>
+      <div><div class="rot">Motorista</div><div class="v">${esc(vg.motorista||'—')}</div></div>
+    </div>
+    <div class="grp-t" style="margin-bottom:8px">${j.notas.length} nota${j.notas.length>1?'s':''} fisca${j.notas.length>1?'is':'l'}</div>`;
+    h += j.notas.map(n=>{
+      const itens = n.itens.length
+        ? `<div class="tw"><table class="tb"><thead><tr><th>Código</th><th>Produto</th><th class="n">Quantidade</th><th class="n">Peso líquido (kg)</th></tr></thead><tbody>${
+            n.itens.map(i=>`<tr><td>${esc(i.codigo)}</td><td style="white-space:normal">${esc(i.descricao)}</td>
+              <td class="n">${i.quantidade==null ? '—' : Number(i.quantidade).toLocaleString('pt-BR',{maximumFractionDigits:3})}</td><td class="n">${fmtNum(i.peso_liquido, 2)}</td></tr>`).join('')
+          }</tbody></table></div>`
+        : `<div class="vz">${n.itens_pendentes ? 'Produtos desta nota em coleta; aparecem nos próximos minutos.' : 'A Ravex não trouxe produtos para esta nota.'}</div>`;
+      const dist = !n.teve_baixa ? '—'
+        : (n.fora_raio ? `Fora do raio${n.metros!=null?` · ${fmtNum(n.metros)} m`:' · sem GPS'}` : `Dentro do raio${n.metros!=null?` · ${fmtNum(n.metros)} m`:''}`);
+      const alvo = nfAlvo && String(n.numero_nf).replace(/^0+/,'') === String(nfAlvo).replace(/^0+/,'');
+      return `<div class="nf${alvo?' alvo':''}"><div class="nf-h"><b>NF ${esc(n.numero_nf)}</b>${alvo?'<span class="chip loc">Nota localizada</span>':''}${chipNota(n)}
+          <span><span class="k">Baixa</span> ${n.fim_entrega ? fmtDH(n.fim_entrega) : '—'}</span>
+          <span><span class="k">Raio</span> ${esc(dist)}</span>
+          ${n.qtd_reentregas ? `<span><span class="k">Reentregas</span> ${fmtNum(n.qtd_reentregas)}</span>` : ''}
+          <span><span class="k">Peso bruto</span> ${fmtNum(n.peso_bruto, 1)} kg</span>
+          <span><span class="k">Valor</span> R$ ${fmtNum(n.valor_nf, 2)}</span></div>${itens}</div>`;
+    }).join('');
+    mostrarDetalhe(corpo, h, j, en.cliente_cod);
+    desenharMapaDetalhe(j, seq);
+    const a = corpo.querySelector('.nf.alvo');
+    if(a && j.notas.length > 1) setTimeout(()=>a.scrollIntoView({block:'nearest', behavior:'smooth'}), 60);
+  }catch(err){ falhaDetalhe(seq, corpo, err); }
+}
+
+/* ── janela da viagem: bandeiras de início e fim e PNP ─────────── */
+// pedido do usuário 15/11/2026: "uma bandeira para o início e fim da viagem;
+// ao clicar mostra os dados e a localização" e o triângulo amarelo da parada
+// não prevista. Local = comunicação do rastreador mais próxima do horário
+// (histórico da grade de posição); sem posição no início, o CD da unidade.
+function localPonta(p, restrito, tipo){
+  if(restrito) return '<div class="vg-loc">Localização não exibida para o seu perfil de acesso.</div>';
+  if(!p) return `<div class="vg-loc">Sem posição registrada ${tipo==='inicio' ? 'no início' : 'no fim'} da viagem.</div>`;
+  if(p.origem === 'cd') return `<div class="vg-loc">CD ${esc(p.sigla||'')} · local do cadastro (sem posição registrada no horário)</div>`;
+  return `<div class="vg-loc">Posição de ${fmtDH(p.em)}${p.endereco ? ` · ${esc(p.endereco)}` : ''}</div>`;
+}
+async function abrirViagem(idViagem, titulo, focoPnp){
+  const {seq, corpo} = prepararDetalhe(idViagem, titulo || 'Viagem', null);
+  try{
+    const r = await fetch('/api/entregas/viagem?' + new URLSearchParams({viagem:idViagem}));
+    if(r.status===401){ location.href='/login'; return; }
+    const j = await r.json();
+    if(seq !== _detSeq) return;
+    if(!r.ok) throw new Error(j.error || 'Não foi possível ler a viagem.');
+    const vg = j.viagem, t = j.trajeto || {pnp:[]};
+    document.getElementById('det-tit').textContent = tituloViagem(vg);
+    const pnps = t.pnp || [];
+    const par = t.parametros || {pnp_min:15, pnp_raio_m:500};
+    const totalMin = pnps.reduce((s,p)=>s + (p.minutos||0), 0);
+    const st = vg.aberta ? (vg.status_viagem || 'Em aberto') : 'Finalizada';
+    let h = `<div class="det-grid">
+      <div><div class="rot">Viagem</div><div class="v">${esc(vg.id_viagem)}${
+        vg.identificador && vg.identificador !== vg.id_viagem ? ` <span class="nota">· ${esc(vg.identificador)}</span>` : ''}</div></div>
+      <div><div class="rot">Unidade</div><div class="v">${esc(vg.unidade||'—')}</div></div>
+      <div><div class="rot">Situação</div><div class="v"><span class="chip st ${vg.aberta ? classeStatus(vg.status_viagem) : 'st-fim'}">${esc(st)}</span></div></div>
+      <div><div class="rot">Entregas</div><div class="v">${j.realizadas} de ${j.total} realizada${j.total===1?'':'s'}</div></div>
+      <div class="larga"><div class="rot">Motorista</div><div class="v">${esc(vg.motorista||'—')}</div></div>
+      <div class="larga"><div class="rot">Transportadora</div><div class="v">${esc(vg.transportadora||'—')}</div></div>
+      <div class="larga"><div class="rot">${SVG('ini')}Início</div><div class="v">${
+        vg.inicio_real ? fmtDH(vg.inicio_real) : `Não iniciada${vg.importacao ? ` <span class="nota">· importada ${fmtDH(vg.importacao)}</span>` : ''}`}</div>${
+        vg.inicio_real ? localPonta(t.inicio, t.restrito, 'inicio') : ''}</div>
+      <div class="larga"><div class="rot">${SVG('fim')}Fim</div><div class="v">${vg.fim ? fmtDH(vg.fim) : (vg.aberta ? 'Em andamento' : '—')}</div>${
+        vg.fim ? localPonta(t.fim, t.restrito, 'fim') : ''}</div>
+    </div>`;
+    // clique na placa (16/11/2026): situação de agora no topo e gráfico da temperatura
+    h = blocoAgora(j) + h + secaoTemperatura(j);
+    h += `<div class="grp-t pnp-t" id="vg-pnp" style="margin-bottom:6px">${SVG('pnp')}Paradas não previstas${
+      pnps.length ? ` <span class="chip pnp">${pnps.length} · ${fmtDuracao(totalMin)}</span>` : ''}</div>
+    <div class="nota" style="margin-bottom:8px">Veículo parado ${par.pnp_min} minutos ou mais no mesmo lugar, fora do raio de ${
+      fmtNum(par.pnp_raio_m)} m dos clientes da viagem e dos CDs cadastrados. Tempo medido entre as comunicações do rastreador.</div>`;
+    const inicioTxt = String(vg.inicio_real||'').slice(0,16);
+    if(!vg.inicio_real){
+      h += '<div class="nota">A viagem ainda não foi iniciada na Ravex.</div>';
+    }else if(!t.historico_desde){
+      h += '<div class="nota">Sem posições registradas para esta viagem. O histórico é gravado com a grade de posição da Ravex recebida durante a viagem.</div>';
+    }else{
+      if(String(t.historico_desde).slice(0,16) > inicioTxt)
+        h += `<div class="nota" style="margin-bottom:8px">Posições registradas a partir de ${fmtDH(t.historico_desde)}; antes disso as paradas não são medidas.</div>`;
+      if(!pnps.length){
+        h += '<div class="nota">Nenhuma parada não prevista nesta viagem.</div>';
+      }else{
+        h += `<div class="tw"><table class="tb pnp-tb"><thead><tr><th class="n">#</th><th>Início</th><th>Fim</th><th class="n">Duração</th><th>Local</th></tr></thead><tbody>${
+          pnps.map((p,k)=>`<tr tabindex="0" onclick="focarPnp(${k})" onkeydown="if(event.key==='Enter') focarPnp(${k})">
+            <td class="n">${k+1}</td><td>${fmtDH(p.inicio)}</td>
+            <td>${p.em_andamento ? `<span class="chip pnp">Parado agora</span> <span class="nota">última posição ${fmtHora(p.fim)}</span>` : fmtDH(p.fim)}</td>
+            <td class="n">${fmtDuracao(p.minutos)}</td>
+            <td style="white-space:normal">${t.restrito ? '—' : esc(p.endereco || `${fmtNum(p.lat, 5)}, ${fmtNum(p.lon, 5)}`)}</td></tr>`).join('')
+        }</tbody></table></div>`;
+        if(t.restrito) h += '<div class="nota" style="margin-top:6px">A localização das paradas não é exibida para o seu perfil de acesso.</div>';
+      }
+    }
+    mostrarDetalhe(corpo, h, j, null);
+    desenharGraficoTemp(document.getElementById('tg'), serieComAgora(t.temperaturas, j.agora), t.atendimentos || [], vg);
+    await desenharMapaDetalhe(j, seq);
+    if(focoPnp && seq === _detSeq){
+      const alvo = document.getElementById('vg-pnp');
+      if(alvo) setTimeout(()=>alvo.scrollIntoView({block:'start', behavior:'smooth'}), 60);
+    }
+  }catch(err){ falhaDetalhe(seq, corpo, err); }
+}
+/* ── agora e temperatura do baú (clique na placa, 16/11/2026) ──── */
+// pedido do usuário: "ao clicar sobre a placa, ele abre informações de
+// temperatura atual, status atual (se ta entregando, no raio, etc...),
+// grafico da temperatura" + a localização no mapa (o mapa ao lado)
+const COR_SIT = {transito:'#0b4f9c', parado:'#b42318', cd:'#0f766e'};
+function marcaSituacao(cod){
+  if(cod==='atendimento') return `<i class="dot atend" style="background:${COR_ATEND}"></i>`;
+  if(cod==='no_raio') return '<i class="dot noraio" style="background:var(--e-pend)"></i>';
+  if(cod==='pnp') return SVG('pnp');
+  return `<i class="ag-pt" style="background:${COR_SIT[cod] || 'var(--ink-3)'}"></i>`;
+}
+function blocoAgora(j){
+  const a = j.agora; if(!a) return '';
+  const ve = j.mapa?.veiculo || {};
+  const antigaT = a.temp_idade_min != null && a.temp_idade_min > TEMP_ANTIGA_MIN;
+  const antigaC = a.idade_min != null && a.idade_min > 30;
+  return `<div class="ag-box"><div class="grp-t">Agora</div><div class="det-grid">
+    <div class="larga"><div class="rot">Situação</div><div class="v ag-sit">${marcaSituacao(a.codigo)}<span>${esc(a.situacao||'—')}</span></div></div>
+    <div><div class="rot">Temperatura do baú</div><div class="v">${a.temp != null
+      ? `<span class="${antigaT?'antiga':''}">${fmtTemp(a.temp)}</span>` : '—'}</div>${
+      a.temp == null ? '<div class="vg-loc">Sem leitura do sensor na grade da Ravex</div>'
+      : antigaT ? `<div class="vg-loc">Leitura de ${fmtDH(a.temp_em)}</div>` : ''}</div>
+    <div><div class="rot">Ignição</div><div class="v">${esc(a.ignicao || '—')}</div></div>
+    <div class="larga"><div class="rot">Última comunicação</div><div class="v">${a.em
+      ? `<span class="${antigaC?'antiga':''}">${fmtDH(a.em)}</span>${a.idade_min != null ? ` <span class="nota">· ${idadeTexto(a.idade_min)}</span>` : ''}`
+      : '—'}</div></div>
+    ${ve.situacao==='ok' && ve.endereco ? `<div class="larga"><div class="rot">Local</div><div class="v" style="font-weight:500">${esc(ve.endereco)}</div></div>` : ''}
+  </div></div>`;
+}
+// a gravação enxuta guarda a temperatura quando muda 0,5 °C ou mais; o
+// último ponto do gráfico passa a ser a leitura atual (a mesma do "Agora")
+function serieComAgora(serie, a){
+  serie = serie || [];
+  if(!a || a.temp == null || !a.temp_em || !serie.length) return serie;
+  const s = serie.slice(), u = s[s.length - 1];
+  const em = String(a.temp_em).slice(0, 19), ue = String(u[0]).slice(0, 19);
+  if(em > ue) s.push([em, a.temp]);
+  else if(em === ue) s[s.length - 1] = [u[0], a.temp];
+  return s;
+}
+function secaoTemperatura(j){
+  const vg = j.viagem, t = j.trajeto || {};
+  if(!vg.inicio_real) return '';
+  const serie = serieComAgora(t.temperaturas, j.agora);
+  const te = textoEfet(vg);
+  const dica = te ? `${te}. Fonte: Ravex, Viagens › Grid Operacional (Efet. Temp.)${
+    vg.efet_temp_em ? `, lida em ${fmtDH(vg.efet_temp_em)}` : ''}.` : '';
+  const ef = vg.efet_situacao === 'nao_rastreada'
+    ? ` <span class="chip st st-fim" title="${esc(dica)}">Viagem não rastreada</span>`
+    : vg.efet_temp != null
+      ? ` <span class="chip st ${vg.efet_situacao === 'fora' ? 'st-parado' : 'st-fim'}" title="${esc(dica)}">Eficiência do frio ${fmtEfet(vg.efet_temp)}${
+          vg.efet_situacao === 'fora' ? ' · fora da margem' : ''}</span>` : '';
+  let h = `<div class="grp-t tg-t" style="margin-bottom:6px">${SVG('term')}Temperatura do baú${ef}</div>`;
+  const faixa = vg.temp_min != null && vg.temp_max != null
+    ? `Faixa da viagem na Ravex: ${fmtTemp(vg.temp_min, vg.temp_min % 1 ? 1 : 0)} a ${fmtTemp(vg.temp_max, vg.temp_max % 1 ? 1 : 0)}` : '';
+  if(!serie.length)
+    return h + `<div class="nota" style="margin-bottom:8px">Sem leituras de temperatura registradas nesta viagem. As leituras são gravadas com a grade de posição da Ravex recebida durante a viagem.${
+      faixa ? ` ${faixa}.` : ''}</div>`;
+  const ts = serie.map(p=>Number(p[1]));
+  const ult = serie[serie.length - 1];
+  const resumo = `Mínima ${fmtTemp(Math.min(...ts))} · máxima ${fmtTemp(Math.max(...ts))} · ${
+    j.agora ? 'última' : 'final'} ${fmtTemp(ult[1])} às ${fmtDH(ult[0])}${faixa ? ` · ${faixa}` : ''}`;
+  return h + `<div class="tg" id="tg" tabindex="0" role="group" aria-label="${esc(`Gráfico da temperatura do baú. ${resumo}. Setas para percorrer as leituras.`)}"></div>
+    <div class="nota tg-res">${resumo}. Leituras do sensor do baú na grade de posição da Ravex${
+      (t.atendimentos||[]).length ? '; faixas = atendimento nos clientes (número = sequência programada)' : ''}.</div>`;
+}
+function instanteDH(s){
+  const m = String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  return m ? new Date(+m[1], m[2]-1, +m[3], +m[4], +m[5], +(m[6]||0)).getTime() : NaN;
+}
+// sem leitura por mais de 30 minutos (rastreador sem comunicação): a linha
+// é interrompida, sem ligar os pontos por cima do buraco
+const TG_QUEBRA_MS = 30 * 60000;
+let _tgObs = null;
+function desenharGraficoTemp(el, serie, faixas, vg){
+  if(_tgObs){ _tgObs.disconnect(); _tgObs = null; }
+  if(!el) return;
+  const pts = serie.map(([s, v])=>({x: instanteDH(s), y: Number(v), s}))
+    .filter(p=>!isNaN(p.x) && !isNaN(p.y)).sort((a,b)=>a.x - b.x);
+  if(!pts.length) return;
+  const fs = faixas.map(f=>{
+    const a = instanteDH(f.inicio), b = instanteDH(f.fim);
+    return {a, b: isNaN(b) ? a : Math.max(a, b), seq: f.seq, cliente: f.cliente};
+  }).filter(f=>!isNaN(f.a));
+  const ini = instanteDH(vg.inicio_real), fimV = instanteDH(vg.fim);
+  const x0 = isNaN(ini) ? pts[0].x : Math.min(ini, pts[0].x);
+  let x1 = Math.max(pts[pts.length-1].x, isNaN(fimV) ? -Infinity : fimV, ...fs.map(f=>f.b));
+  if(x1 - x0 < 20*60000) x1 = x0 + 20*60000;
+  const ys = pts.map(p=>p.y);
+  let lo = Math.min(...ys), hi = Math.max(...ys);
+  if(hi - lo < 4){ const c = (hi + lo) / 2; lo = c - 2; hi = c + 2; }
+  // limites da faixa da viagem na Ravex (TempMin/TempMax): entram no gráfico
+  // quando a leitura chega perto deles (até metade da amplitude das leituras)
+  const temFaixa = vg.temp_min != null && vg.temp_max != null;
+  const lims = temFaixa ? [['mín.', Number(vg.temp_min)], ['máx.', Number(vg.temp_max)]]
+    .filter(([, v])=>v >= lo - (hi - lo) / 2 && v <= hi + (hi - lo) / 2) : [];
+  lims.forEach(([, v])=>{ lo = Math.min(lo, v); hi = Math.max(hi, v); });
+  const passoY = [0.5, 1, 2, 5, 10, 20].find(s=>(hi - lo) / s <= 5) || 20;
+  lo = Math.floor(lo / passoY) * passoY; hi = Math.ceil(hi / passoY) * passoY;
+  // limite na borda do gráfico ficaria em cima do eixo: um passo de folga
+  if(lims.some(([, v])=>Math.abs(v - lo) < 1e-9)) lo -= passoY;
+  if(lims.some(([, v])=>Math.abs(v - hi) < 1e-9)) hi += passoY;
+  const foraFaixa = y => temFaixa && (y < vg.temp_min || y > vg.temp_max);
+
+  let larguraFeita = 0;
+  function desenhar(){
+    const W = Math.max(260, Math.round(el.clientWidth)), H = 190;
+    larguraFeita = W;
+    const m = {l: 54, r: 14, t: 18, b: 24};
+    const lp = W - m.l - m.r, ap = H - m.t - m.b;
+    const X = x => m.l + (x - x0) / (x1 - x0) * lp;
+    const Y = y => m.t + (hi - y) / (hi - lo) * ap;
+    const p = [];
+    // faixas de atendimento (atrás de tudo) e o número da sequência acima
+    let ultRot = -99;
+    fs.forEach(f=>{
+      const a = Math.max(X(f.a), m.l), b = Math.min(X(f.b), W - m.r);
+      if(b < m.l || a > W - m.r) return;
+      const w = Math.max(2, b - a);
+      p.push(`<rect class="fx-at" x="${a.toFixed(1)}" y="${m.t}" width="${w.toFixed(1)}" height="${ap}"/>`);
+      const cx = a + w / 2;
+      if(f.seq != null && cx - ultRot >= 16){
+        p.push(`<text class="fx-n" x="${cx.toFixed(1)}" y="${m.t - 6}" text-anchor="middle">${esc(String(f.seq))}</text>`);
+        ultRot = cx;
+      }
+    });
+    // grade horizontal recessiva e rótulos do eixo de temperatura
+    for(let v = lo; v <= hi + 1e-9; v += passoY){
+      const y = Y(v).toFixed(1);
+      p.push(`<line class="gx" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/>`);
+      p.push(`<text x="${m.l - 8}" y="${(+y + 3.5).toFixed(1)}" text-anchor="end">${fmtTemp(v, passoY < 1 ? 1 : 0)}</text>`);
+    }
+    p.push(`<line class="eixo" x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}"/>`);
+    // limites da faixa da viagem (tracejado), com o rótulo à direita
+    lims.forEach(([rot, v])=>{
+      const y = Y(v).toFixed(1);
+      p.push(`<line class="lim" x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}"/>`);
+      p.push(`<text class="lim-t" x="${W - m.r - 2}" y="${(+y - 4).toFixed(1)}" text-anchor="end">${rot} ${fmtTemp(v, v % 1 ? 1 : 0)}</text>`);
+    });
+    // eixo do tempo: passo pela largura, alinhado à hora local
+    const span = (x1 - x0) / 60000;
+    const maxT = Math.max(2, Math.floor(lp / 74));
+    const passoX = [10, 15, 30, 60, 120, 180, 240, 360, 720, 1440].find(s=>span / s <= maxT) || 1440;
+    const d = new Date(x0); d.setSeconds(0, 0);
+    d.setHours(0, Math.ceil((d.getHours() * 60 + d.getMinutes()) / passoX) * passoX, 0, 0);
+    const variosDias = new Date(x0).toDateString() !== new Date(x1).toDateString();
+    let diaAnt = '';
+    for(let tk = d.getTime(); tk <= x1; tk += passoX * 60000){
+      const x = X(tk); if(x < m.l + 12 || x > W - m.r - 12) continue;
+      const dt = new Date(tk), dia = dt.toDateString();
+      const hm = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      const rot = variosDias && dia !== diaAnt ? `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')} ${hm}` : hm;
+      diaAnt = dia;
+      p.push(`<line class="eixo" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${H - m.b}" y2="${H - m.b + 4}"/>`);
+      p.push(`<text x="${x.toFixed(1)}" y="${H - m.b + 16}" text-anchor="middle">${rot}</text>`);
+    }
+    // a série: 2px, interrompida nos buracos; leitura isolada vira um ponto
+    let d2 = '', run = 0;
+    pts.forEach((pt, i)=>{
+      const novo = i === 0 || pt.x - pts[i-1].x > TG_QUEBRA_MS;
+      if(novo && run === 1) p.push(`<circle class="pt1" cx="${X(pts[i-1].x).toFixed(1)}" cy="${Y(pts[i-1].y).toFixed(1)}" r="2.5"/>`);
+      d2 += `${novo ? 'M' : 'L'}${X(pt.x).toFixed(1)},${Y(pt.y).toFixed(1)}`;
+      run = novo ? 1 : run + 1;
+    });
+    if(run === 1){ const u = pts[pts.length-1]; p.push(`<circle class="pt1" cx="${X(u.x).toFixed(1)}" cy="${Y(u.y).toFixed(1)}" r="2.5"/>`); }
+    p.push(`<path class="linha" d="${d2}"/>`);
+    p.push(`<g class="mira-g" style="display:none"><line class="mira" y1="${m.t}" y2="${H - m.b}"/><circle class="mira-p" r="4.5"/></g>`);
+    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">${p.join('')}</svg>
+      <div class="tg-tip" aria-live="polite"></div>`;
+    const xs = pts.map(pt=>X(pt.x));
+    const g = el.querySelector('.mira-g'), ln = g.querySelector('line'), ci = g.querySelector('circle');
+    const tip = el.querySelector('.tg-tip');
+    function mostrar(i){
+      i = Math.max(0, Math.min(pts.length - 1, i)); el._i = i;
+      const pt = pts[i], px = xs[i], py = Y(pt.y);
+      ln.setAttribute('x1', px); ln.setAttribute('x2', px);
+      ci.setAttribute('cx', px); ci.setAttribute('cy', py);
+      g.style.display = '';
+      const f = fs.find(f=>pt.x >= f.a && pt.x <= f.b);
+      const b = document.createElement('b'); b.textContent = fmtTemp(pt.y);
+      const s1 = document.createElement('span'); s1.textContent = fmtDH(pt.s);
+      tip.replaceChildren(b, s1);
+      if(f){ const s2 = document.createElement('span');
+        s2.textContent = `Atendimento · ${f.seq != null ? f.seq + '. ' : ''}${f.cliente || 'Cliente'}`; tip.appendChild(s2); }
+      if(foraFaixa(pt.y)){ const s3 = document.createElement('span');
+        s3.textContent = 'Fora da faixa da viagem na Ravex'; tip.appendChild(s3); }
+      tip.style.display = 'block';
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      tip.style.left = `${px + 12 + tw > W ? Math.max(0, px - tw - 12) : px + 12}px`;
+      tip.style.top = `${Math.max(0, Math.min(H - th, py - th / 2))}px`;
+    }
+    function esconder(){ g.style.display = 'none'; tip.style.display = 'none'; }
+    function perto(clientX){
+      const x = clientX - el.getBoundingClientRect().left;
+      let a = 0, b = xs.length - 1;
+      while(b - a > 1){ const c = (a + b) >> 1; if(xs[c] < x) a = c; else b = c; }
+      return Math.abs(xs[a] - x) <= Math.abs(xs[b] - x) ? a : b;
+    }
+    el.onpointermove = ev=>mostrar(perto(ev.clientX));
+    el.onpointerdown = ev=>mostrar(perto(ev.clientX));
+    el.onpointerleave = ev=>{ if(ev.pointerType !== 'touch' && document.activeElement !== el) esconder(); };
+    el.onfocus = ()=>mostrar(el._i ?? pts.length - 1);
+    el.onblur = esconder;
+    el.onkeydown = ev=>{
+      const k = {ArrowLeft:-1, ArrowRight:1}[ev.key];
+      if(k){ ev.preventDefault(); ev.stopPropagation(); mostrar((el._i ?? pts.length - 1) + k); }
+      else if(ev.key === 'Home' || ev.key === 'End'){ ev.preventDefault(); mostrar(ev.key === 'Home' ? 0 : pts.length - 1); }
+    };
+  }
+  desenhar();
+  // a coluna do detalhe muda de largura com a janela: redesenha na largura nova
+  if(window.ResizeObserver){
+    _tgObs = new ResizeObserver(()=>{
+      if(!document.body.contains(el)){ _tgObs?.disconnect(); _tgObs = null; return; }
+      if(Math.abs(Math.round(el.clientWidth) - larguraFeita) > 4) desenhar();
+    });
+    _tgObs.observe(el);
+  }
+}
+function abrirViagemNav(focoPnp){
+  if(_detNav) abrirViagem(_detNav.viagem, _detNav.titulo, !!focoPnp);
+}
+
+/* ── faixa de navegação entre as entregas da viagem ───────────── */
+// mesma bolinha da lista (cor, contorno de fora do raio, pulso de em
+// atendimento, exclamação de fora da sequência), com o número da sequência
+// programada — o mesmo do mapa; o botão Viagem abre os dados da viagem
+function desenharNavDetalhe(){
+  const el = document.getElementById('det-nav');
+  const n = _detNav;
+  if(!n){ el.hidden = true; el.innerHTML = ''; return; }
+  const i = n.lista.findIndex(e=>e.cliente_cod === n.atual);
+  const total = n.lista.length;
+  const naViagem = n.atual == null;
+  // a faixa é redesenhada a cada troca: guarda o controle com o foco para
+  // devolver depois (navegação pelo teclado — achado da revisão de 15/11/2026)
+  const ae = document.activeElement;
+  const focoAntes = el.contains(ae) ? ae.dataset.nv || '' : '';
+  // bolinha com o foco: a entrega aberta segue para a nova (setas); outra
+  // bolinha (Tab durante a espera da resposta) mantém a mesma posição
+  const kAntes = focoAntes === 'dot' && !ae.classList.contains('atual') ? ae.dataset.k : null;
+  el.innerHTML = `<button class="btn ghost sm nv-vg${naViagem?' atual':''}" data-nv="vg" onclick="abrirViagemNav()"
+      title="Dados da viagem: início, fim e paradas não previstas"${naViagem?' aria-current="true"':''}>${SVG('ini')}Viagem</button>
+    <span class="rot">Entregas</span>
+    <button class="btn ghost sm nv-seta" data-nv="ant" onclick="navEntrega(-1)" ${i<=0?'disabled':''}
+      title="Entrega anterior (seta para a esquerda)" aria-label="Entrega anterior">‹</button>
+    <div class="nv-lista">${n.lista.map((e,k)=>{
+      const cls = ['dot']; if(k===i) cls.push('atual'); if(e.fora_raio) cls.push('anel');
+      const at = classeAtend(e).trim(); if(at) cls.push(at);
+      if(e.fora_seq) cls.push('fseq');
+      const rot = [e.seq!=null ? `${e.seq}.` : '', e.cliente||'Cliente', e.cidade ? `· ${e.cidade}` : '',
+        `· ${(e.cores||['pend']).map(c=>ROT_COR[c]).join(' + ')}`, marcaAtend(e) ? `· ${marcaAtend(e).toLowerCase()}` : '',
+        e.fora_seq ? '· fora da sequência' : ''].filter(Boolean).join(' ');
+      return `<button class="${cls.join(' ')}" style="background:${fundoDot(e.cores, e.em_atendimento)}" data-nv="dot" data-k="${k}" onclick="navEntrega(0, ${k})"
+        title="${esc(rot)}" aria-label="${esc(rot)}"${k===i?' aria-current="true"':''}>${e.seq ?? ''}</button>`;
+    }).join('') || '<span class="nota">Sem notas registradas</span>'}</div>
+    <button class="btn ghost sm nv-seta" data-nv="prox" onclick="navEntrega(1)" ${i>=total-1?'disabled':''}
+      title="Próxima entrega (seta para a direita)" aria-label="Próxima entrega">›</button>
+    <span class="nv-ct">${i>=0 ? `${i+1} de ${total}` : `${total} entrega${total===1?'':'s'}`}</span>`;
+  el.hidden = false;
+  const atualEl = el.querySelector('.nv-lista .dot.atual');
+  // celular: a faixa é uma linha com rolagem; a entrega aberta fica à vista
+  const lista = el.querySelector('.nv-lista');
+  if(atualEl && lista.scrollWidth > lista.clientWidth){
+    const a = atualEl.getBoundingClientRect(), l = lista.getBoundingClientRect();
+    lista.scrollLeft += (a.left - l.left) - (l.width - a.width)/2;
+  }
+  if(focoAntes){
+    let alvo = focoAntes === 'dot'
+      ? (kAntes != null && el.querySelector(`.nv-lista [data-k="${kAntes}"]`)) || atualEl
+      : el.querySelector(`[data-nv="${focoAntes}"]`);
+    if(!alvo || alvo.disabled) alvo = atualEl || el.querySelector('[data-nv="vg"]');
+    alvo?.focus({preventScroll:true});
+  }
+}
+// o pop-up recebe o foco ao abrir: sem isso, Espaço/Enter acionavam o
+// elemento da página atrás dele (achado da revisão de 15/11/2026)
+function focarModal(id){
+  const ov = document.getElementById(id);
+  const ae = document.activeElement;
+  if(ov.contains(ae)) return;
+  // guarda quem abriu o pop-up para devolver o foco ao fechar (teclado)
+  ov._volta = ae && ae !== document.body ? {el: ae, chave: chaveFoco(ae)} : null;
+  const m = ov.querySelector('.modal');
+  if(!m.hasAttribute('tabindex')) m.setAttribute('tabindex', '-1');
+  m.focus({preventScroll:true});
+}
+// delta -1/+1 = anterior/próxima; k = posição clicada na faixa
+function navEntrega(delta, k){
+  const n = _detNav; if(!n) return;
+  const i = n.lista.findIndex(e=>e.cliente_cod === n.atual);
+  const alvo = k != null ? k : i + delta;
+  const e = n.lista[alvo];
+  if(!e || alvo === i) return;
+  abrirEntregaPor(n.viagem, e.cliente_cod, `${n.placa||'Veículo'} · ${e.cliente||'Cliente'}`);
+}
+function navParaCliente(cod){
+  const k = _detNav ? _detNav.lista.findIndex(e=>e.cliente_cod === cod) : -1;
+  if(k >= 0) navEntrega(0, k);
+}
+
+/* ── mapa do detalhe: clientes da viagem e posição do veículo ──── */
+// pedido do usuário 15/11/2026. Leaflet + OpenStreetMap (mesmo do mapa do
+// Abastecimento), sem serviço de rota. A posição do veículo vem da grade de
+// posição da Ravex (horário da última comunicação à vista); bandeiras de
+// início e fim e triângulos de PNP, do histórico dessa grade.
+let _detMapa = null, _leafletP = null, _pnpMarcas = [];
+function carregarLeaflet(){
+  if(window.L) return Promise.resolve(true);
+  if(_leafletP) return _leafletP;
+  _leafletP = new Promise(resolve=>{
+    const css = document.createElement('link');
+    css.rel = 'stylesheet'; css.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css';
+    document.head.appendChild(css);
+    const js = document.createElement('script');
+    js.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+    js.onload = ()=>resolve(true);
+    js.onerror = ()=>{ _leafletP = null; resolve(false); };
+    document.head.appendChild(js);
+  });
+  return _leafletP;
+}
+function fecharMapaDetalhe(){
+  if(_detMapa){ try{ _detMapa.remove(); }catch(e){} _detMapa = null; }
+  _pnpMarcas = [];
+}
+function focarPnp(k){
+  const mk = _pnpMarcas[k];
+  if(!_detMapa || !mk) return;
+  _detMapa.setView(mk.getLatLng(), 16);
+  mk.openTooltip();
+}
+function legendaVeiculo(vg, ve){
+  const placa = `<b>${esc(vg.placa||'Veículo')}</b>`;
+  if(!ve || ve.situacao==='restrito') return `${placa}: a posição do veículo não é exibida para o seu perfil de acesso.`;
+  if(ve.situacao==='finalizada') return `${placa}: viagem finalizada; a posição atual do veículo não é exibida.`;
+  if(ve.situacao==='outra_viagem') return `${placa}: viagem aberta na Ravex, com o veículo em viagem posterior ou sem atualização há mais de 6 dias; a posição atual do veículo não é exibida.`;
+  if(ve.situacao==='sem_posicao') return `${placa}: sem posição na grade da Ravex${
+    ve.grade_em ? ` (última grade recebida às ${fmtHora(ve.grade_em)})` : ' (a grade de posição ainda não chegou ao sistema)'}.`;
+  const idade = ve.idade_min==null ? '' : ve.idade_min < 1 ? ' (agora)' : ` (há ${ve.idade_min < 120 ? minutos(ve.idade_min) : `${Math.round(ve.idade_min/60)} horas`})`;
+  const antiga = ve.idade_min!=null && ve.idade_min > 30;
+  return `🚚 ${placa}: posição de <span class="${antiga?'antiga':''}">${fmtDH(ve.em)}${idade}</span>${
+    ve.ignicao ? ` · ${esc(ve.ignicao)}` : ''}${ve.endereco ? `<br>${esc(ve.endereco)}` : ''}`;
+}
+function iconeMapa(tipo, acima){
+  // bandeira: âncora no pé do mastro; triângulo: âncora no centro, ou logo
+  // acima do caminhão quando a parada é a atual (o veículo está nela)
+  return tipo === 'pnp'
+    ? L.divIcon({className:'', iconSize:[30,30], iconAnchor: acima ? [15,44] : [15,17], html:`<div class="mk-ico pnp">${SVG('pnp')}</div>`})
+    : L.divIcon({className:'', iconSize:[30,30], iconAnchor:[7,28], html:`<div class="mk-ico ${tipo}">${SVG(tipo)}</div>`});
+}
+async function desenharMapaDetalhe(j, seq){
+  const caixa = document.getElementById('det-mapa'), leg = document.getElementById('det-mapa-leg');
+  const m = j.mapa || {pontos:[], sem_coordenada:0};
+  const ve = m.veiculo || {};
+  const temVei = ve.situacao==='ok';
+  const pts = m.pontos || [];
+  const n = pts.length;
+  const t = j.trajeto || {};
+  const comLoc = p => p && p.lat != null && p.lon != null;
+  const pIni = !t.restrito && comLoc(t.inicio) ? t.inicio : null;
+  const pFim = !t.restrito && comLoc(t.fim) ? t.fim : null;
+  const pnps = t.restrito ? [] : (t.pnp || []).filter(comLoc);
+  const atual = j.entrega?.cliente_cod;
+  const partes = [legendaVeiculo(j.viagem, ve),
+    `${n} cliente${n===1?'':'s'} no mapa${m.sem_coordenada ? ` · ${m.sem_coordenada} sem coordenada na Ravex` : ''} · número = sequência programada${
+      atual ? '; o cliente desta entrega tem o contorno destacado' : ''}${n > (atual ? 1 : 0) ? '; clique no cliente para abrir a entrega' : ''}.`];
+  if(pIni || pFim || pnps.length)
+    partes.push(`Bandeiras = início e fim da viagem${pIni && pIni.origem==='cd' ? ' (início no local do CD, do cadastro)' : ''}; triângulo = parada não prevista.`);
+  leg.innerHTML = partes.join('<br>');
+  if(!n && !temVei && !pIni && !pFim && !pnps.length){
+    caixa.classList.add('vazio'); caixa.textContent = 'Sem coordenadas para exibir no mapa.'; return;
+  }
+  const ok = await carregarLeaflet();
+  if(seq !== _detSeq || !document.body.contains(caixa)) return;
+  if(!ok){ caixa.classList.add('vazio'); caixa.textContent = 'Mapa indisponível no momento.'; return; }
+  _detMapa = L.map(caixa, {scrollWheelZoom:false, zoomControl:true});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18, attribution:'&copy; OpenStreetMap'}).addTo(_detMapa);
+  const limites = [];
+  pts.slice().sort((a,b)=>(a.cliente_cod===atual) - (b.cliente_cod===atual)).forEach(p=>{
+    const eh = p.cliente_cod === atual, tam = eh ? 30 : 22;
+    const ic = L.divIcon({className:'', iconSize:[tam,tam], iconAnchor:[tam/2,tam/2],
+      html:`<div class="mk-cli${eh?' atual':' ir'}${classeAtend(p)}" style="background:${fundoDot(p.cores, p.em_atendimento)}">${p.seq ?? ''}</div>`});
+    const mk = L.marker([p.lat, p.lon], {icon:ic, zIndexOffset: eh ? 500 : 0, keyboard:false}).addTo(_detMapa)
+      .bindTooltip(`${p.seq!=null ? p.seq+'. ' : ''}${esc(p.cliente||'Cliente')}${p.cidade ? ' · '+esc(p.cidade) : ''} · ${
+        esc((p.cores||['pend']).map(c=>ROT_COR[c]).join(' + '))}${marcaAtend(p) ? ' · '+marcaAtend(p).toLowerCase() : ''}`, {direction:'top', offset:[0,-tam/2]});
+    if(!eh) mk.on('click', ()=>navParaCliente(p.cliente_cod));
+    limites.push([p.lat, p.lon]);
+  });
+  if(pIni){
+    L.marker([pIni.lat, pIni.lon], {icon:iconeMapa('ini'), zIndexOffset:700, keyboard:false}).addTo(_detMapa)
+      .bindTooltip(`Início da viagem · ${fmtDH(j.viagem.inicio_real || j.viagem.inicio)}${
+        pIni.origem==='cd' ? ` · CD ${esc(pIni.sigla||'')} (cadastro)` : ''}`, {direction:'top', offset:[8,-28]});
+    limites.push([pIni.lat, pIni.lon]);
+  }
+  if(pFim){
+    L.marker([pFim.lat, pFim.lon], {icon:iconeMapa('fim'), zIndexOffset:700, keyboard:false}).addTo(_detMapa)
+      .bindTooltip(`Fim da viagem · ${fmtDH(j.viagem.fim)}`, {direction:'top', offset:[8,-28]});
+    limites.push([pFim.lat, pFim.lon]);
+  }
+  _pnpMarcas = [];
+  (t.restrito ? [] : (t.pnp || [])).forEach((p, k)=>{
+    if(!comLoc(p)){ _pnpMarcas.push(null); return; }
+    const acima = p.em_andamento && temVei;
+    const mk = L.marker([p.lat, p.lon], {icon:iconeMapa('pnp', acima), zIndexOffset: acima ? 1100 : 800, keyboard:false}).addTo(_detMapa)
+      .bindTooltip(`Parada não prevista ${k+1} · ${fmtHora(p.inicio)}–${p.em_andamento ? 'agora' : fmtHora(p.fim)} · ${
+        fmtDuracao(p.minutos)}${p.endereco ? '<br>'+esc(p.endereco) : ''}`, {direction:'top', offset: acima ? [0,-42] : [0,-14]});
+    // no detalhe da entrega, o triângulo abre a viagem; na viagem, centraliza
+    mk.on('click', ()=>{ if(atual) abrirViagemNav(true); else focarPnp(k); });
+    _pnpMarcas.push(mk);
+    limites.push([p.lat, p.lon]);
+  });
+  if(temVei){
+    const ic = L.divIcon({className:'', iconSize:[32,32], iconAnchor:[16,16], html:'<div class="mk-vei">🚚</div>'});
+    L.marker([ve.lat, ve.lon], {icon:ic, zIndexOffset:1000, keyboard:false}).addTo(_detMapa)
+      .bindTooltip(`${esc(j.viagem.placa||'Veículo')} · posição de ${fmtDH(ve.em)}`, {direction:'top', offset:[0,-16]});
+    limites.push([ve.lat, ve.lon]);
+  }
+  if(limites.length === 1) _detMapa.setView(limites[0], 14);
+  else _detMapa.fitBounds(limites, {padding:[28,28], maxZoom:15});
+  setTimeout(()=>{ if(_detMapa) _detMapa.invalidateSize(); }, 80);
+}
+
+/* ── busca de nota fiscal ─────────────────────────────────────── */
+let _resNF = [];
+async function localizarNF(){
+  const campo = document.getElementById('busca-nf');
+  const termo = campo.value.trim();
+  if(!/\d/.test(termo)){ toast('Informe o número ou a chave da nota fiscal.', 'err'); campo.focus(); return; }
+  if(!_sel.length){ toast('Selecione ao menos uma unidade no filtro Unidade.', 'err'); return; }
+  document.getElementById('toast').style.display = 'none';
+  try{
+    const r = await fetch('/api/entregas/nf?' + new URLSearchParams({termo, unidades:_sel.join(',')}));
+    if(r.status===401){ location.href='/login'; return; }
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'Não foi possível localizar a nota fiscal.');
+    _resNF = j.resultados || [];
+    if(!_resNF.length){ toast('Nota fiscal não localizada nas unidades selecionadas.', 'err', 4200); return; }
+    if(_resNF.length === 1){ abrirResultadoNF(0); return; }
+    escolherNF(termo);
+  }catch(e){ toast(e.message, 'err'); }
+}
+function abrirResultadoNF(i){
+  const n = _resNF[i]; if(!n) return;
+  abrirEntregaPor(n.id_viagem, n.cliente_cod, `${n.placa||'Veículo'} · ${n.cliente||'Cliente'}`, n.numero_nf);
+}
+function escolherNF(termo){
+  _tip.style.display = 'none';
+  ++_detSeq;   // descarta um detalhe ainda em carregamento
+  _detNav = null; desenharNavDetalhe();
+  document.getElementById('det-corpo').classList.remove('trocando');
+  fecharMapaDetalhe();
+  document.querySelector('#ov-det .modal').classList.remove('com-mapa');
+  document.getElementById('det-tit').textContent = `NF ${termo}: ${_resNF.length} ocorrências`;
+  document.getElementById('det-corpo').innerHTML =
+    `<div class="nota" style="margin-bottom:10px">A nota aparece em mais de uma viagem. Selecione a ocorrência para abrir a entrega.</div>
+     <div class="tw"><table class="tb res-nf"><thead><tr><th>NF</th><th>Início da viagem</th><th>Unidade</th><th>Placa</th><th>Cliente</th><th>Cidade</th><th>Situação</th></tr></thead><tbody>${
+       _resNF.map((n,i)=>`<tr onclick="abrirResultadoNF(${i})" tabindex="0" onkeydown="if(event.key==='Enter') abrirResultadoNF(${i})">
+         <td><b>${esc(n.numero_nf)}</b></td><td>${fmtDH(n.inicio)}</td><td>${esc(n.unidade||'—')}</td><td>${esc(n.placa||'—')}</td>
+         <td style="white-space:normal">${esc(n.cliente||'—')}</td><td>${esc(n.cidade||'—')}</td>
+         <td>${chipNota(n)}</td></tr>`).join('')
+     }</tbody></table></div>`;
+  abrirModal('ov-det');
+  focarModal('ov-det');
+}
+document.addEventListener('keydown', e=>{
+  // setas ←/→ trocam de entrega com o detalhe aberto (fora de campos de
+  // texto e do mapa, onde as setas movem o mapa)
+  if((e.key==='ArrowLeft' || e.key==='ArrowRight') && _detNav && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey
+     && document.getElementById('ov-det').classList.contains('show')
+     && !(e.target.closest && e.target.closest('input,textarea,select,[contenteditable],.leaflet-container,.tg'))){
+    e.preventDefault(); navEntrega(e.key==='ArrowLeft' ? -1 : 1); return;
+  }
+  if(e.key==='Escape'){ fecharModal('ov-det'); fecharModal('ov-par'); fecharModal('ov-col'); fecharSidebar();
+    ['uni-pop','ver-pop','vei-pop'].forEach(id=>document.getElementById(id).classList.add('hidden')); }
+});
+
+/* ── Minha conta Ravex: extensão do Chrome ────────────────────── */
+// A Ravex barra o servidor (Cloudflare); a coleta vem da extensão Coletor
+// Ravex no Chrome de cada operador, com a sessão da Ravex dele.
+let _col = null, _codigo = '';
+function textoMeuColetor(m){
+  if(!m || !m.conectado) return {cls:'er', curto:'não conectada', t:'Extensão não conectada a este login',
+    d:'Gere o código de conexão e cole na extensão Coletor Ravex instalada no seu Chrome.'};
+  if(!m.online) return {cls:'at', curto:'sem contato', t: m.visto_em ? `Sem contato desde ${fmtDH(m.visto_em)}` : 'Aguardando a primeira conexão da extensão',
+    d:'Confira se o Chrome está aberto com a extensão Coletor Ravex conectada.'};
+  if(m.pausa_ate) return {cls:'at', curto:'em pausa', t:`Consultas pausadas até ${fmtHora(m.pausa_ate)}`, d: m.erro || ''};
+  if(m.situacao==='sem_aba') return {cls:'at', curto:'Ravex fechada', t:'Extensão ativa, sem aba da Ravex aberta',
+    d:'Abra a Ravex (app.ravex.com.br) em uma aba do Chrome e mantenha aberta durante o expediente.'};
+  if(m.situacao==='sem_sessao') return {cls:'at', curto:'sessão da Ravex encerrada', t:'Extensão ativa, sessão da Ravex encerrada',
+    d:'Entre na Ravex com o seu usuário nessa aba do Chrome.'};
+  if(m.erro && m.erro_recente) return {cls:'at', curto:'atenção', t:'Extensão ativa, com falha na última consulta', d: m.erro};
+  return {cls:'ok', curto:'coletando', t:'Coletando pela sua sessão da Ravex',
+    d:'A extensão confere a cada 30 segundos e consulta a Ravex no intervalo dos Parâmetros.'};
+}
+async function abrirColetor(){
+  _codigo = '';
+  abrirModal('ov-col');
+  await carregarColetor();
+}
+async function carregarColetor(){
+  try{
+    const r = await fetch('/api/entregas/coletor');
+    if(r.status===401){ location.href='/login'; return; }
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'Não foi possível ler a situação da extensão.');
+    _col = j;
+    desenharColetor();
+  }catch(e){
+    document.getElementById('col-corpo').innerHTML = `<div class="bnr er"><div>${esc(e.message)}</div></div>`;
+  }
+}
+function codigoConexao(prefixo, chave){
+  const bytes = new TextEncoder().encode(JSON.stringify({s: location.origin, k: chave}));
+  let bin = ''; bytes.forEach(b=>{ bin += String.fromCharCode(b); });
+  return prefixo + btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function desenharColetor(){
+  const m = _col?.meu || {conectado:false};
+  const s = textoMeuColetor(m);
+  let h = `<div class="col-sit ${s.cls}"><i></i><div><b>${esc(s.t)}</b><div class="nota">${esc(s.d)}</div></div></div>`;
+  if(_codigo){
+    h += `<div class="grp-t">Código de conexão</div>
+      <textarea class="col-cod" id="col-cod" readonly onclick="this.select()">${esc(_codigo)}</textarea>
+      <div class="col-acoes"><button class="btn-c pri" type="button" onclick="copiarCodigo()">Copiar código</button></div>
+      <div class="nota" style="margin-top:8px">Cole o código na extensão (ícone Coletor Ravex no Chrome › Conectar). O código aparece uma vez; um código novo desconecta a extensão anterior deste login.</div>`;
+  }
+  if(m.conectado){
+    h += `<div class="col-dl">
+      <div><div class="rot">Último contato</div><div class="v">${m.visto_em ? fmtDH(m.visto_em) : '—'}</div></div>
+      <div><div class="rot">Última coleta enviada</div><div class="v">${m.ultima_coleta_em ? fmtDH(m.ultima_coleta_em) : '—'}</div></div>
+      <div><div class="rot">Versão da extensão</div><div class="v">${esc(m.versao || '—')}${m.desatualizada
+        ? ` <span class="chip st st-cliente" title="Baixe a extensão, substitua os arquivos da pasta e clique em Atualizar em chrome://extensions">versão ${esc(m.versao_atual)} disponível</span>` : ''}</div></div>
+      <div class="larga" style="grid-column:span 2"><div class="rot">Unidades da sua conta na Ravex</div><div class="v">${esc((m.unidades_ravex||[]).join(', ') || (m.catalogo_em ? 'Nenhum CD' : 'Lista carregada na primeira coleta'))}</div></div>
+      <div><div class="rot">Coletadas por esta extensão</div><div class="v">${esc((m.unidades_coleta||[]).join(', ') || '—')}</div></div>
+    </div>`;
+  }
+  h += `<div class="col-acoes">
+      <button class="btn-c${m.conectado?'':' pri'}" type="button" onclick="gerarCodigo()">${m.conectado ? 'Gerar novo código' : 'Gerar código de conexão'}</button>
+      ${m.conectado ? '<button class="btn-c" type="button" onclick="desconectarColetor()">Desconectar extensão</button>' : ''}
+      <a class="btn-c" href="/api/entregas/extensao.zip" download>Baixar a extensão</a>
+    </div>
+    <div class="col-sec"><div class="grp-t">Instalação no Chrome (uma vez por computador)</div>
+      <ol class="col-passos">
+        <li>Baixe a extensão e extraia a pasta <b>coletor-ravex</b> em um local fixo do computador.</li>
+        <li>No Chrome, abra <b>chrome://extensions</b>, ligue o <b>Modo do desenvolvedor</b> e clique em <b>Carregar sem compactação</b>, selecionando a pasta.</li>
+        <li>Gere o código de conexão aqui, clique no ícone da extensão, cole o código e clique em <b>Conectar</b>.</li>
+        <li>Mantenha a Ravex aberta e logada em uma aba do Chrome durante o expediente.</li>
+      </ol>
+      <div class="nota" style="margin-top:8px">A extensão usa a sua sessão da Ravex e faz consultas de leitura, sem alterar dados na Ravex. O sistema não recebe a sua senha nem o token da Ravex.</div>
+    </div>`;
+  if(_col?.pode_editar){
+    const cs = _col.coletores || [];
+    h += `<div class="col-sec"><div class="grp-t">Extensões conectadas</div>${cs.length ? `<div class="tw"><table class="tb">
+      <thead><tr><th>Login</th><th>Situação</th><th>Último contato</th><th>Unidades</th><th title="Coleta também a grade de posição do Abastecimento CD">Grade de posição</th><th></th></tr></thead><tbody>${
+      cs.map(c=>{ const t = textoMeuColetor({...c, conectado:true}); return `<tr>
+        <td><b>${esc(c.nome)}</b><div class="nota" style="margin:0">${esc(c.usuario)}</div></td>
+        <td><span class="pt ${t.cls==='ok'?'ok':'at'}">${esc(t.curto)}</span>${c.versao
+          ? `<div class="nota" style="margin:0"${c.desatualizada ? ` title="${esc(`Versão ${c.versao_atual} disponível${
+              c.sem_operacional ? ' (a versão instalada não coleta a eficiência do frio)' : ''}. A atualização é feita no Chrome em que a extensão de ${c.nome} está instalada.`)}"` : ''}>versão ${esc(c.versao)}${c.desatualizada ? ' · atualizar' : ''}</div>` : ''}</td>
+        <td>${c.visto_em ? fmtDH(c.visto_em) : '—'}</td>
+        <td style="white-space:normal">${esc((c.unidades||[]).join(', ') || '—')}</td>
+        <td><input type="checkbox" ${c.grade?'checked':''} data-u="${esc(c.usuario)}" onchange="definirGrade(this.dataset.u, this.checked)" style="accent-color:var(--brand)"></td>
+        <td><button class="btn-c" type="button" data-u="${esc(c.usuario)}" onclick="desconectarColetor(this.dataset.u)">Desconectar</button></td></tr>`; }).join('')
+      }</tbody></table></div>` : '<div class="nota">Nenhuma extensão conectada.</div>'}
+      <div class="nota" style="margin-top:8px">A grade de posição (Abastecimento CD) vem da extensão marcada, com a conta principal da Ravex. As entregas e a eficiência do frio de cada unidade vêm de qualquer extensão no ar com acesso a ela, sem repetir a mesma unidade no mesmo intervalo. A eficiência do frio exige a extensão na versão 1.1.0 ou mais nova.</div></div>`;
+    const vm = _col.coleta_vm || {};
+    h += `<div class="col-sec"><div class="grp-t">Coleta pelo servidor</div>
+      <div class="par-cat"><div class="nota"><b>${vm.ativo ? 'Ligada' : 'Desligada'}</b>. ${vm.ativo
+        ? 'O servidor consulta a Ravex diretamente; as extensões ficam em espera.'
+        : 'A Ravex barra as consultas do servidor (Cloudflare); a coleta vem das extensões. Ligue quando a Ravex liberar o acesso do servidor.'}${
+        vm.em ? ` Alterada em ${fmtDH(vm.em)}${vm.por ? ` por ${esc(vm.por)}` : ''}.` : ''}</div>
+        <button class="btn-c" type="button" onclick="definirColetaServidor(${vm.ativo ? 'false' : 'true'})">${vm.ativo ? 'Desligar' : 'Ligar'}</button></div></div>`;
+  }
+  document.getElementById('col-corpo').innerHTML = h;
+}
+async function postarColetor(url, corpo){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body: JSON.stringify(corpo||{})});
+  if(r.status===401){ location.href='/login'; throw new Error('Sessão expirada.'); }
+  const j = await r.json();
+  if(!r.ok) throw new Error(j.error || 'Não foi possível concluir a operação.');
+  return j;
+}
+async function gerarCodigo(){
+  if(_col?.meu?.conectado && !confirm('Gerar um novo código desconecta a extensão atual deste login. Continuar?')) return;
+  try{
+    const j = await postarColetor('/api/entregas/coletor/codigo');
+    _codigo = codigoConexao(j.prefixo, j.chave);
+    await carregarColetor();
+  }catch(e){ toast(e.message, 'err'); }
+}
+async function copiarCodigo(){
+  try{ await navigator.clipboard.writeText(_codigo); toast('Código copiado.'); }
+  catch(e){ const t = document.getElementById('col-cod'); if(t){ t.select(); document.execCommand('copy'); toast('Código copiado.'); } }
+}
+async function desconectarColetor(usuario){
+  if(!confirm(usuario ? `Desconectar a extensão de ${usuario}?` : 'Desconectar a extensão deste login? A coleta pela sua sessão da Ravex para.')) return;
+  try{ await postarColetor('/api/entregas/coletor/desconectar', usuario ? {usuario} : {}); _codigo = ''; await carregarColetor(); carregarEstado().then(render); }
+  catch(e){ toast(e.message, 'err'); }
+}
+async function definirGrade(usuario, ativo){
+  try{ await postarColetor('/api/entregas/coletor/grade', {usuario, ativo}); toast(ativo ? 'Grade de posição ligada nesta extensão.' : 'Grade de posição desligada nesta extensão.'); await carregarColetor(); }
+  catch(e){ toast(e.message, 'err'); carregarColetor(); }
+}
+async function definirColetaServidor(ativo){
+  if(!confirm(ativo ? 'Ligar a coleta pelo servidor? As extensões ficam em espera.' : 'Desligar a coleta pelo servidor? A coleta passa a depender das extensões.')) return;
+  try{ await postarColetor('/api/entregas/coleta-servidor', {ativo}); await carregarColetor(); carregarEstado().then(render); }
+  catch(e){ toast(e.message, 'err'); }
+}
+
+/* ── atualização pedida: ao abrir o painel e no botão Atualizar ─ */
+// pedido do usuário 15/11/2026: ao entrar, ver a situação do momento. As
+// unidades na tela atualizadas há mais de 1 min entram na conferência
+// seguinte de uma extensão no ar (até 30 s); a tela relê a cada 15 s
+// enquanto o pedido estiver pendente (até 3 min).
+let _rapido = null, _rapidoAte = 0;
+async function atualizarAgora(manual){
+  const ids = unidadesDaTela();
+  if(ids.length && !_estado?.coleta_vm){
+    try{
+      const r = await fetch('/api/entregas/atualizar', {method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body: JSON.stringify({unidades: ids})});
+      if(r.status===401){ location.href='/login'; return; }
+      const j = await r.json();
+      if(!r.ok) throw new Error(j.error || 'Não foi possível pedir a atualização.');
+      if(j.pedidas?.length){
+        acompanharPedido();
+        if(manual) toast((j.sem_cobertura||[]).length === j.pedidas.length
+          ? 'Atualização pedida. Nenhuma extensão no ar coleta essas unidades no momento.'
+          : 'Atualização pedida à Ravex. Os dados chegam em instantes.');
+      }else if(manual) toast('Dados da Ravex atualizados há menos de 1 minuto.');
+    }catch(e){ if(manual) toast(e.message, 'err'); }
+  }
+  await recarregar(false);
+}
+function acompanharPedido(){
+  _rapidoAte = Date.now() + 180000;
+  if(_rapido) return;
+  _rapido = setInterval(async ()=>{
+    if(document.hidden) return;
+    await recarregar(false);
+    if(!Object.keys(_estado?.pedidos || {}).length || Date.now() > _rapidoAte){ clearInterval(_rapido); _rapido = null; }
+  }, 15000);
+}
+
+/* ── início ───────────────────────────────────────────────────── */
+async function init(){
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  _csrf = me.csrf_token || '';
+  montarSidebar(me.modulos_permitidos, 'entregas');
+  montarConfigSidebar(me.perfil, me.is_master);
+  const sb = document.querySelector('.sidebar-title');
+  if(sb) sb.textContent = me.cd_nome_exibicao || 'CDA';
+  _admin = me.perfil==='admin' || me.perfil==='master' || !!me.is_master;
+  const v = _lsGet('entregas_ver');
+  if(v && /^\d+(,\d+)*$/.test(v)) _ver = v.split(',').map(Number);
+  const s = _lsGet('entregas_sit');
+  if(s && ['todas','abertas','finalizadas'].includes(s)){ _sit = s; marcarSeg('seg-sit', s); }
+  try{ await carregarEstado(); }catch(e){ toast(e.message, 'err'); }
+  _hoje = _hoje || new Date().toISOString().slice(0,10);
+  document.getElementById('dt-de').value = _hoje;
+  document.getElementById('dt-ate').value = _hoje;
+  marcarSeg('seg-per', 'hoje');
+  await recarregar(true);          // primeiro, os dados já coletados
+  atualizarAgora(false);           // depois, pede a situação do momento à Ravex
+  _timer = setInterval(()=>{ if(!document.hidden) recarregar(false); }, 60000);
+}
+init();
+</script>
+</body>
+</html>

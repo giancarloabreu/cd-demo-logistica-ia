@@ -29,14 +29,20 @@ from flask import (Blueprint, Response, jsonify, redirect, render_template,
 ATIVO = os.environ.get("DEMO_MODE", "").strip().lower() in ("1", "true", "sim", "yes")
 
 USUARIO = "visitante"
+SENHA = "demo"
 NOME = "Visitante da demo"
 
 # módulos que aparecem no menu lateral da demo
-MODULOS_DEMO = ["adensamento", "armazem", "fifo", "expedito"]
+MODULOS_DEMO = ["monitoramento", "adensamento", "armazem", "fifo", "expedito"]
 
 # rotas liberadas (prefixos). O resto devolve para a página da demo.
 _LIBERADOS = (
-    "/static", "/demo", "/favicon", "/robots.txt",
+    "/static", "/demo", "/favicon", "/robots.txt", "/login", "/api/login",
+    # Abastecimento CD (painel das carretas, rota "/")
+    "/api/dados", "/api/redespacho", "/api/processar", "/api/editar", "/api/itens_nf",
+    "/api/monitoramento/fonte", "/api/cds/coordenadas", "/api/rota_maps", "/api/temperatura",
+    "/api/romaneio_regra", "/api/preferencias", "/api/opentech/status", "/api/ravex/status",
+    "/api/descarga", "/api/limpar", "/api/exportar_excel",
     "/adensamento", "/api/adensamento",
     "/armazem", "/api/armazem",
     "/fifo", "/api/fifo",
@@ -88,11 +94,12 @@ def _garantir_usuario():
     with get_db() as db:
         row = db.execute("SELECT id FROM users WHERE username=?", (USUARIO,)).fetchone()
         if not row:
-            _criar_usuario_db(db, USUARIO, secrets.token_hex(16), perfil="admin",
-                              nome_exibicao=NOME)
+            _criar_usuario_db(db, USUARIO, SENHA, perfil="admin", nome_exibicao=NOME,
+                              modulos_permitidos=",".join(MODULOS_DEMO))
 
 
 def _abrir_sessao(sess):
+    """Sessão do visitante — usada só pela carga inicial (test_client)."""
     sess.permanent = True
     sess["user"] = USUARIO
     sess["nome"] = NOME
@@ -144,6 +151,23 @@ def _semear(app):
         if resp.status_code >= 400:
             raise RuntimeError(f"{etapa}: HTTP {resp.status_code} {resp.get_data(as_text=True)[:300]}")
         return resp
+
+    # a central de novidades da operação não aparece para o visitante
+    from app.database import set_changelog_visto
+    from web.server import CHANGELOG_VERSAO
+    set_changelog_visto(USUARIO, CHANGELOG_VERSAO)
+
+    # 0. Abastecimento CD: carretas faturadas para o CD e o rastreio delas
+    from app.database import set_cd_usuario
+    from demo.gerar_dados import CD_DEMO
+    set_cd_usuario(USUARIO, CD_DEMO["nome"], CD_DEMO["latitude"], CD_DEMO["longitude"],
+                   nome2=CD_DEMO["nome2"])
+    ok(cli.post("/api/processar", headers=h, content_type="multipart/form-data",
+                data={"estoque": (io.BytesIO(arqs["estoque_faturado.xlsx"].read_bytes()),
+                                  "estoque_faturado.xlsx"),
+                      "monitoramento": (io.BytesIO(arqs["painel_rastreio.xlsx"].read_bytes()),
+                                        "painel_rastreio.xlsx")}),
+       "painel das carretas")
 
     # 1. Painel do Armazém: o local de devolução é classificado como tal
     #    (é o que alimenta o relatório de Devolução & Vencimento)
@@ -208,8 +232,16 @@ def instalar(app):
     @app.before_request
     def _demo_antes():
         caminho = request.path or "/"
-        if caminho in ("/", "/login", "/api/index", "/api/index.py"):
-            return redirect("/demo")
+        if caminho.startswith("/static"):
+            return None
+        if caminho in ("/api/index", "/api/index.py"):
+            return redirect("/")
+        # a carga dos dados de exemplo acontece na primeira visita (inclusive
+        # na tela de login, para os dados estarem prontos ao entrar). A carga
+        # usa o test_client, que passa por aqui de novo: não reentra.
+        if not _semeado.is_set() and not _status["semeando"] and not caminho.startswith("/demo/status"):
+            _garantir_usuario()
+            semear(app)
         # Espelhar outro usuário não faz sentido na demo (só existe o
         # visitante): a lista volta vazia em vez de erro
         if caminho == "/api/espelho/usuarios":
@@ -218,21 +250,13 @@ def instalar(app):
             return jsonify({"ok": True})
         # A exportação em imagem usa um navegador headless (Playwright),
         # que não existe na hospedagem da demo
-        if caminho == "/api/armazem/exportar":
+        if caminho in ("/api/armazem/exportar", "/api/exportar_imagem"):
             return jsonify({"error": "A exportação em imagem não está disponível na demonstração. "
-                                     "Use Imprimir ou o Excel."}), 400
-        if not caminho.startswith(_LIBERADOS):
+                                     "Use o Excel."}), 400
+        if caminho != "/" and not caminho.startswith(_LIBERADOS):
             if caminho.startswith("/api/"):
                 return jsonify({"error": "Esta função não faz parte da demonstração."}), 404
-            return redirect("/demo")
-        if caminho.startswith("/static") or caminho.startswith("/demo/status"):
-            return None
-        if not session.get("user"):
-            _garantir_usuario()
-            _abrir_sessao(session)
-        # a carga usa o test_client, que passa por aqui de novo: não reentra
-        if not _semeado.is_set() and not _status["semeando"] and not caminho.startswith("/demo"):
-            semear(app)
+            return redirect("/")
         return None
 
     @app.after_request
@@ -263,9 +287,6 @@ _FAIXA = """
 @demo_bp.route("/demo")
 def pagina():
     from flask import current_app
-    if not session.get("user"):
-        _garantir_usuario()
-        _abrir_sessao(session)
     if not _semeado.is_set() and not _status["semeando"]:
         semear(current_app._get_current_object())
     return render_template("demo.html", status=_status, hoje=_hoje().strftime("%d/%m/%Y"),

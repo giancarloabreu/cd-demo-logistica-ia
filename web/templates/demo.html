@@ -45,7 +45,7 @@
     cálculos são os de produção, mas empresas, produtos, clientes e pessoas são inventados.
   </p>
   <div>
-    <a class="btn" href="/expedito">Abrir o Expedito</a>
+    <a class="btn" href="/login">Entrar no sistema</a>
     {% if repo %}<a class="btn sec" href="{{ repo }}" target="_blank" rel="noopener">Código no GitHub</a>{% endif %}
   </div>
   <p class="status" id="st">
@@ -53,8 +53,17 @@
     {% else %}<b>●</b> Dados de exemplo carregados para hoje ({{ hoje }}){% if status.segundos %} em {{ status.segundos }} s{% endif %}.{% endif %}
   </p>
 
+  <p class="status">Usuário <code>visitante</code> · senha <code>demo</code> (já vêm preenchidos na tela de login)</p>
+
   <h2>Módulos desta demo</h2>
   <div class="grid">
+    <a class="card" href="/">
+      <h3>🚛 Abastecimento CD</h3>
+      <p>Monitora as carretas que as fábricas faturaram para o CD: posição e temperatura pelo
+         rastreador, km restante, previsão de chegada e as notas de cada carreta, agrupadas por
+         empresa compradora.</p>
+      <span class="ir">Ver carretas →</span>
+    </a>
     <a class="card ia" href="/expedito">
       <h3>🧭 Expedito <span class="pill">IA</span></h3>
       <p>Plano de abastecimento do picking: cruza o follow up de pedidos com o estoque e diz quais
@@ -91,6 +100,10 @@
         — relatório "Produto Paletizado" do WMS (TXT tabulado, uma linha por caixa).</li>
     <li><a href="/demo/planilhas/follow_up_pedidos.xlsx" style="color:var(--acc)">follow_up_pedidos.xlsx</a>
         — follow up de pedidos do ERP (Excel com 2 linhas de cabeçalho).</li>
+    <li><a href="/demo/planilhas/estoque_faturado.xlsx" style="color:var(--acc)">estoque_faturado.xlsx</a>
+        — notas faturadas para o CD, uma linha por produto (Excel com cabeçalho em dois níveis).</li>
+    <li><a href="/demo/planilhas/painel_rastreio.xlsx" style="color:var(--acc)">painel_rastreio.xlsx</a>
+        — exportação do painel do rastreador de frota (posição, km restante, temperatura do baú).</li>
     <li><a href="/demo/planilhas/painel_wms_noite.xlsx" style="color:var(--acc)">painel_wms_noite.xlsx</a>
         — painel de produtividade do WMS da noite (quem separou, quanto e em que horário).</li>
   </ul>

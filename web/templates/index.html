@@ -1503,8 +1503,7 @@ function renderTempBadges(nfs){
 
 function renderFonteRastreioLogo(fonte){
   const f = String(fonte||'').trim();
-  if(f==='OpenTech') return `<img class="card-fonte-logo" src="/static/img/opentech.png" title="Rastreio: OpenTech" alt="OpenTech">`;
-  if(f==='Ravex') return `<img class="card-fonte-logo" src="/static/img/ravex.png" title="Rastreio: Ravex" alt="Ravex">`;
+  if(f==='OpenTech' || f==='Ravex') return `<span class="card-fonte-logo" title="Rastreio: ${f}" style="font-size:13px">📡</span>`;
   return '';
 }
 

@@ -6,7 +6,7 @@ de alimentos refrigerados e congelados. Ele é usado todos os dias por analistas
 Este repositório é a **versão pública de demonstração**. O código e os cálculos são os de produção.
 Empresas, produtos, clientes, placas e pessoas foram trocados por dados fictícios.
 
-**Demo online:** _(link da Vercel)_. Abre sem login e já vem com os dados de exemplo do dia.
+**Demo online:** https://cd-demo-logistica-ia.vercel.app (usuário `visitante`, senha `demo`, já preenchidos na tela de login). Os dados de exemplo do dia já vêm carregados.
 
 ---
 
@@ -15,6 +15,7 @@ Empresas, produtos, clientes, placas e pessoas foram trocados por dados fictíci
 Num CD de frio, boa parte da gestão diária era feita em planilhas montadas à mão a partir de
 relatórios do WMS e do ERP. Os principais eram:
 
+- acompanhar **as carretas a caminho do CD**, de planilha em planilha e de portal em portal;
 - descobrir **quais pallets descer para o picking** antes do turno da noite, em ordem FEFO;
 - encontrar **pallets fracos** que poderiam ser empilhados para liberar posições;
 - montar o relatório de **devolução e produtos perto do vencimento** para direcionar vendas;
@@ -27,6 +28,7 @@ resultado pronto em tela, Excel ou imagem.
 
 | Módulo | O que faz |
 |---|---|
+| 🚛 **Abastecimento CD** | Painel das carretas que as fábricas faturaram para o CD. Cruza as notas do ERP com o rastreador de frota pela placa e mostra, por carreta, posição, km restante, temperatura do baú, previsão de chegada e de descarga (com horário de corte e dias úteis), as NFs e os pedidos, a validação de regra de data e o mapa. |
 | 🧭 **Expedito** (com IA) | Cruza o follow up de pedidos do ERP com o estoque do WMS e monta o **plano de abastecimento do picking**: quais pallets descer, em que ordem (FEFO), o que já está no chão e o que vai faltar. A conversa com IA (Gemini) analisa a operação da noite. |
 | 🧊 **Adensamento FEFO** | Sugere empilhar pallets inteiros do mesmo código, local, temperatura e janela de produção, respeitando o limite de caixas e de peso por código e a capacidade de cada box. Sobras viram pallets mistos. |
 | 📦 **Devolução & Vencimento** | Separa o que está no local de devolução e o que vence dentro de uma janela configurável, agrupado por reserva e produto. |

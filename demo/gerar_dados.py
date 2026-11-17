@@ -324,6 +324,138 @@ def painel_noite(data_op: _dt.date | None = None, semente: int = 23) -> bytes:
     return buf.getvalue()
 
 
+# ── Abastecimento CD: carretas em trânsito para o CD ──────────────────
+# CD fictício em Brasília-DF (coordenada pública da cidade)
+CD_DEMO = {"nome": "CDA", "nome2": "CDB", "latitude": "-15.7939", "longitude": "-47.8828"}
+
+FABRICAS = [
+    # empresa que expede, cidade, UF, lat, lon
+    ("FRIGORIFICO ALFA - UN CAMPO GRANDE", "CAMPO GRANDE", "MS", -20.4697, -54.6201),
+    ("FRIGORIFICO ALFA - UN CUIABA", "CUIABA", "MT", -15.6014, -56.0979),
+    ("FRIGORIFICO ALFA - UN RIO VERDE", "RIO VERDE", "GO", -17.7923, -50.9192),
+    ("ALIMENTOS BETA - UN UBERLANDIA", "UBERLANDIA", "MG", -18.9186, -48.2772),
+    ("ALIMENTOS BETA - UN ARAGUAINA", "ARAGUAINA", "TO", -7.1911, -48.2072),
+]
+TRANSPORTADORAS = ["TRANSPORTES RAPIDO CERRADO", "LOGFRIO CARGAS", "TRANSVALE REFRIGERADOS",
+                   "EXPRESSO PLANALTO", "RODOFRIO LOGISTICA"]
+SITUACOES = ["Em viagem", "Em viagem", "Em viagem", "Parado", "Aguardando descarga"]
+
+
+def _ponto_na_rota(rnd, origem, destino, fracao):
+    lat = origem[0] + (destino[0] - origem[0]) * fracao + rnd.uniform(-0.15, 0.15)
+    lon = origem[1] + (destino[1] - origem[1]) * fracao + rnd.uniform(-0.15, 0.15)
+    return round(lat, 6), round(lon, 6)
+
+
+def _carretas(hoje: _dt.date, semente: int = 31):
+    """A mesma lista de carretas alimenta os dois arquivos (faturamento e rastreio)."""
+    rnd = random.Random(semente + hoje.toordinal())
+    cd = (float(CD_DEMO["latitude"]), float(CD_DEMO["longitude"]))
+    lista, usadas = [], set()
+    for i in range(16):
+        fab = FABRICAS[i % len(FABRICAS)] if i < 10 else rnd.choice(FABRICAS)
+        while True:
+            placa = "DEM" + str(rnd.randint(0, 9)) + rnd.choice("ABCDEFGHIJ") + f"{rnd.randint(0, 99):02d}"
+            if placa not in usadas:
+                usadas.add(placa)
+                break
+        cavalo = "CAV" + str(rnd.randint(0, 9)) + rnd.choice("ABCDEFGHIJ") + f"{rnd.randint(0, 99):02d}"
+        fracao = rnd.choice([0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 0.98])
+        lat, lon = _ponto_na_rota(rnd, (fab[3], fab[4]), cd, fracao)
+        temp = rnd.choice(["RESFRIADO", "CONGELADO"])
+        lista.append({
+            "fabrica": fab, "placa": placa, "cavalo": cavalo, "lat": lat, "lon": lon,
+            "fracao": fracao, "temperatura": temp,
+            "temp_medida": (rnd.uniform(-1.0, 3.5) if temp == "RESFRIADO" else rnd.uniform(-21, -15)),
+            "transportadora": rnd.choice(TRANSPORTADORAS),
+            "empresa_compra": "CDA" if rnd.random() < 0.7 else "CDB",
+            "faturamento": hoje - _dt.timedelta(days=rnd.choice([0, 1, 1, 2, 3])),
+            "ae": str(37_000_000 + rnd.randint(0, 999_999)),
+            "situacao": "Aguardando descarga" if fracao >= 0.98 else rnd.choice(SITUACOES[:4]),
+        })
+    return lista
+
+
+def estoque_faturado(hoje: _dt.date | None = None, semente: int = 31) -> bytes:
+    """Relatório "Estoque Faturado" do ERP: uma linha por produto de cada NF,
+    cabeçalho em dois níveis (grupo > coluna)."""
+    import openpyxl
+    from openpyxl.styles import Font
+
+    hoje = hoje or _dt.date.today()
+    rnd = random.Random(semente * 7 + hoje.toordinal())
+    grupos = [
+        ("Empresa Venda", ["Empresa", "Faturamento", "Número", "Transportadora", "Placa"]),
+        ("Empresa Compra", ["Empresa", "Local de Estoque", "Pedido", "Carga"]),
+        ("Produto", ["Cód Produto", "Temperatura", "Linha", "Produto", "Unidade"]),
+        ("Compra", ["Quantidade", "Volume", "Preço"]),
+    ]
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Estoque Faturado"
+    l1, l2 = [], []
+    for g, cs in grupos:
+        l1 += [g] + [""] * (len(cs) - 1)
+        l2 += cs
+    ws.append(l1)
+    ws.append(l2)
+    for c in ws[1] + ws[2]:
+        c.font = Font(bold=True)
+    nf = 610_000 + rnd.randint(0, 9000)
+    pedido = 2_400_000 + rnd.randint(0, 9000)
+    for car in _carretas(hoje):
+        produtos = [p for p in PRODUTOS if p[2] == car["temperatura"]]
+        local = f"{car['empresa_compra']} {car['temperatura']}"
+        carga = str(880_000 + rnd.randint(0, 99_999))
+        for _ in range(rnd.randint(1, 4)):
+            nf += rnd.randint(1, 30)
+            pedido += rnd.randint(1, 15)
+            for prod in rnd.sample(produtos, rnd.randint(2, 6)):
+                cod, nome, temp, kg, cheio, _v, _s = prod
+                caixas = rnd.randint(20, 220)
+                ws.append([car["fabrica"][0], car["faturamento"], nf, car["transportadora"], car["placa"],
+                           car["empresa_compra"], local, pedido, carga,
+                           int(cod), temp, "IN NATURA", nome, "KG",
+                           round(caixas * kg * rnd.uniform(0.98, 1.02), 3), caixas,
+                           round(rnd.uniform(18, 42), 2)])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def painel_rastreio(hoje: _dt.date | None = None, semente: int = 31) -> bytes:
+    """Exportação do painel do rastreador de frota: posição, km restante,
+    temperatura do baú (o rastreador manda multiplicada por 1000)."""
+    import math
+    import openpyxl
+
+    hoje = hoje or _dt.date.today()
+    cd = (float(CD_DEMO["latitude"]), float(CD_DEMO["longitude"]))
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Monitoração"
+    ws.append(["Placa veículo", "Placa carreta", "Aut. de embarque", "Situação viagem",
+               "Última posição", "Referência posição cidade", "Latitude última posição",
+               "Longitude última posição", "Km Restante", "Última temperatura recebida",
+               "Situação ignição", "Situação do veículo"])
+    agora = _dt.datetime.combine(hoje, _dt.time(8, 0))
+    for car in _carretas(hoje):
+        dlat = math.radians(cd[0] - car["lat"])
+        dlon = math.radians(cd[1] - car["lon"])
+        a = (math.sin(dlat / 2) ** 2 + math.cos(math.radians(car["lat"])) * math.cos(math.radians(cd[0]))
+             * math.sin(dlon / 2) ** 2)
+        km = 6371 * 2 * math.asin(math.sqrt(a)) * 1.25
+        fab = car["fabrica"]
+        ref = f"{int(km)} km de BRASILIA/DF" if car["fracao"] < 0.98 else "CD DEMO - BRASILIA/DF"
+        ws.append([car["cavalo"], car["placa"], car["ae"], "Em andamento",
+                   agora.strftime("%d/%m/%Y %H:%M"), ref, car["lat"], car["lon"], round(km),
+                   int(round(car["temp_medida"] * 1000)),
+                   "Ligada" if car["situacao"] == "Em viagem" else "Desligada", car["situacao"]])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def gravar(destino: Path | str = "planilhas_modelo", hoje: _dt.date | None = None) -> list[Path]:
     destino = Path(destino)
     destino.mkdir(parents=True, exist_ok=True)
@@ -332,6 +464,8 @@ def gravar(destino: Path | str = "planilhas_modelo", hoje: _dt.date | None = Non
         "produto_paletizado_ALFA.txt": produto_paletizado(hoje),
         "follow_up_pedidos.xlsx": follow_up(hoje + _dt.timedelta(days=1)),
         "painel_wms_noite.xlsx": painel_noite(hoje),
+        "estoque_faturado.xlsx": estoque_faturado(hoje),
+        "painel_rastreio.xlsx": painel_rastreio(hoje),
     }
     saida = []
     for nome, conteudo in arquivos.items():

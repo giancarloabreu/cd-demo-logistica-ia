@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adensamento — CD Demo</title>
+<style>
+:root{
+  --glass:rgba(255,255,255,0.62); --glass-b:rgba(255,255,255,0.28);
+  --text:#1a1a2e; --text-s:rgba(26,26,46,0.58);
+  --accent:#007AFF; --accent-l:rgba(0,122,255,0.10);
+  --ok:#28a745; --warn:#ff9500; --danger:#ff3b30;
+  --radius:16px; --rsm:10px; --shadow:0 4px 24px rgba(0,0,0,0.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Inter,sans-serif;
+  font-size:13px;color:var(--text);
+  background:linear-gradient(135deg,#eef2f7 0%,#e6ecf5 60%,#eaf0f8 100%)}
+.wrap{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 18px;height:52px;flex-shrink:0;
+  background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);border-bottom:1px solid var(--glass-b)}
+.topbar a.back{text-decoration:none;color:var(--accent);font-weight:600;font-size:13px}
+.topbar-logo{font-size:22px}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.topbar-sub{font-size:12px;color:var(--text-s)}
+.spacer{flex:1}
+.btn{border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-family:inherit;
+  cursor:pointer;font-weight:600;background:var(--accent);color:#fff;transition:.15s}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:rgba(0,0,0,.05);color:var(--text)}
+.btn.ok{background:var(--ok)} .btn.sm{padding:5px 10px;font-size:12px}
+.btn.icon{padding:8px 11px}
+
+/* ── SIDEBAR DE MÓDULOS ─────────────────────────────────── */
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);
+  z-index:998;opacity:0;pointer-events:none;transition:opacity .2s}
+.sidebar-overlay.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:999;
+  background:var(--glass);backdrop-filter:blur(20px) saturate(1.6);
+  border-right:1px solid var(--glass-b);box-shadow:4px 0 24px rgba(0,0,0,.15);
+  transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;padding:14px 0}
+.sidebar.show{transform:translateX(0)}
+.sidebar-header{display:flex;align-items:center;gap:8px;padding:0 16px 14px;
+  border-bottom:1px solid var(--glass-b);margin-bottom:8px}
+.sidebar-header .sidebar-logo{font-size:20px}
+.sidebar-header .sidebar-title{font-size:14px;font-weight:700;flex:1}
+.sidebar-close{background:none;border:none;font-size:16px;color:var(--text-s);cursor:pointer;padding:4px;line-height:1}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  text-decoration:none;color:var(--text);font-size:13px;font-weight:500;transition:.15s}
+.sidebar-link:hover{background:rgba(0,122,255,.08)}
+.sidebar-link.active{background:var(--accent-l);color:var(--accent);font-weight:700}
+.sidebar-spacer{flex:1}
+.sidebar-config{border-top:1px solid var(--glass-b);padding:8px 10px 4px}
+.sidebar-config-toggle{width:100%;background:none;border:none;text-align:left;padding:10px 12px;
+  border-radius:10px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;gap:10px;font-family:inherit}
+.sidebar-config-toggle:hover{background:rgba(0,122,255,.08)}
+.sidebar-config-toggle .arrow{margin-left:auto;font-size:11px;color:var(--text-s);transition:transform .15s}
+.sidebar-config-toggle.open .arrow{transform:rotate(90deg)}
+.sidebar-config-sub{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px 10px}
+.sidebar-sublink{display:block;padding:8px 12px;border-radius:8px;text-decoration:none;
+  color:var(--text-s);font-size:12.5px}
+.sidebar-sublink:hover{background:rgba(0,122,255,.08);color:var(--text)}
+.body{flex:1;overflow:auto;padding:16px 18px 40px}
+.card{background:var(--glass);backdrop-filter:blur(14px) saturate(1.5);
+  border:1px solid var(--glass-b);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px 16px;margin-bottom:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.file-drop{border:1.5px dashed rgba(0,122,255,.4);border-radius:var(--rsm);padding:10px 14px;
+  color:var(--text-s);cursor:pointer;background:var(--accent-l)}
+.file-drop b{color:var(--accent)}
+.kpis{display:flex;gap:10px;flex-wrap:wrap}
+.kpi{flex:1;min-width:120px;background:rgba(255,255,255,.6);border:1px solid var(--glass-b);
+  border-radius:var(--rsm);padding:10px 12px;text-align:center}
+.kpi .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.kpi .l{font-size:11px;color:var(--text-s);margin-top:2px}
+.kpi.good .v{color:var(--ok)} .kpi.warn .v{color:var(--warn)}
+.banner{display:none;background:rgba(255,149,0,.12);border:1px solid rgba(255,149,0,.4);
+  border-radius:var(--rsm);padding:10px 14px;margin-bottom:14px;color:#8a5200}
+.banner.show{display:flex;align-items:center;gap:10px}
+label.fl{font-size:11px;color:var(--text-s);display:block;margin-bottom:3px}
+input,select{border:1px solid var(--glass-b);background:rgba(255,255,255,.75);border-radius:8px;
+  padding:6px 9px;font-size:12px;font-family:inherit;color:var(--text)}
+input:focus,select:focus{outline:1.5px solid var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{position:sticky;top:0;background:#f3f6fb;text-align:left;padding:8px 9px;
+  border-bottom:2px solid var(--glass-b);cursor:pointer;white-space:nowrap;user-select:none}
+thead th:hover{color:var(--accent)}
+thead th .ar{opacity:.4;font-size:10px}
+thead th.asc .ar::after{content:' ▲';opacity:1} thead th.desc .ar::after{content:' ▼';opacity:1}
+tbody td{padding:7px 9px;border-bottom:1px solid rgba(0,0,0,.05);white-space:nowrap}
+td.origens{white-space:normal;min-width:260px;line-height:1.9}
+.opill{display:inline-flex;align-items:center;gap:6px;background:rgba(0,122,255,.08);
+  border:1px solid rgba(0,122,255,.22);border-radius:8px;padding:2px 8px;margin:2px 0;font-size:11.5px}
+.opill b{color:var(--text);font-weight:700}
+.opill .oe{font-family:'SF Mono',ui-monospace,Menlo,monospace;color:var(--accent);font-weight:600}
+.opill .oq{color:var(--text-s);font-size:10.5px}
+.opill.solo{background:rgba(0,0,0,.04);border-color:rgba(0,0,0,.08)}
+.opill.solo .oe{color:var(--text-s)}
+.oplus{margin:0 5px;color:var(--text-s);font-weight:700}
+.opilha{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px}
+tbody tr.parent{cursor:pointer} tbody tr.parent:hover{background:var(--accent-l)}
+tbody tr.misto td:first-child::before{content:'◆ ';color:var(--warn)}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:700}
+.tag.u{background:rgba(0,122,255,.12);color:var(--accent)}
+.tag.m{background:rgba(255,149,0,.15);color:var(--warn)}
+.detail{background:rgba(0,0,0,.02)}
+.detail table{font-size:11px} .detail th{background:#eef2f8;position:static}
+.comp{padding:8px 4px 10px;font-size:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{background:var(--accent-l);color:var(--accent);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600}
+.hidden{display:none}
+.hint{font-size:11px;color:var(--text-s)}
+.hist-day{font-size:12px;font-weight:700;color:var(--text-s);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.3px}
+.hist-day:first-child{margin-top:0}
+.hist-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--glass-b);margin-bottom:6px;cursor:pointer;transition:.15s;font-size:12px}
+.hist-item:hover{background:var(--accent-l);border-color:rgba(0,122,255,.3)}
+.hist-item .hora{font-weight:700;min-width:44px}
+.hist-item .arq{flex:1;color:var(--text-s);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-item .stat{white-space:nowrap}
+.hist-empty{color:var(--text-s);font-size:12px;padding:20px 0;text-align:center}
+.hist-layout{display:flex;gap:18px}
+.hist-cal{width:230px;flex-shrink:0}
+.hist-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.hist-cal-dow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:10px;
+  color:var(--text-s);margin-bottom:2px}
+.hist-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.hist-cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:8px;font-size:11px;cursor:default;position:relative;color:var(--text-s)}
+.hist-cal-cell.tem-dado{cursor:pointer;color:var(--text);font-weight:600}
+.hist-cal-cell.tem-dado:hover{background:var(--accent-l)}
+.hist-cal-cell.selecionado{background:var(--accent);color:#fff}
+.hist-cal-cell.hoje:not(.selecionado){box-shadow:inset 0 0 0 1.5px var(--accent)}
+.hist-cal-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);margin-top:1px}
+.hist-cal-cell.selecionado .hist-cal-dot{background:#fff}
+.hist-cal-legenda{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-s);margin-top:8px}
+.hist-cal-legenda .hist-cal-dot{margin:0}
+.hist-itens{flex:1;min-width:0;max-height:360px;overflow:auto}
+.espelho-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--glass-b);margin-bottom:6px;cursor:pointer;transition:.15s;font-size:13px}
+.espelho-item:hover{background:var(--accent-l);border-color:rgba(0,122,255,.3)}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:50}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius);box-shadow:0 10px 50px rgba(0,0,0,.3);
+  width:min(920px,94vw);max-height:88vh;display:flex;flex-direction:column}
+.modal h2{margin:0;padding:16px 20px;border-bottom:1px solid #eee;font-size:16px}
+.modal .mbody{padding:16px 20px;overflow:auto}
+.modal .mfoot{padding:12px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
+.cfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px}
+/* Abas do modal de Cadastro (estilo "aba de navegador", coladas no título) */
+#modalCad h2{border-bottom:none;padding-bottom:0}
+.cad-tabs{display:flex;gap:3px;padding:10px 20px 0;border-bottom:1px solid #eee}
+.cad-tab{padding:8px 16px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;
+  background:#eef0f3;color:var(--text-s);border:1px solid #eee;border-bottom:none;
+  border-radius:9px 9px 0 0;margin-bottom:-1px;transition:.15s}
+.cad-tab:hover{background:#e3e6ea}
+.cad-tab.active{background:#fff;color:var(--text);border-bottom:1px solid #fff}
+.pend{color:var(--danger);font-weight:700}
+.muted{color:var(--text-s)}
+@media print{
+  @page{margin:10mm}
+  html,body{height:auto!important;overflow:visible!important}
+  body{background:#fff}
+  .wrap{height:auto!important;overflow:visible!important;display:block}
+  .topbar,.no-print,.file-drop,.banner,#resumoCard{display:none!important}
+  .body{overflow:visible!important;height:auto!important;padding:0;flex:none}
+  .card{box-shadow:none;border:none;backdrop-filter:none;background:#fff;padding:0;margin:0}
+  #tableCard .tblscroll{overflow:visible!important;max-height:none!important}
+  table{font-size:10px;width:100%}
+  thead{display:table-header-group}
+  thead th{position:static;background:#eee!important;color:#000!important;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  thead th .ar{display:none}
+  tbody tr{page-break-inside:avoid}
+  .detail{display:none!important}
+  tbody td{white-space:normal}
+  td.origens{min-width:auto;line-height:1.6}
+  .opill{-webkit-print-color-adjust:exact;print-color-adjust:exact;border-color:#9bc2f5}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR DE MÓDULOS -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Xsense</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm icon no-print" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/">‹ Painel</a>
+    <span class="topbar-logo">📦</span>
+    <span class="topbar-title">Adensamento</span>
+    <span class="topbar-sub">Sugestão de agrupamento de paletes</span>
+    <span class="spacer"></span>
+    <button class="btn ghost sm no-print" id="btn-espelhar" onclick="abrirEspelho()" style="display:none">👁 Espelhar</button>
+    <button class="btn ghost sm no-print" id="btn-sair-espelho" onclick="sairEspelho()" style="display:none;color:#ff3b30">✕ Sair do espelho</button>
+    <button class="btn ghost sm no-print" onclick="abrirHistorico()">📜 Histórico</button>
+    <button class="btn ghost sm no-print" onclick="abrirCadastro()">⚙️ Cadastro</button>
+    <button class="btn ghost sm no-print" onclick="window.print()">🖨 Imprimir</button>
+    <button class="btn ok sm no-print" onclick="exportarExcel()">⬇ Excel</button>
+  </div>
+
+  <!-- BANNER ESPELHO -->
+  <div id="banner-espelho" class="no-print" style="display:none;background:rgba(0,122,255,.12);
+    border-bottom:1px solid rgba(0,122,255,.25);padding:7px 18px;font-size:12px;
+    color:#0055cc;align-items:center;gap:10px">
+    👁 Você está vendo o histórico de <strong id="banner-espelho-nome"></strong> — somente leitura
+    <button class="btn sm no-print" style="margin-left:auto;color:#ff3b30" onclick="sairEspelho()">✕ Sair do espelho</button>
+  </div>
+
+  <div class="body">
+    <!-- Upload -->
+    <div class="card no-print">
+      <div class="row">
+        <div class="file-drop" onclick="document.getElementById('txt').click()">
+          <b id="fname">Selecionar relatório TXT</b> — Produto Paletizado (.txt)
+        </div>
+        <input type="file" id="txt" accept=".txt" class="hidden" onchange="fileSel()">
+        <button class="btn" id="btnProc" onclick="processar()" disabled>Processar adensamento</button>
+        <span id="msg" class="muted"></span>
+      </div>
+    </div>
+
+    <div class="banner" id="pendBanner">
+      ⚠️ <span id="pendTxt"></span>
+      <button class="btn sm" onclick="abrirCadastro()">Completar cadastro</button>
+    </div>
+    <div class="banner" id="alertaBanner" style="background:rgba(255,149,0,.12);border-color:rgba(255,149,0,.4);color:#8a5200"></div>
+    <div class="banner" id="violaBanner" style="background:rgba(255,59,48,.12);border-color:rgba(255,59,48,.45);color:#a11">
+      ⛔ <span id="violaTxt"></span></div>
+
+    <!-- Resumo -->
+    <div class="card hidden" id="resumoCard">
+      <div class="kpis">
+        <div class="kpi"><div class="v" id="k_orig">–</div><div class="l">Paletes atuais</div></div>
+        <div class="kpi good"><div class="v" id="k_sug">–</div><div class="l">Paletes sugeridos</div></div>
+        <div class="kpi good"><div class="v" id="k_red">–</div><div class="l">Redução</div></div>
+        <div class="kpi"><div class="v" id="k_cons">–</div><div class="l">Consolidações (ações)</div></div>
+        <div class="kpi warn"><div class="v" id="k_mis">–</div><div class="l">Mistos ◆</div></div>
+        <div class="kpi"><div class="v" id="k_int">–</div><div class="l">Ficam como estão</div></div>
+        <div class="kpi"><div class="v" id="k_pesomed">–</div><div class="l">Peso médio/palete</div></div>
+      </div>
+      <div class="hint" style="margin-top:8px">Indicadores acima refletem os filtros aplicados na tabela abaixo.</div>
+    </div>
+
+    <!-- Filtros + tabela -->
+    <div class="card hidden" id="tableCard">
+      <div class="row no-print" style="margin-bottom:12px">
+        <div><label class="fl">Local de Estoque</label><select id="fLocal" onchange="render()"></select></div>
+        <div><label class="fl">Câmara</label><select id="fCamara" onchange="render()"></select></div>
+        <div><label class="fl">Tipo</label>
+          <select id="fTipo" onchange="render()"><option value="">Todos</option>
+            <option value="Único">Únicos</option><option value="Misto">Mistos</option></select></div>
+        <div><label class="fl">Código</label><input id="fCod" placeholder="filtrar…" oninput="render()"></div>
+        <div style="align-self:flex-end"><label style="font-size:12px;cursor:pointer">
+          <input type="checkbox" id="fIntocados" onchange="render()" style="vertical-align:-1px"> mostrar intocados</label></div>
+        <div style="align-self:flex-end"><button class="btn ghost sm" onclick="limparFiltros()">Limpar</button></div>
+      </div>
+      <div class="tblscroll" style="overflow:auto;max-height:60vh">
+        <table id="tbl">
+          <thead><tr id="thead"></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cadastro -->
+<div class="modal-bg" id="modalCad">
+  <div class="modal">
+    <h2>⚙️ Cadastro de Adensamento</h2>
+    <div class="cad-tabs">
+      <button class="cad-tab" id="tabBtnProdutos" onclick="mudarAbaCadastro('produtos')">📦 Produtos</button>
+      <button class="cad-tab" id="tabBtnBoxes" onclick="mudarAbaCadastro('boxes')">🗄 Boxes</button>
+    </div>
+    <div class="mbody">
+      <div class="row" id="rowHerdar" style="margin-bottom:14px;display:none">
+        <label class="fl" style="margin:0">Herdar cadastro de:</label>
+        <select id="selHerdar" style="min-width:160px"></select>
+        <button class="btn ghost sm" onclick="herdarCadastro()">Herdar (sobrescreve o meu)</button>
+        <span class="hint">Seu cadastro é individual — copia produtos, parâmetros e boxes juntos.</span>
+      </div>
+
+      <div id="tabProdutos">
+        <div class="row" style="margin-bottom:10px">
+          <button class="btn sm" onclick="baixarModelo()">⬇ Baixar modelo</button>
+          <button class="btn ghost sm" onclick="document.getElementById('impx').click()">⬆ Importar planilha</button>
+          <input type="file" id="impx" accept=".xlsx" class="hidden" onchange="importar()">
+          <span id="cadMsg" class="muted"></span>
+        </div>
+
+        <h3 style="margin:6px 0 4px;font-size:13px">Parâmetros gerais</h3>
+        <div class="cfg-grid" id="cfgGrid"></div>
+
+        <h3 style="margin:14px 0 4px;font-size:13px">Limites por código
+          <span class="muted" id="cadResumo"></span></h3>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn ghost sm" onclick="adicionarLinhaCadastro()">+ Nova linha</button>
+          <button class="btn sm" onclick="salvarCadastroLote()">💾 Salvar alterações</button>
+          <button class="btn ghost sm" onclick="excluirCadastroSelecionados()">🗑 Excluir selecionados</button>
+        </div>
+        <div style="overflow:auto;max-height:40vh">
+          <table>
+            <thead><tr>
+              <th style="width:26px"><input type="checkbox" id="cadSelAll" onchange="toggleTodosCadastro(this)"></th>
+              <th>Código</th><th>Produto</th><th>Temp.</th>
+              <th>Qtd Máx</th><th>Peso Máx (kg)</th>
+            </tr></thead>
+            <tbody id="cadBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tabBoxes" class="hidden">
+        <div class="hint" style="margin-bottom:8px">
+          Posições físicas (câmara + box + altura) que NÃO comportam a quantidade cheia
+          de caixas — ex.: meia posição. Não precisa listar posições normais, só as
+          exceções. O algoritmo usa o menor valor entre este limite e o do produto.
+        </div>
+        <div class="row" style="margin-bottom:10px">
+          <button class="btn sm" onclick="baixarModeloBoxes()">⬇ Baixar modelo</button>
+          <button class="btn ghost sm" onclick="document.getElementById('impBoxes').click()">⬆ Importar planilha</button>
+          <input type="file" id="impBoxes" accept=".xlsx" class="hidden" onchange="importarBoxes()">
+          <button class="btn ghost sm" onclick="adicionarLinhaBox()">+ Nova linha</button>
+          <button class="btn sm" onclick="salvarBoxes()">💾 Salvar alterações</button>
+          <button class="btn ghost sm" onclick="excluirBoxesSelecionados()">🗑 Excluir selecionados</button>
+          <span id="boxMsg" class="muted"></span>
+        </div>
+        <div style="overflow:auto;max-height:44vh">
+          <table>
+            <thead><tr>
+              <th style="width:26px"><input type="checkbox" id="boxSelAll" onchange="toggleTodosBoxes(this)"></th>
+              <th>Câmara</th><th>Box</th><th>Altura</th><th>Quantidade Permitida</th>
+            </tr></thead>
+            <tbody id="boxBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="fecharCadastro()">Fechar</button>
+      <button class="btn" id="btnSalvarParametros" onclick="salvarConfig()">Salvar parâmetros</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Histórico -->
+<div class="modal-bg" id="modalHist">
+  <div class="modal" style="width:min(760px,96vw)">
+    <h2>📜 Histórico de importações <span class="muted" id="histSubtitulo" style="font-size:12px;font-weight:400"></span></h2>
+    <div class="mbody">
+      <div class="hist-layout">
+        <div class="hist-cal">
+          <div class="hist-cal-head">
+            <button class="btn ghost sm" onclick="calMudarMes(-1)">‹</button>
+            <span id="calMesAno" style="font-weight:700;font-size:12px"></span>
+            <button class="btn ghost sm" onclick="calMudarMes(1)">›</button>
+          </div>
+          <div class="hist-cal-dow">
+            <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+          </div>
+          <div class="hist-cal-grid" id="calGrid"></div>
+          <div class="hist-cal-legenda"><span class="hist-cal-dot"></span> dia com importação</div>
+        </div>
+        <div class="hist-itens">
+          <div class="muted" id="histItensLabel" style="margin-bottom:6px">Selecione um dia com marcação no calendário.</div>
+          <div id="histLista"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="fecharHistorico()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Espelho -->
+<div class="modal-bg" id="modalEspelho">
+  <div class="modal" style="width:min(420px,94vw)">
+    <h2>👁 Espelhar usuário</h2>
+    <div class="mbody">
+      <div class="muted" style="margin-bottom:8px">Veja o histórico de adensamento de outro usuário (somente leitura).</div>
+      <div id="espelhoLista"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="fecharEspelho()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _csrf='';
+const _post=(url,body,isForm)=>fetch(url,{method:'POST',
+  headers:isForm?{'X-CSRF-Token':_csrf}:{'Content-Type':'application/json','X-CSRF-Token':_csrf},
+  body:isForm?body:JSON.stringify(body)});
+
+let DADOS=[], sortKey='pallet_destino', sortDir=1;
+const COLS=[
+  ['pallet_destino','Destino'],['tipo','Tipo'],['local_nome','Local'],
+  ['temperatura','Temp.'],['camara','Câmara'],['rua','Rua'],['codigo','Código'],
+  ['qtd_caixas','Qtd'],['peso_total','Peso (kg)'],
+  ['producao_min','Prod. Ini'],['producao_max','Prod. Fim'],
+  ['origens_capa','Empilhar (topo → base, fica no endereço da base)'],
+];
+
+// ── SIDEBAR DE MÓDULOS ─────────────────────────────────
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Xsense (Câmaras)', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+function abrirSidebar(){
+  document.getElementById('sidebar').classList.add('show');
+  document.getElementById('sidebar-overlay').classList.add('show');
+}
+function fecharSidebar(){
+  document.getElementById('sidebar').classList.remove('show');
+  document.getElementById('sidebar-overlay').classList.remove('show');
+}
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  // módulo com telas (SLAs, 27/10/2026): o nome abre a lista das telas
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+function montarConfigSidebar(perfil, isMaster){
+  // admin e master unificados (29/08/2026) — mesmo nível de acesso, sem
+  // distinção de sublinks nenhuma mais (isMaster/'master' mantidos só
+  // como fallback pra sessão antiga em cache até relogar).
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ fecharSidebar(); fecharHistorico(); fecharEspelho(); } });
+
+async function init(){
+  const me=await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  _csrf=me.csrf_token||'';
+  montarSidebar(me.modulos_permitidos, 'adensamento');
+  montarConfigSidebar(me.perfil, me.is_master);
+  const cdNome = me.cd_nome_exibicao || 'CDA';
+  document.title = 'Adensamento — ' + cdNome;
+  const sbTitle = document.querySelector('.sidebar-title');
+  if(sbTitle) sbTitle.textContent = cdNome;
+  window._podeEspelhar = ['admin','master'].includes(me.perfil) || !!(me.unidades_extras_espelho&&me.unidades_extras_espelho.length);
+  if(window._podeEspelhar) document.getElementById('btn-espelhar').style.display='';
+  // Espelhamento é sessão global (mesma do painel principal) — se a sessão já
+  // veio com "espelhando" setado (ex.: F5 no meio do espelhamento), restaura.
+  if(me.espelhando){
+    _espelhando = me.espelhando;
+    aplicarEstadoEspelho();
+    iniciarHeartbeatEspelho();
+  }
+}
+init();
+
+function fileSel(){
+  const f=document.getElementById('txt').files[0];
+  if(f){document.getElementById('fname').textContent=f.name;
+    document.getElementById('btnProc').disabled=false;}
+}
+async function processar(){
+  const f=document.getElementById('txt').files[0];
+  if(!f)return;
+  const fd=new FormData(); fd.append('relatorio',f);
+  document.getElementById('msg').textContent='Processando…';
+  document.getElementById('btnProc').disabled=true;
+  try{
+    const r=await _post('/api/adensamento/processar',fd,true).then(r=>r.json());
+    if(r.error){document.getElementById('msg').textContent='❌ '+r.error;return;}
+    DADOS=r.pallets;
+    tratarPendencias(r.pendencias);
+    tratarAlertas(r.resumo);
+    montarFiltros();
+    render();
+    document.getElementById('resumoCard').classList.remove('hidden');
+    document.getElementById('tableCard').classList.remove('hidden');
+    document.getElementById('msg').textContent='✅ '+r.resumo.paletes_sugeridos+' paletes sugeridos';
+  }catch(e){document.getElementById('msg').textContent='❌ '+e;}
+  finally{document.getElementById('btnProc').disabled=false;}
+}
+// Recalcula os KPIs a partir do conjunto atualmente filtrado (arr = resultado
+// de filtrados(), já ordenado) — assim os indicadores sempre batem com o que
+// está na tabela abaixo, em vez de mostrar sempre o total do processamento.
+function atualizarKPIs(arr){
+  const paletesOrigem = arr.reduce((s,d)=>s+(d.n_origens||1),0);
+  const paletesSugeridos = arr.length;
+  const reducao = paletesOrigem - paletesSugeridos;
+  const consolidacoes = arr.filter(d=>d.acao).length;
+  const mistos = arr.filter(d=>d.tipo==='Misto').length;
+  const intocados = arr.filter(d=>!d.acao).length;
+  const pesoTotal = arr.reduce((s,d)=>s+(d.peso_total||0),0);
+  const pesoMedio = paletesSugeridos ? pesoTotal/paletesSugeridos : 0;
+  k_orig.textContent=paletesOrigem; k_sug.textContent=paletesSugeridos;
+  k_red.textContent=reducao+' (−'+Math.round(100*reducao/Math.max(1,paletesOrigem))+'%)';
+  k_cons.textContent=consolidacoes; k_mis.textContent=mistos;
+  k_int.textContent=intocados;
+  k_pesomed.textContent=fmt(pesoMedio)+' kg';
+}
+function tratarPendencias(p){
+  const b=document.getElementById('pendBanner');
+  if(p&&p.length){
+    document.getElementById('pendTxt').textContent=
+      p.length+' código(s) sem cadastro completo não foram adensados. Complete o cadastro para incluí-los.';
+    b.classList.add('show');
+  }else b.classList.remove('show');
+}
+function tratarAlertas(s){
+  const av=document.getElementById('alertaBanner'), vi=document.getElementById('violaBanner');
+  if(s.alertas_cadastro>0){
+    av.textContent='⚠️ '+s.alertas_cadastro+' código(s) têm caixa mais pesada que o peso máximo cadastrado. Revise o cadastro desses códigos.';
+    av.classList.add('show');
+  }else av.classList.remove('show');
+  if(s.violacoes>0){
+    document.getElementById('violaTxt').textContent=
+      s.violacoes+' palete(s) sugeridos excedem o limite — não execute e me avise (isso não deveria acontecer).';
+    vi.classList.add('show');
+  }else vi.classList.remove('show');
+}
+function montarFiltros(){
+  const locs=[...new Set(DADOS.map(d=>d.local_nome))].sort();
+  const cams=[...new Set(DADOS.map(d=>d.camara).filter(Boolean))].sort();
+  fLocal.innerHTML='<option value="">Todos</option>'+locs.map(l=>`<option>${l}</option>`).join('');
+  fCamara.innerHTML='<option value="">Todas</option>'+cams.map(c=>`<option>${c}</option>`).join('');
+}
+function limparFiltros(){fLocal.value='';fCamara.value='';fTipo.value='';fCod.value='';document.getElementById('fIntocados').checked=false;render();}
+
+function filtrados(){
+  const L=fLocal.value,C=fCamara.value,T=fTipo.value,Q=fCod.value.trim().toLowerCase();
+  const verInt=document.getElementById('fIntocados').checked;
+  return DADOS.filter(d=>
+    (verInt||d.acao)&&
+    (!L||d.local_nome===L)&&(!C||(d.camara||'').split(', ').includes(C))&&
+    (!T||d.tipo===T)&&(!Q||d.codigo.toLowerCase().includes(Q)));
+}
+function sortData(arr){
+  return arr.sort((a,b)=>{
+    let x=a[sortKey],y=b[sortKey];
+    if(typeof x==='number'&&typeof y==='number')return (x-y)*sortDir;
+    return String(x).localeCompare(String(y),'pt',{numeric:true})*sortDir;
+  });
+}
+function render(){
+  const th=document.getElementById('thead');
+  th.innerHTML=COLS.map(([k,l])=>{
+    const cls=k===sortKey?(sortDir>0?'asc':'desc'):'';
+    return `<th class="${cls}" onclick="setSort('${k}')">${l}<span class="ar">↕</span></th>`;
+  }).join('');
+  const arr=sortData(filtrados());
+  atualizarKPIs(arr);
+  const tb=document.getElementById('tbody'); tb.innerHTML='';
+  arr.forEach((d,i)=>{
+    const tr=document.createElement('tr');
+    tr.className='parent'+(d.tipo==='Misto'?' misto':'');
+    tr.onclick=()=>toggleDet(i);
+    tr.innerHTML=`
+      <td><b>${d.pallet_destino}</b></td>
+      <td><span class="tag ${d.tipo==='Misto'?'m':'u'}">${d.tipo}</span></td>
+      <td>${d.local_nome}</td><td>${d.temperatura}</td><td>${d.camara||'–'}</td>
+      <td>${d.rua||'–'}</td>
+      <td>${d.codigo}</td>
+      <td style="text-align:center"><b>${d.qtd_caixas}</b></td>
+      <td style="text-align:right">${fmt(d.peso_total)}</td>
+      <td>${d.producao_min}</td><td>${d.producao_max}</td>
+      <td class="origens">${origensHtml(d)}</td>`;
+    tb.appendChild(tr);
+    const det=document.createElement('tr');
+    det.className='detail hidden'; det.id='det'+i;
+    det.innerHTML=`<td colspan="${COLS.length}">${detHtml(d)}</td>`;
+    tb.appendChild(det);
+  });
+}
+function detHtml(d){
+  // de baixo para cima: a base fica no endereço; a produção mais velha vai no topo
+  const PAPEL={base:'base — fica no endereço',meio:'em cima',topo:'topo — produção mais velha'};
+  const comp=(d.origens_detalhe||[]).map(o=>
+    `<span class="chip">${o.papel?`<i>${PAPEL[o.papel]}:</i> `:''}${o.palete} <b>@ ${o.endereco||'s/end'}</b> · ${o.qtd} cx · ${fmt(o.peso)}kg${
+      o.producao?` · prod ${o.producao}`:''}</span>`).join(d.acao?'<span class="oplus">↑</span>':'');
+  const aviso = d.acao && d.ordem_ideal===false
+    ? `<div class="comp" style="color:#b45309">⚠ A posição do palete mais novo não comporta o total (meia posição): a base é o palete maior e a ordem por produção pode não ficar perfeita — confira antes de empilhar.</div>` : '';
+  return `<div class="comp"><b>Empilhar num só palete (${d.qtd_caixas} cx · ${fmt(d.peso_total)}kg), de baixo para cima:</b> ${comp}</div>`+aviso+
+    `<table><thead><tr><th>CB</th><th>Código</th><th>Produto</th>
+    <th>Endereço Origem</th><th>Rua</th><th>Palete Origem</th><th>Peso</th><th>Produção</th></tr></thead><tbody>`+
+    d.caixas.map(c=>`<tr><td>${c.cb}</td><td>${c.codigo}</td><td>${trunc(c.nome,34)}</td>
+      <td><b>${c.endereco_origem||'–'}</b></td><td>${c.rua||'–'}</td>
+      <td>${c.palete_origem}</td><td style="text-align:right">${fmt(c.peso)}</td>
+      <td>${c.producao}</td></tr>`).join('')+`</tbody></table>`;
+}
+function toggleDet(i){document.getElementById('det'+i).classList.toggle('hidden');}
+function setSort(k){ if(sortKey===k)sortDir*=-1; else{sortKey=k;sortDir=1;} render(); }
+const trunc=(s,n)=>!s?'':(s.length>n?s.slice(0,n-1)+'…':s);
+function origensHtml(d){
+  const o=d.origens_detalhe||[];
+  if(!o.length) return '—';
+  if(!d.acao && o.length===1)
+    return `<span class="opill solo"><b>${o[0].palete}</b><span class="oe">${o[0].endereco||'s/end'}</span></span>`;
+  // como a pilha fica de verdade: topo (produção mais velha) em cima, base
+  // (fica no endereço) embaixo
+  return '<span class="opilha">' + [...o].reverse().map(x=>
+    `<span class="opill" title="${x.papel==='base'?'Base: fica no endereço':x.papel==='topo'?'Topo: produção mais velha':'Em cima'}${
+      x.producao?' · produção '+x.producao:''}">${x.papel==='base'?'<span class="oq">base</span>':x.papel==='topo'?'<span class="oq">topo</span>':''}<b>${x.palete}</b><span class="oe">${x.endereco||'s/end'}</span><span class="oq">${x.qtd}cx${
+      x.producao?' · '+x.producao.slice(0,5):''}</span></span>`
+  ).join('') + '</span>';
+}
+const fmt=v=>Number(v).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1});
+
+async function exportarExcel(){
+  if(!DADOS.length){alert('Processe um relatório primeiro.');return;}
+  const r=await _post('/api/adensamento/exportar_excel',{});
+  if(!r.ok){const j=await r.json().catch(()=>({}));alert(j.error||'Erro ao exportar');return;}
+  const blob=await r.blob(); const u=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=u;a.download='adensamento_sugestao.xlsx';a.click();
+  URL.revokeObjectURL(u);
+}
+
+/* ---------- Cadastro ---------- */
+const CFG_CAMPOS=[
+  ['range_ambiente','Janela Ambiente (dias)'],['range_resfriado','Janela Resfriado (dias)'],
+  ['range_congelado','Janela Congelado (dias)'],['misto_qtd_max','Qtd máx. palete misto'],
+  ['misto_peso_max','Peso máx. misto (kg, 0=ignora)'],['misto_threshold_pct','Limiar sobra→misto (%)'],
+];
+async function abrirCadastro(){
+  document.getElementById('modalCad').classList.add('show');
+  mudarAbaCadastro('produtos');
+  await carregarCadastro();
+  await carregarBoxes();
+}
+function mudarAbaCadastro(aba){
+  const prod = aba==='produtos';
+  document.getElementById('tabProdutos').classList.toggle('hidden', !prod);
+  document.getElementById('tabBoxes').classList.toggle('hidden', prod);
+  document.getElementById('tabBtnProdutos').classList.toggle('active', prod);
+  document.getElementById('tabBtnBoxes').classList.toggle('active', !prod);
+  // "Salvar parâmetros" só existe (Parâmetros gerais fica só na aba Produtos)
+  // — escondido na aba Boxes senão a mensagem de confirmação grava num
+  // elemento escondido e parece que não salvou nada.
+  document.getElementById('btnSalvarParametros').classList.toggle('hidden', !prod);
+}
+function fecharCadastro(){document.getElementById('modalCad').classList.remove('show');}
+
+// ── histórico de importações (calendário) ────────────────
+let _histTodos=[];      // itens carregados na abertura atual do modal
+let _histPorDia={};     // 'YYYY-MM-DD' -> [itens]
+let _calAno, _calMes;   // mês exibido (mes 0-indexado)
+let _diaSelecionado=null;
+const MESES_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
+                'Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+async function abrirHistorico(){
+  document.getElementById('modalHist').classList.add('show');
+  document.getElementById('histSubtitulo').textContent = _espelhando ? ('— vendo de '+_espelhando) : '';
+  const lista=document.getElementById('histLista');
+  lista.innerHTML='';
+  document.getElementById('histItensLabel').textContent='Carregando…';
+  try{
+    const r=await fetch('/api/adensamento/historico').then(r=>r.json());
+    _histTodos = r.itens||[];
+    _histPorDia = {};
+    _histTodos.forEach(it=>{
+      const dia = it.processado_em.split(' ')[0];
+      (_histPorDia[dia] = _histPorDia[dia]||[]).push(it);
+    });
+    const hoje = new Date();
+    _diaSelecionado = null;
+    if(_histTodos.length){
+      const [ano,mes] = _histTodos[0].processado_em.split('-');
+      _calAno = parseInt(ano); _calMes = parseInt(mes)-1;
+    } else {
+      _calAno = hoje.getFullYear(); _calMes = hoje.getMonth();
+    }
+    renderCalendario();
+    document.getElementById('histItensLabel').textContent = _histTodos.length
+      ? 'Selecione um dia com marcação no calendário.'
+      : 'Nenhuma importação registrada ainda.';
+  }catch(e){
+    document.getElementById('histItensLabel').textContent='Erro ao carregar histórico.';
+  }
+}
+function fecharHistorico(){document.getElementById('modalHist').classList.remove('show');}
+
+function calMudarMes(delta){
+  _calMes += delta;
+  if(_calMes<0){ _calMes=11; _calAno--; }
+  if(_calMes>11){ _calMes=0; _calAno++; }
+  renderCalendario();
+}
+
+function renderCalendario(){
+  document.getElementById('calMesAno').textContent = MESES_PT[_calMes]+' de '+_calAno;
+  const grid=document.getElementById('calGrid');
+  // "hoje" pelo fuso do navegador — .toISOString() é sempre UTC, o que
+  // fazia o calendário marcar o dia seguinte como "hoje" a partir de ~21h
+  // no horário de Brasília (mesmo bug achado e corrigido no Armazém,
+  // 29/08/2026).
+  const h = new Date();
+  const hojeStr = h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
+  const primeiroDia = new Date(_calAno,_calMes,1).getDay();
+  const totalDias = new Date(_calAno,_calMes+1,0).getDate();
+  let html='';
+  for(let i=0;i<primeiroDia;i++) html+='<div class="hist-cal-cell"></div>';
+  for(let d=1; d<=totalDias; d++){
+    const diaStr = _calAno+'-'+String(_calMes+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const temDado = !!_histPorDia[diaStr];
+    const classes=['hist-cal-cell'];
+    if(temDado) classes.push('tem-dado');
+    if(diaStr===hojeStr) classes.push('hoje');
+    if(diaStr===_diaSelecionado) classes.push('selecionado');
+    html+=`<div class="${classes.join(' ')}"${temDado?` onclick="selecionarDia('${diaStr}')"`:''}>${d}${temDado?'<span class="hist-cal-dot"></span>':''}</div>`;
+  }
+  grid.innerHTML=html;
+}
+
+function selecionarDia(diaStr){
+  _diaSelecionado = diaStr;
+  renderCalendario();
+  const itens = _histPorDia[diaStr]||[];
+  const [ano,mes,dia] = diaStr.split('-');
+  document.getElementById('histItensLabel').textContent =
+    itens.length+' importação(ões) em '+dia+'/'+mes+'/'+ano;
+  document.getElementById('histLista').innerHTML = itens.map(it=>{
+    const hora = it.processado_em.split(' ')[1]?.slice(0,5)||'';
+    return `
+      <div class="hist-item" onclick="abrirHistoricoItem(${it.id})">
+        <span class="hora">${hora}</span>
+        <span class="arq">${escHtml(it.nome_arquivo||'—')} · ${escHtml(it.usuario||'—')}</span>
+        <span class="stat">📦 ${it.paletes_sugeridos} paletes</span>
+        <span class="stat">⚖ ${fmt(it.peso_medio_palete)} kg/palete</span>
+      </div>`;
+  }).join('');
+}
+
+async function abrirHistoricoItem(id){
+  const r=await fetch('/api/adensamento/historico/'+id).then(r=>r.json());
+  if(r.error){ toastMsg(r.error); return; }
+  DADOS=r.pallets;
+  tratarPendencias([]);
+  tratarAlertas(r.resumo);
+  montarFiltros();
+  render();
+  document.getElementById('resumoCard').classList.remove('hidden');
+  document.getElementById('tableCard').classList.remove('hidden');
+  const dt=new Date(r.processado_em.replace(' ','T'));
+  document.getElementById('msg').textContent=
+    '📜 Histórico de '+dt.toLocaleString('pt-BR')+' ('+(r.usuario||'—')+', arquivo '+(r.nome_arquivo||'—')+')';
+  fecharHistorico();
+}
+function toastMsg(msg){ document.getElementById('msg').textContent='❌ '+msg; }
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ── espelhamento (só afeta o histórico — cadastro/config sempre são os
+// próprios, ver decisão registrada no BACKLOG) ───────────────────────
+let _espelhando='';
+let _espelhoHeartbeatTimer=null;
+
+async function abrirEspelho(){
+  document.getElementById('modalEspelho').classList.add('show');
+  const lista=document.getElementById('espelhoLista');
+  lista.innerHTML='<div class="hist-empty">Carregando…</div>';
+  try{
+    const r=await fetch('/api/adensamento/espelho/usuarios').then(r=>r.json());
+    const usuarios=r.usuarios||[];
+    lista.innerHTML = usuarios.length
+      ? usuarios.map(u=>`<div class="espelho-item" onclick="iniciarEspelho('${escHtml(u)}')">👤 ${escHtml(u)}</div>`).join('')
+      : '<div class="hist-empty">Nenhum usuário com histórico neste módulo ainda.</div>';
+  }catch(e){
+    lista.innerHTML='<div class="hist-empty">Erro ao carregar usuários.</div>';
+  }
+}
+function fecharEspelho(){document.getElementById('modalEspelho').classList.remove('show');}
+
+async function iniciarEspelho(usuario){
+  const res=await fetch('/api/espelho/iniciar',{method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body:JSON.stringify({usuario})});
+  const d=await res.json();
+  if(!d.ok){ toastMsg(d.error||'Erro ao espelhar'); return; }
+  fecharEspelho();
+  _espelhando=usuario;
+  aplicarEstadoEspelho();
+  iniciarHeartbeatEspelho();
+  await abrirHistorico();
+}
+
+async function sairEspelho(){
+  await fetch('/api/espelho/sair',{method:'POST',
+    headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body:'{}'});
+  _espelhando='';
+  pararHeartbeatEspelho();
+  aplicarEstadoEspelho();
+  if(document.getElementById('modalHist').classList.contains('show')) await abrirHistorico();
+}
+
+function aplicarEstadoEspelho(){
+  const banner=document.getElementById('banner-espelho');
+  if(_espelhando){
+    document.getElementById('banner-espelho-nome').textContent=_espelhando;
+    banner.style.display='flex';
+    document.getElementById('btn-sair-espelho').style.display='';
+    document.getElementById('btn-espelhar').style.display='none';
+  } else {
+    banner.style.display='none';
+    document.getElementById('btn-sair-espelho').style.display='none';
+    if(window._podeEspelhar) document.getElementById('btn-espelhar').style.display='';
+  }
+}
+function iniciarHeartbeatEspelho(){
+  if(_espelhoHeartbeatTimer) clearInterval(_espelhoHeartbeatTimer);
+  _espelhoHeartbeatTimer=setInterval(()=>{
+    fetch('/api/espelho/heartbeat',{method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body:'{}'}).catch(()=>{});
+  }, 20000);
+}
+function pararHeartbeatEspelho(){
+  if(_espelhoHeartbeatTimer){ clearInterval(_espelhoHeartbeatTimer); _espelhoHeartbeatTimer=null; }
+}
+let _cadRows=[], _cadIdSeq=0;
+
+async function carregarCadastro(){
+  const r=await fetch('/api/adensamento/cadastro').then(r=>r.json());
+  const g=document.getElementById('cfgGrid');
+  g.innerHTML=CFG_CAMPOS.map(([k,l])=>
+    `<div><label class="fl">${l}</label><input id="cfg_${k}" value="${r.config[k]??''}"></div>`).join('');
+
+  _cadRows = r.regras.map(x=>({
+    _id: ++_cadIdSeq, codigo:x.codigo, nome:x.nome, temperatura:x.temperatura,
+    qtd_max:x.qtd_max, peso_max:x.peso_max, completo:x.completo, alerta:x.alerta,
+    orig_codigo:x.codigo,
+  }));
+  renderCadastroTabela();
+
+  document.getElementById('cadResumo').textContent=
+    ' — '+r.regras.length+' códigos, '+r.pendencias+' pendente(s)'+(r.alertas?', '+r.alertas+' com alerta de peso':'');
+
+  const candidatos = r.usuarios_para_herdar||[];
+  const rowHerdar = document.getElementById('rowHerdar');
+  if(candidatos.length){
+    rowHerdar.style.display='flex';
+    document.getElementById('selHerdar').innerHTML =
+      '<option value="">— pool padrão (base) —</option>' +
+      candidatos.map(u=>`<option value="${escHtml(u)}">${escHtml(u)}</option>`).join('');
+  } else {
+    rowHerdar.style.display='none';
+  }
+}
+async function herdarCadastro(){
+  const origem = document.getElementById('selHerdar').value;
+  const label = origem || 'pool padrão';
+  if(!confirm(`Isso vai sobrescrever seu cadastro/config atual com o de "${label}". Continuar?`)) return;
+  const res = await _post('/api/adensamento/cadastro/herdar', {usuario_origem: origem});
+  const d = await res.json();
+  if(d.ok){
+    document.getElementById('cadMsg').textContent = `✅ Herdado de "${label}" (${d.importados} código(s))`;
+    setTimeout(()=>document.getElementById('cadMsg').textContent='',3000);
+    await carregarCadastro();
+  } else {
+    document.getElementById('cadMsg').textContent = '❌ '+(d.error||'Erro ao herdar');
+  }
+}
+function renderCadastroTabela(){
+  const tb=document.getElementById('cadBody'); tb.innerHTML='';
+  _cadRows.forEach(row=>{
+    const tr=document.createElement('tr');
+    const pend=!row.completo;
+    if(pend) tr.style.background='rgba(255,59,48,.05)';
+    else if(row.alerta) tr.style.background='rgba(255,149,0,.10)';
+    const marca = pend?'<br><span class="pend">● pendente</span>'
+                 : (row.alerta?'<br><span style="color:var(--warn);font-weight:700">⚠ peso</span>':'');
+    tr.innerHTML=`<td><input type="checkbox" class="cad-sel" data-id="${row._id}"></td>
+      <td><input style="width:90px" value="${escHtml(row.codigo)}" onchange="cadCampo(${row._id},'codigo',this.value)">${marca}</td>
+      <td><input style="width:220px" value="${escHtml(row.nome)}" onchange="cadCampo(${row._id},'nome',this.value)"></td>
+      <td><input style="width:90px" value="${escHtml(row.temperatura)}" onchange="cadCampo(${row._id},'temperatura',this.value)"></td>
+      <td><input style="width:70px" type="number" value="${row.qtd_max||''}" onchange="cadCampo(${row._id},'qtd_max',this.value)"></td>
+      <td><input style="width:90px" type="number" step="0.1" value="${row.peso_max||''}" onchange="cadCampo(${row._id},'peso_max',this.value)"></td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('cadSelAll').checked=false;
+}
+
+function cadCampo(id,campo,valor){
+  const row = _cadRows.find(r=>r._id===id);
+  if(row) row[campo]=valor;
+}
+
+function adicionarLinhaCadastro(){
+  _cadRows.push({_id:++_cadIdSeq, codigo:'', nome:'', temperatura:'', qtd_max:'', peso_max:'',
+                 completo:false, alerta:false, orig_codigo:null});
+  renderCadastroTabela();
+}
+
+function toggleTodosCadastro(cb){
+  document.querySelectorAll('.cad-sel').forEach(el=>el.checked=cb.checked);
+}
+
+async function salvarCadastroLote(){
+  const linhas = _cadRows
+    .filter(r=>String(r.codigo).trim())
+    .map(r=>({codigo:r.codigo, nome:r.nome, temperatura:r.temperatura,
+               qtd_max:r.qtd_max, peso_max:r.peso_max, orig_codigo:r.orig_codigo}));
+  const res = await _post('/api/adensamento/cadastro', {linhas});
+  const d = await res.json().catch(()=>({}));
+  document.getElementById('cadMsg').textContent = res.ok ? `✅ ${d.salvos} código(s) salvo(s)` : '❌ '+(d.error||'Erro ao salvar');
+  setTimeout(()=>document.getElementById('cadMsg').textContent='',3000);
+  await carregarCadastro();
+}
+
+async function excluirCadastroSelecionados(){
+  const ids = [...document.querySelectorAll('.cad-sel:checked')].map(el=>Number(el.dataset.id));
+  if(!ids.length){ alert('Selecione ao menos uma linha.'); return; }
+  const selecionadas = _cadRows.filter(r=>ids.includes(r._id));
+  const codigos = selecionadas.filter(r=>r.orig_codigo).map(r=>r.orig_codigo);
+  if(codigos.length && !confirm(`Excluir a customização de ${codigos.length} código(s)? Se algum também estiver no pool base, volta a aparecer (herdado).`)) return;
+  _cadRows = _cadRows.filter(r=>!ids.includes(r._id));
+  renderCadastroTabela();
+  if(!codigos.length) return;  // eram só linhas novas ainda não salvas — some só da tela
+  const res = await _post('/api/adensamento/cadastro/excluir', {codigos});
+  const d = await res.json().catch(()=>({}));
+  document.getElementById('cadMsg').textContent = res.ok ? `✅ ${d.excluidos} excluído(s)` : '❌ '+(d.error||'Erro ao excluir');
+  setTimeout(()=>document.getElementById('cadMsg').textContent='',3000);
+  await carregarCadastro();
+}
+async function salvarConfig(){
+  const body={}; CFG_CAMPOS.forEach(([k])=>body[k]=document.getElementById('cfg_'+k).value);
+  await _post('/api/adensamento/config',body);
+  document.getElementById('cadMsg').textContent='✅ Parâmetros salvos';
+  setTimeout(()=>document.getElementById('cadMsg').textContent='',2500);
+}
+async function baixarModelo(){
+  const r=await fetch('/api/adensamento/cadastro/modelo');
+  const blob=await r.blob();const u=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=u;a.download='cadastro_adensamento_modelo.xlsx';a.click();
+  URL.revokeObjectURL(u);
+}
+async function importar(){
+  const f=document.getElementById('impx').files[0]; if(!f)return;
+  const fd=new FormData();fd.append('arquivo',f);
+  document.getElementById('cadMsg').textContent='Importando…';
+  const r=await _post('/api/adensamento/cadastro/importar',fd,true).then(r=>r.json());
+  document.getElementById('cadMsg').textContent=r.error?('❌ '+r.error):('✅ '+r.importados+' códigos importados');
+  document.getElementById('impx').value='';
+  if(!r.error)await carregarCadastro();
+}
+
+// ── cadastro de boxes (posições com capacidade reduzida) ──
+let _boxRows=[], _boxIdSeq=0;
+
+async function carregarBoxes(){
+  const r = await fetch('/api/adensamento/boxes').then(r=>r.json());
+  _boxRows = (r.linhas||[]).map(x=>({
+    _id: ++_boxIdSeq, camara:x.camara, box:x.box, altura:x.altura, quantidade:x.quantidade,
+    orig_camara:x.camara, orig_box:x.box, orig_altura:x.altura,
+  }));
+  renderBoxes();
+}
+
+function renderBoxes(){
+  const tb = document.getElementById('boxBody'); tb.innerHTML='';
+  _boxRows.forEach(row=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input type="checkbox" class="box-sel" data-id="${row._id}"></td>
+      <td><input style="width:100px" value="${escHtml(row.camara)}" onchange="boxCampo(${row._id},'camara',this.value)"></td>
+      <td><input style="width:100px" value="${escHtml(row.box)}" onchange="boxCampo(${row._id},'box',this.value)"></td>
+      <td><input style="width:70px" value="${escHtml(row.altura)}" onchange="boxCampo(${row._id},'altura',this.value)"></td>
+      <td><input style="width:90px" type="number" value="${row.quantidade||''}" onchange="boxCampo(${row._id},'quantidade',this.value)"></td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('boxSelAll').checked=false;
+}
+
+function boxCampo(id,campo,valor){
+  const row = _boxRows.find(r=>r._id===id);
+  if(row) row[campo]=valor;
+}
+
+function adicionarLinhaBox(){
+  _boxRows.push({_id:++_boxIdSeq, camara:'', box:'', altura:'', quantidade:'',
+                 orig_camara:null, orig_box:null, orig_altura:null});
+  renderBoxes();
+}
+
+function toggleTodosBoxes(cb){
+  document.querySelectorAll('.box-sel').forEach(el=>el.checked=cb.checked);
+}
+
+async function salvarBoxes(){
+  const linhas = _boxRows
+    .filter(r=>String(r.camara).trim() && String(r.box).trim() && String(r.altura).trim())
+    .map(r=>({camara:r.camara, box:r.box, altura:r.altura, quantidade:r.quantidade,
+               orig_camara:r.orig_camara, orig_box:r.orig_box, orig_altura:r.orig_altura}));
+  const res = await _post('/api/adensamento/boxes', {linhas});
+  const d = await res.json().catch(()=>({}));
+  document.getElementById('boxMsg').textContent = res.ok ? `✅ ${d.salvos} posição(ões) salva(s)` : '❌ '+(d.error||'Erro ao salvar');
+  setTimeout(()=>document.getElementById('boxMsg').textContent='',3000);
+  await carregarBoxes();
+}
+
+async function excluirBoxesSelecionados(){
+  const ids = [...document.querySelectorAll('.box-sel:checked')].map(el=>Number(el.dataset.id));
+  if(!ids.length){ alert('Selecione ao menos uma linha.'); return; }
+  const selecionadas = _boxRows.filter(r=>ids.includes(r._id));
+  const chaves = selecionadas.filter(r=>r.orig_camara)
+    .map(r=>({camara:r.orig_camara, box:r.orig_box, altura:r.orig_altura}));
+  if(chaves.length && !confirm(`Excluir ${chaves.length} posição(ões) cadastrada(s)?`)) return;
+  _boxRows = _boxRows.filter(r=>!ids.includes(r._id));
+  renderBoxes();
+  if(!chaves.length) return;  // eram só linhas novas ainda não salvas — some só da tela
+  const res = await _post('/api/adensamento/boxes/excluir', {chaves});
+  const d = await res.json().catch(()=>({}));
+  document.getElementById('boxMsg').textContent = res.ok ? `✅ ${d.excluidos} excluído(s)` : '❌ '+(d.error||'Erro ao excluir');
+  setTimeout(()=>document.getElementById('boxMsg').textContent='',3000);
+  await carregarBoxes();
+}
+
+async function baixarModeloBoxes(){
+  const r=await fetch('/api/adensamento/boxes/modelo');
+  const blob=await r.blob();const u=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=u;a.download='cadastro_boxes_modelo.xlsx';a.click();
+  URL.revokeObjectURL(u);
+}
+async function importarBoxes(){
+  const f=document.getElementById('impBoxes').files[0]; if(!f)return;
+  const fd=new FormData();fd.append('arquivo',f);
+  document.getElementById('boxMsg').textContent='Importando…';
+  const r=await _post('/api/adensamento/boxes/importar',fd,true).then(r=>r.json());
+  document.getElementById('boxMsg').textContent=r.error?('❌ '+r.error):('✅ '+r.importados+' posições importadas');
+  document.getElementById('impBoxes').value='';
+  if(!r.error) await carregarBoxes();
+}
+</script>
+{% if DEMO_MODE %}
+<script>
+/* Demo: abre direto o último processamento do TXT de exemplo. */
+(function abrirUltimoDaDemo(t){
+  if(!_csrf){ if((t||0)<40) setTimeout(()=>abrirUltimoDaDemo((t||0)+1),150); return; }
+  if(typeof DADOS!=='undefined' && DADOS && DADOS.length) return;
+  fetch('/api/adensamento/historico').then(r=>r.json()).then(h=>{
+    if(h && h.itens && h.itens.length) abrirHistoricoItem(h.itens[0].id);
+  }).catch(()=>{});
+})(0);
+</script>
+{% endif %}
+</body>
+</html>

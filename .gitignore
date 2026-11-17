@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+data/
+config/
+entrada/
+saida/
+planilhas_modelo/
+*.db
+*.db-shm
+*.db-wal
+.vercel
+mobile/**/build/
+mobile/**/.gradle/
+mobile/local.properties

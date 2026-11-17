@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CD Demo — Sistema de monitoramento de CD com IA</title>
+<style>
+  :root{--bg:#0b1220;--card:#121a2b;--borda:#22304a;--txt:#e6ebf5;--sub:#9fb0cc;--acc:#38bdf8;--ok:#34d399}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:40px 22px 70px}
+  .tag{display:inline-block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--acc);
+       border:1px solid var(--borda);padding:4px 10px;border-radius:999px}
+  h1{font-size:34px;line-height:1.15;margin:14px 0 10px}
+  .lead{color:var(--sub);font-size:17px;max-width:760px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:28px 0}
+  .card{background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:18px 18px 16px;
+        text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:6px;transition:.15s}
+  a.card:hover{border-color:var(--acc);transform:translateY(-2px)}
+  .card h3{margin:0;font-size:17px}
+  .card p{margin:0;color:var(--sub);font-size:14px}
+  .card .ir{margin-top:auto;padding-top:10px;color:var(--acc);font-weight:600;font-size:14px}
+  .ia{border-color:#3b82f6}
+  .pill{font-size:11px;font-weight:700;background:#1d4ed8;color:#fff;border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:2px}
+  h2{font-size:20px;margin:38px 0 10px}
+  ul{color:var(--sub);padding-left:20px} li{margin:4px 0}
+  code{background:#0f172a;border:1px solid var(--borda);border-radius:6px;padding:1px 6px;font-size:13px}
+  .status{font-size:13px;color:var(--sub);margin-top:14px}
+  .status b{color:var(--ok)}
+  .btn{display:inline-block;background:var(--acc);color:#04111f;font-weight:700;border-radius:10px;padding:10px 16px;text-decoration:none;margin:6px 8px 0 0}
+  .btn.sec{background:transparent;color:var(--txt);border:1px solid var(--borda)}
+  .fluxo{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px}
+  .fluxo div{background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:12px;font-size:14px;color:var(--sub)}
+  .fluxo b{color:var(--txt);display:block;margin-bottom:4px}
+  footer{margin-top:50px;color:var(--sub);font-size:13px;border-top:1px solid var(--borda);padding-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="tag">Demonstração · dados fictícios</span>
+  <h1>Monitoramento de Centro de Distribuição com IA</h1>
+  <p class="lead">
+    Sistema web que construí e mantenho em produção para a operação de um centro de distribuição
+    de alimentos refrigerados e congelados. Esta é uma cópia de demonstração: o código e os
+    cálculos são os de produção, mas empresas, produtos, clientes e pessoas são inventados.
+  </p>
+  <div>
+    <a class="btn" href="/expedito">Abrir o Expedito</a>
+    {% if repo %}<a class="btn sec" href="{{ repo }}" target="_blank" rel="noopener">Código no GitHub</a>{% endif %}
+  </div>
+  <p class="status" id="st">
+    {% if status.erro %}Falha ao carregar os dados de exemplo: {{ status.erro }}
+    {% else %}<b>●</b> Dados de exemplo carregados para hoje ({{ hoje }}){% if status.segundos %} em {{ status.segundos }} s{% endif %}.{% endif %}
+  </p>
+
+  <h2>Módulos desta demo</h2>
+  <div class="grid">
+    <a class="card ia" href="/expedito">
+      <h3>🧭 Expedito <span class="pill">IA</span></h3>
+      <p>Plano de abastecimento do picking: cruza o follow up de pedidos com o estoque e diz quais
+         pallets descer, em ordem FEFO, antes do turno começar. A conversa usa Gemini com
+         mascaramento de dados.</p>
+      <span class="ir">Ver plano de amanhã →</span>
+    </a>
+    <a class="card" href="/adensamento">
+      <h3>🧊 Adensamento FEFO</h3>
+      <p>Sugere empilhar pallets fracos do mesmo produto, local e janela de produção para liberar
+         posições, respeitando limite de caixas e de peso por código.</p>
+      <span class="ir">Ver sugestões →</span>
+    </a>
+    <a class="card" href="/fifo">
+      <h3>📦 Devolução &amp; Vencimento</h3>
+      <p>Separa o que está no local de devolução e o que vence nos próximos dias, para direcionar
+         pedido de venda. Antes era uma planilha montada à mão todo dia.</p>
+      <span class="ir">Ver relatório →</span>
+    </a>
+    <a class="card" href="/armazem">
+      <h3>🏭 Painel do Armazém</h3>
+      <p>Estoque total, ocupação de câmaras, tempo de vida e % endereçado, com as fórmulas
+         reconstruídas da planilha que alimentava o e-mail diário de gestão.</p>
+      <span class="ir">Ver painel →</span>
+    </a>
+  </div>
+
+  <h2>Como os dados entram</h2>
+  <p class="lead" style="font-size:15px">Na operação, o analista exporta relatórios do WMS e do ERP e sobe no sistema.
+     A demo faz o mesmo: gera os arquivos de exemplo com as datas de hoje e passa por
+     <b>as mesmas rotas de upload</b>. Você pode baixar e subir de novo em qualquer módulo:</p>
+  <ul>
+    <li><a href="/demo/planilhas/produto_paletizado_ALFA.txt" style="color:var(--acc)">produto_paletizado_ALFA.txt</a>
+        — relatório "Produto Paletizado" do WMS (TXT tabulado, uma linha por caixa).</li>
+    <li><a href="/demo/planilhas/follow_up_pedidos.xlsx" style="color:var(--acc)">follow_up_pedidos.xlsx</a>
+        — follow up de pedidos do ERP (Excel com 2 linhas de cabeçalho).</li>
+  </ul>
+  <div class="fluxo">
+    <div><b>1. Relatórios</b>TXT do WMS e Excel do ERP, no layout original, lidos pelo cabeçalho (o layout muda entre empresas).</div>
+    <div><b>2. Regras</b>FEFO, janelas de produção, limites de peso e caixas, bloqueios de pedido: tudo parametrizável na tela.</div>
+    <div><b>3. Resultado</b>Plano de descida, sugestões de adensamento, relatórios em Excel e painel de gestão.</div>
+    <div><b>4. IA</b>Gemini conversa sobre os números já calculados. Nomes de pessoas e clientes são trocados por codinomes antes de sair.</div>
+  </div>
+
+  <h2>Por trás</h2>
+  <ul>
+    <li>Python + Flask, SQLite, pandas e openpyxl; front-end em HTML/JS puro.</li>
+    <li>Em produção roda numa VM no Google Cloud (Gunicorn + Nginx), com integrações de rastreamento
+        de frota, sensores de temperatura e alertas automáticos por Telegram. Essas integrações ficam fora da demo.</li>
+    <li>Também existe um app Android para coletor de código de barras (Kotlin) com servidor próprio.
+        O código e a documentação estão no repositório.</li>
+    <li>Construído com desenvolvimento assistido por IA, a partir de 12 anos de operação logística.</li>
+  </ul>
+
+  <footer>
+    Demo pública: a cada nova instância os dados voltam ao exemplo do dia. A conversa com IA tem limite diário de perguntas.
+  </footer>
+</div>
+</body>
+</html>

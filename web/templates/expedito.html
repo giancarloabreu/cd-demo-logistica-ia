@@ -1,0 +1,2660 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expedito — CD Demo</title>
+<link rel="stylesheet" href="/static/css/painel.css">
+<style>
+/* ── Abertura do Expedito ─────────────────────────────────────────────
+   A animação aparece na ABERTURA e na ESPERA REAL (enquanto o plano é
+   calculado), nunca entre cliques — ali ela viraria atraso inventado.
+   Pedido do usuário 06/10/2026: "às vezes não basta só ser bom, tem que
+   impressionar". */
+.abertura{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:18px;background:linear-gradient(135deg,#eef2f7 0%,#e6ecf5 60%,#eaf0f8 100%);
+  transition:opacity .45s ease}
+.abertura.sai{opacity:0;pointer-events:none}
+.abertura-marca{font-size:26px;font-weight:800;letter-spacing:-.6px;display:flex;align-items:center;gap:12px}
+.abertura-sub{font-size:13px;color:var(--text-s)}
+.bussola{width:54px;height:54px;border-radius:50%;border:3px solid var(--accent-l);
+  border-top-color:var(--accent);animation:gira 1s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.pista{width:220px;height:4px;border-radius:99px;background:var(--accent-l);overflow:hidden}
+.pista i{display:block;height:100%;width:40%;border-radius:99px;background:var(--accent);
+  animation:corre 1.1s ease-in-out infinite}
+@keyframes corre{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+.pensando{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--accent);font-weight:600}
+.pensando i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulso 1.2s ease-in-out infinite}
+.pensando i:nth-child(2){animation-delay:.18s} .pensando i:nth-child(3){animation-delay:.36s}
+@keyframes pulso{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+
+/* ── Slots de arquivo ── */
+.slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.slot-arq{border:1.5px dashed var(--border-vis);border-radius:var(--rsm);padding:14px;
+  background:rgba(255,255,255,.45);cursor:pointer;transition:.15s}
+.slot-arq:hover,.slot-arq.sobre{border-color:var(--accent);background:var(--accent-l)}
+.slot-arq.cheio{border-style:solid;border-color:var(--ok);background:rgba(40,167,69,.06)}
+.slot-arq b{display:block;font-size:13px;margin-bottom:3px}
+.slot-arq span{font-size:11.5px;color:var(--text-s)}
+.lista-arq{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.lista-arq div{font-size:11.5px;display:flex;align-items:center;gap:6px}
+
+/* ── Plano ── */
+.linha-desce{cursor:pointer}
+/* a linha do código vira cabeçalho do grupo: fundo colorido no nome do
+   produto, e os pallets por baixo (usuário, 15/10/2026) */
+tr.linha-desce:not(.sub) > td{background:var(--brand-soft);border-top:2px solid #c9dbf3}
+tr.linha-desce:not(.sub) .nome-prod{font-weight:650;color:var(--brand)}
+tr.linha-desce:not(.sub):hover > td{background:#dbe8fa}
+.linha-desce.feito td{opacity:.45;text-decoration:line-through}
+.candidatos{background:rgba(0,122,255,.04)}
+.candidatos td{padding:0}
+.candidatos table{width:100%;font-size:11.5px}
+.barra-cob{height:5px;border-radius:99px;background:var(--border-vis);overflow:hidden;min-width:70px}
+.barra-cob i{display:block;height:100%;background:var(--ok)}
+.barra-cob.parcial i{background:var(--warn)}
+.barra-cob.ruim i{background:var(--danger)}
+.lateral{position:fixed;top:0;right:0;bottom:0;width:380px;z-index:900;background:var(--glass);
+  backdrop-filter:blur(20px) saturate(1.6);border-left:1px solid var(--glass-b);
+  box-shadow:-4px 0 24px rgba(0,0,0,.14);transform:translateX(100%);transition:transform .22s ease;
+  display:flex;flex-direction:column}
+.lateral.show{transform:translateX(0)}
+.banner{padding:10px 14px;border-radius:var(--rsm);font-size:12.5px}
+.banner.warn{background:rgba(255,149,0,.12);border:1px solid rgba(255,149,0,.35);color:#8a4800}
+.lateral-h{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--glass-b)}
+.lateral-b{flex:1;overflow:auto;padding:14px 16px}
+.tv-lista{margin-top:8px;max-height:210px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px}
+.tv-item{display:flex;gap:8px;align-items:flex-start;padding:4px 2px;font-size:12.5px;line-height:1.35;cursor:pointer}
+.tv-item input{margin-top:2px;flex:0 0 auto}
+.tv-n{font-style:normal;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tv-n::before{content:"· "}
+.linha-desce.sub{background:#f6f8fb}
+.linha-desce.sub td{border-top:none;font-size:12px}
+.barra-cob i{display:block;height:100%}
+.pres-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:1px 8px;width:100%}
+.pres-item{display:flex;align-items:center;gap:6px;padding:3px 7px;border-radius:5px;
+  font-size:12px;cursor:pointer;border:1px solid transparent;line-height:1.25}
+.pres-resumo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px}
+.pres-resumo b{font-variant-numeric:tabular-nums}
+.pres-resumo .nomes{color:var(--ink-2);flex:1;min-width:0}
+.pres-item:hover{background:#f6f8fb}
+.pres-item.on{background:rgba(21,128,61,.09);border-color:rgba(21,128,61,.3);font-weight:600}
+.pres-item input{flex:0 0 auto;margin:0}
+.pres-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@keyframes pulsa{0%,100%{opacity:.45}50%{opacity:1}}
+
+
+/* ════════════════════════════════════════════════════════════════════
+   Visual corporativo do Expedito (08/10/2026)
+   Tokens do painel.css (--ink, --line, --brand...), os mesmos da
+   Produtividade. Contraste primeiro: borda que se vê, texto que se lê,
+   botão que parece botão.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* botões: o .btn.ghost antigo era 5% de cinza sobre branco */
+.btn{background:var(--brand);color:#fff;border:1px solid var(--brand);border-radius:8px;
+  box-shadow:0 1px 2px rgba(15,23,42,.08);
+  transition:background .15s,border-color .15s,box-shadow .2s,transform .08s}
+.btn:hover{background:#0a4486;border-color:#0a4486;filter:none;box-shadow:0 4px 12px rgba(11,79,156,.24)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,.abas button:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px}
+.btn.ghost{background:#fff;color:var(--ink);border-color:#cbd5e1;box-shadow:0 1px 1px rgba(15,23,42,.04)}
+.btn.ghost:hover{background:#f8fafc;border-color:#94a3b8;box-shadow:0 2px 6px rgba(15,23,42,.08)}
+.btn.ok{background:var(--pos);border-color:var(--pos)}
+.btn.ok:hover{background:#126b33;border-color:#126b33;box-shadow:0 4px 12px rgba(21,128,61,.24)}
+.btn:disabled,.btn:disabled:hover{opacity:.45;box-shadow:none;transform:none;cursor:not-allowed}
+
+/* campos */
+.fl, select.fl, input.fl{border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:var(--ink);
+  transition:border-color .15s,box-shadow .15s}
+.fl:focus, select.fl:focus, input.fl:focus{outline:none;border-color:var(--brand-2);
+  box-shadow:0 0 0 3px rgba(47,125,225,.16)}
+input[type=checkbox]{accent-color:var(--brand)}
+
+/* cartões: borda e sombra que separam do fundo */
+.cx{border-color:#dfe5ed;box-shadow:0 1px 2px rgba(15,23,42,.05),0 4px 14px rgba(15,23,42,.03)}
+.cx-h h2{color:var(--ink);letter-spacing:-.15px}
+
+/* KPI: o .kpi antigo era centrado, com borda branca translúcida. Agora segue
+   o cartão de projeção da Produtividade — rótulo, número grande, contexto —
+   com uma faixa à esquerda que muda de cor com o estado */
+.kpi{background:#fff;border:1px solid #dfe5ed;border-radius:10px;padding:13px 16px 12px 18px;
+  text-align:left;position:relative;overflow:hidden;min-width:0;
+  box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--brand-2)}
+.kpi.ok::before{background:var(--pos)} .kpi.at::before{background:#d97706} .kpi.er::before{background:var(--neg)}
+.kpi.neutro::before{background:#cbd5e1}
+.kpi-t{font-size:10.5px;font-weight:650;text-transform:uppercase;letter-spacing:.55px;color:var(--ink-2)}
+.kpi-v{font-size:26px;font-weight:700;letter-spacing:-.6px;color:var(--ink);margin-top:5px;line-height:1.1;
+  font-variant-numeric:tabular-nums}
+.kpi-r{font-size:11.5px;color:var(--ink-2);margin-top:5px;line-height:1.4}
+.kpi.er .kpi-v{color:var(--neg)}
+
+/* chips com borda — legíveis também no fundo cinza da tabela */
+.chip{border:1px solid transparent;padding:2px 7px;border-radius:5px}
+.chip.ok{border-color:#bfe3cb} .chip.at{border-color:#f6d9a8} .chip.er{border-color:#f5c2bd}
+.chip.er.pisca{animation:alerta 1.6s ease-in-out infinite}
+
+/* tabela: cabeçalho que se distingue do corpo */
+.tb th{background:#f6f8fb;border-bottom:1px solid #dfe5ed;color:#334155}
+.tb tr:hover td{background:#f3f7fd}
+
+/* ── conversa ───────────────────────────────────────────────────────── */
+.conv{display:flex;flex-direction:column;gap:14px;max-height:400px;overflow:auto;
+  padding:8px 4px 14px;scroll-behavior:smooth}
+.conv-vazia{display:flex;align-items:center;gap:10px;color:var(--ink-2);font-size:12.5px;
+  padding:14px;border:1px dashed #cbd5e1;border-radius:10px;background:#fafbfd}
+.msg{display:flex;gap:9px;align-items:flex-end;max-width:100%}
+.msg.eu{flex-direction:row-reverse}
+.msg.nova{animation:entra .34s cubic-bezier(.2,.8,.2,1) both}
+.av{flex:0 0 30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700}
+.msg.ia .av,.msg.erro .av{background:var(--brand-soft);border:1px solid #c9dbf3}
+.msg.eu .av{background:var(--brand);color:#fff;font-size:12px;box-shadow:0 1px 3px rgba(11,79,156,.35)}
+.msg-corpo{display:flex;flex-direction:column;min-width:0;max-width:78%}
+.msg.eu .msg-corpo{align-items:flex-end}
+.autor{font-size:10px;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px;
+  margin:0 4px 4px}
+.bolha{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.55;white-space:pre-wrap;
+  word-break:break-word;box-shadow:0 1px 2px rgba(15,23,42,.07)}
+.msg.eu .bolha{background:var(--brand);color:#fff;border:1px solid var(--brand);border-bottom-right-radius:4px}
+.msg.ia .bolha{background:#fff;color:var(--ink);border:1px solid #cbd5e1;border-left:3px solid var(--brand-2);
+  border-bottom-left-radius:4px}
+/* sugestão por iniciativa do Expedito: balão próprio, para não confundir com
+   resposta a uma pergunta (usuário, 14/10/2026) */
+.msg.ini .av{background:#fff7e6;border:1px solid #f3cf8a}
+.msg.ini .bolha{background:#fffbf2;color:var(--ink);border:1px solid #f3cf8a;border-left:3px solid #d97706;
+  border-bottom-left-radius:4px}
+.msg.ini .autor{color:#92400e}
+.msg.erro .bolha{background:var(--neg-soft);color:#7a1a12;border:1px solid #f5c2bd;
+  border-left:3px solid var(--neg);border-bottom-left-radius:4px}
+.bolha .q{display:block;margin-top:6px;font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.msg.eu .bolha .q{color:rgba(255,255,255,.78)}
+.digitando{display:inline-flex;gap:5px;align-items:center;height:18px}
+.digitando i{width:7px;height:7px;border-radius:50%;background:var(--brand-2);
+  animation:quica 1.15s ease-in-out infinite}
+.digitando i:nth-child(2){animation-delay:.16s} .digitando i:nth-child(3){animation-delay:.32s}
+
+/* compositor: a caixa inteira acende no foco */
+.conv-barra{display:flex;gap:8px;align-items:flex-end;margin-top:10px;padding:8px 8px 8px 12px;
+  border:1px solid #cbd5e1;border-radius:12px;background:#fff;transition:border-color .15s,box-shadow .2s}
+.conv-barra:focus-within{border-color:var(--brand-2);box-shadow:0 0 0 3px rgba(47,125,225,.16)}
+.conv-txt{flex:1;border:none;outline:none;resize:none;font:inherit;font-size:13px;line-height:1.5;
+  padding:6px 0;background:transparent;color:var(--ink);min-height:38px;max-height:140px}
+.conv-txt::placeholder{color:var(--ink-3)}
+
+/* ── frescor do painel ──────────────────────────────────────────────── */
+.vivo{position:relative;display:inline-block;width:8px;height:8px;border-radius:50%;
+  margin-right:7px;vertical-align:1px}
+.vivo.ok{background:var(--pos)} .vivo.at{background:#d97706}
+.vivo.ok::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--pos);
+  animation:onda 1.9s ease-out infinite}
+
+/* ── movimento ──────────────────────────────────────────────────────── */
+/* entrada escalonada dos cartões quando a guia abre — uma vez, na abertura,
+   nunca a cada atualização (ali viraria espera inventada) */
+.aba.on .cx,.aba.on .kpi{animation:sobe .46s cubic-bezier(.2,.8,.2,1) both}
+.aba.on .grid > :nth-child(2){animation-delay:.05s}
+.aba.on .grid > :nth-child(3){animation-delay:.10s}
+.aba.on .grid > :nth-child(4){animation-delay:.15s}
+.aba.on .cx:nth-of-type(2){animation-delay:.06s}
+.aba.on .cx:nth-of-type(3){animation-delay:.12s}
+.aba.on .cx:nth-of-type(4){animation-delay:.18s}
+.barra-cob i{transform-origin:left;animation:enche .8s cubic-bezier(.2,.8,.2,1) both}
+.pres-item{transition:background .18s,border-color .18s,transform .12s}
+.pres-item:active{transform:scale(.97)}
+.pres-item.on input{animation:marca .28s cubic-bezier(.3,1.6,.5,1)}
+
+@keyframes sobe{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes entra{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes quica{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+@keyframes enche{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes onda{from{transform:scale(1);opacity:.55}to{transform:scale(2.8);opacity:0}}
+@keyframes alerta{0%,100%{box-shadow:0 0 0 0 rgba(180,35,24,0)}50%{box-shadow:0 0 0 4px rgba(180,35,24,.16)}}
+@keyframes marca{0%{transform:scale(.6)}100%{transform:scale(1)}}
+
+/* quem pede menos movimento no sistema operacional não recebe animação */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important}
+}
+
+/* ── guia da noite: data no topo, operação à esquerda, Expedito à direita ── */
+.noite-topo{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;
+  padding:10px 14px;background:#fff;border:1px solid #dfe5ed;border-radius:10px;
+  box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.dia-op{display:flex;align-items:center;gap:6px}
+.dia-op-campo{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:650;
+  text-transform:uppercase;letter-spacing:.5px;color:var(--ink-2)}
+.dia-op-campo input{border:1px solid #cbd5e1;border-radius:8px;padding:5px 9px;font:inherit;
+  font-size:13px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;background:#fff}
+.dia-op-campo input:focus{outline:none;border-color:var(--brand-2);box-shadow:0 0 0 3px rgba(47,125,225,.16)}
+.noite-topo.passado{border-color:#f6d9a8;background:#fffaf2}
+.noite-grade{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+.noite-principal{min-width:0}
+.noite-lateral{position:sticky;top:12px}
+.noite-lateral .cx{display:flex;flex-direction:column;max-height:calc(100vh - 150px)}
+.noite-lateral .cx-b{display:flex;flex-direction:column;min-height:0;flex:1}
+.noite-lateral .conv{flex:1;max-height:none;min-height:240px}
+@media (max-width:1180px){
+  .noite-grade{grid-template-columns:minmax(0,1fr)}
+  .noite-lateral{position:static}
+  .noite-lateral .cx{max-height:none}
+  .noite-lateral .conv{max-height:420px}
+}
+.sugestoes-ia{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.sugestoes-ia button{border:1px solid #c9dbf3;background:var(--brand-soft);color:var(--brand);
+  border-radius:99px;padding:4px 10px;font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;
+  transition:background .15s,border-color .15s}
+.sugestoes-ia button:hover{background:#dbe8fa;border-color:#a9c6ee}
+
+/* ── resposta formatada do Expedito ── */
+.bolha.md{white-space:normal}
+.md p{margin:0 0 8px} .md p:last-child{margin-bottom:0}
+.md h3,.md h4{margin:10px 0 6px;font-size:12.5px;font-weight:700;color:var(--brand);
+  text-transform:uppercase;letter-spacing:.45px}
+.md h3:first-child,.md h4:first-child{margin-top:0}
+.md ul,.md ol{margin:4px 0 8px;padding-left:18px} .md li{margin:3px 0}
+.md strong{font-weight:700;color:var(--ink)}
+.md code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:#f1f5f9;
+  border:1px solid #e2e8f0;border-radius:4px;padding:0 4px}
+.md .ref{display:inline-block;font-weight:700;font-size:11.5px;background:var(--brand-soft);
+  color:var(--brand);border:1px solid #c9dbf3;border-radius:5px;padding:0 5px;margin:0 1px}
+.md blockquote{margin:8px 0;padding:8px 11px;border-radius:8px;background:var(--warn-soft);
+  border:1px solid #f6d9a8;border-left:3px solid #d97706;color:#7a3e06}
+.md .md-tab{margin:8px 0;border:1px solid #e2e8f0;border-radius:8px;overflow:auto}
+.md table{border-collapse:collapse;width:100%;font-size:12px}
+.md th{background:#f6f8fb;text-align:left;font-weight:650;color:#334155;padding:6px 8px;
+  border-bottom:1px solid #e2e8f0;white-space:nowrap}
+.md td{padding:6px 8px;border-bottom:1px solid #eef2f6}
+.md tr:last-child td{border-bottom:none}
+.md hr{border:none;border-top:1px solid #e2e8f0;margin:10px 0}
+
+/* ── veículos em minicards, com rolagem dentro do card ── */
+.veic-rolagem{max-height:420px;overflow:auto;padding:2px 4px 2px 2px;margin:0 -4px 0 -2px}
+.veic-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+/* uma barra só: azul = separado, verde = embarcado por cima (usuário,
+   15/10/2026 — o card fica menor e cabe mais carreta na tela) */
+.vc-uma{position:relative;height:7px;border-radius:4px;background:#eef2f6;overflow:hidden;margin-top:7px}
+.vc-uma i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;transform-origin:left;
+  animation:enche .8s cubic-bezier(.2,.8,.2,1) both}
+.vc-uma i.sep{background:var(--brand-2)} .vc-uma i.emb{background:var(--pos)}
+.vc-num{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-2);margin-top:4px;
+  font-variant-numeric:tabular-nums}
+.vc-num b{color:var(--ink)}
+.veic-legenda{display:flex;gap:12px;font-size:11px;color:var(--ink-2);margin:0 0 8px}
+.veic-legenda span::before{content:"";display:inline-block;width:10px;height:6px;border-radius:3px;
+  margin-right:5px;vertical-align:middle;background:var(--brand-2)}
+.veic-legenda span.emb::before{background:var(--pos)}
+#noite-kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:1180px){ #noite-kpis{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media (max-width:640px){ #noite-kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.vc{border:1px solid #dfe5ed;border-radius:10px;padding:8px 11px;background:#fff;position:relative;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);transition:box-shadow .15s,transform .15s}
+.vc:hover{box-shadow:0 4px 14px rgba(15,23,42,.08);transform:translateY(-1px)}
+.vc::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;
+  background:#cbd5e1}
+.vc.no_cd::before{background:var(--pos)} .vc.a_caminho::before{background:var(--brand-2)}
+.vc.carregado::before{background:#7c5cd6} .vc.sem_rastreio::before{background:#d97706}
+.vc-top{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.vc-placa{font-weight:750;font-size:13.5px;letter-spacing:.3px}
+.vc-inst{font-size:11px;color:var(--ink-2);margin-top:2px}
+.vc-barra{margin-top:8px}
+.vc-barra .rot{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-2);margin-bottom:3px}
+.vc-barra .rot b{color:var(--ink);font-variant-numeric:tabular-nums}
+.vc-barra .tr{height:6px;border-radius:3px;background:#eef2f6;overflow:hidden}
+.vc-barra .tr i{display:block;height:100%;border-radius:3px;transform-origin:left;
+  animation:enche .8s cubic-bezier(.2,.8,.2,1) both}
+.vc-barra .tr i.sep{background:var(--brand-2)} .vc-barra .tr i.emb{background:var(--pos)}
+.vc-pe{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:8px;
+  font-size:10.5px;color:var(--ink-3)}
+.vc-tirar{border:none;background:none;color:var(--ink-3);cursor:pointer;font-size:12px;padding:2px 4px;
+  border-radius:4px;opacity:0;transition:opacity .15s,background .15s,color .15s}
+.vc:hover .vc-tirar{opacity:1}
+.vc-tirar:hover{background:var(--neg-soft);color:var(--neg)}
+.veic-vazio{grid-column:1/-1;color:var(--ink-2);font-size:12.5px;padding:12px 2px}
+
+/* ── lista de abastecimento para impressão ──
+   O analista imprime e entrega ao operador (usuário, 14/10/2026). Na tela a
+   lista não aparece; na impressão, é a ÚNICA coisa que sai. */
+.so-impressao{display:none}
+@media print{
+  @page{size:A4 portrait;margin:9mm}
+  body{background:#fff !important}
+  body > *:not(#impressao){display:none !important}
+  #impressao{display:block !important;color:#000;font:10pt/1.3 "Segoe UI",Arial,sans-serif}
+}
+#impressao h1{font-size:14pt;margin:0 0 2px}
+#impressao .imp-sub{font-size:9pt;color:#333;margin-bottom:8px}
+#impressao h2{font-size:11pt;margin:12px 0 4px;border-bottom:1.5px solid #000;padding-bottom:2px}
+#impressao table{width:100%;border-collapse:collapse;margin-bottom:6px}
+#impressao thead{display:table-header-group}
+#impressao th{font-size:8.5pt;text-align:left;border-bottom:1px solid #000;padding:3px 4px;background:#eee}
+#impressao td{padding:3px 4px;border-bottom:1px solid #ccc;vertical-align:top}
+#impressao td.n,#impressao th.n{text-align:right;white-space:nowrap}
+#impressao tbody{break-inside:avoid;page-break-inside:avoid}
+#impressao tr.imp-item td{border-top:1.5px solid #000;border-bottom:none;font-weight:700;background:#dde8f6;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+#impressao tr.imp-pal td:first-child{width:16px;font-size:12pt;line-height:1}
+#impressao .imp-nota{font-size:8.5pt;color:#333}
+/* nome do produto menor e endereço sem quebra: a linha do pallet cabe numa
+   linha só (usuário, 15/10/2026) */
+#impressao .imp-desc{font-size:8.5pt;white-space:nowrap}
+#impressao .imp-end{white-space:nowrap}
+#impressao .imp-cab{display:flex;justify-content:space-between;align-items:baseline;gap:14px}
+#impressao .imp-cab > span:first-child{white-space:nowrap}
+.nome-prod{font-size:12px;white-space:nowrap}
+.end-pal{white-space:nowrap}
+
+/* instruções tiradas da operação: fica à vista, com o caminho de volta */
+.tiradas{margin-top:12px;padding:9px 12px;border:1px dashed #cbd5e1;border-radius:9px;
+  background:#f8fafc;font-size:12px;color:var(--ink-2)}
+.tiradas b{color:var(--ink)}
+.tiradas .tir-item{display:inline-flex;align-items:center;gap:6px;margin:4px 10px 0 0;
+  padding:2px 4px 2px 9px;border:1px solid #dfe5ed;border-radius:99px;background:#fff}
+.tiradas .tir-item button{border:none;background:var(--brand-soft);color:var(--brand);font:inherit;
+  font-size:11px;font-weight:650;border-radius:99px;padding:2px 9px;cursor:pointer}
+.tiradas .tir-item button:hover{background:#dbe8fa}
+
+/* presença em duas listas e janela da noite */
+.pres-secao{margin-bottom:10px}
+.pres-tit{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.45px;color:var(--ink-2);
+  margin:2px 0 6px;display:flex;gap:8px;align-items:baseline}
+.pres-tit span{font-weight:600;text-transform:none;letter-spacing:0;color:var(--ink-3)}
+/* efetivo recolhido: fica o título com a contagem (usuário, 15/10/2026 — a
+   lista ocupa espaço depois de preenchida) */
+#cx-efetivo.fechado .cx-b,#cx-efetivo.fechado .cx-h .d,
+#cx-efetivo.fechado .dir > :not(#btn-efetivo-ocultar){display:none !important}
+#cx-efetivo.fechado .cx-h{padding-bottom:14px}
+.efetivo-mini{display:none;font-size:12px;font-weight:500;color:var(--ink-2);margin-left:8px}
+#cx-efetivo.fechado .efetivo-mini{display:inline}
+.pres-item.outra{opacity:.5;cursor:not-allowed}
+.pres-item.outra::after{content:attr(data-outra);margin-left:auto;font-size:10px;color:var(--ink-3);
+  white-space:nowrap}
+.pres-janela{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin-top:10px;padding-top:10px;
+  border-top:1px solid var(--line);font-size:12px;color:var(--ink-2)}
+.pres-janela label{display:flex;align-items:center;gap:5px}
+.pres-janela input{border:1px solid #cbd5e1;border-radius:6px;padding:3px 6px;font:inherit;font-size:12px;
+  color:var(--ink);background:#fff}
+
+/* análise da operação */
+.an-bloco{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.an-bloco .an-t{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.45px;color:var(--ink-2)}
+.an-bloco .an-v{font-size:18px;font-weight:750;margin:2px 0 4px;font-variant-numeric:tabular-nums}
+.an-bloco .an-r{font-size:12px;color:var(--ink-2);line-height:1.4}
+/* explicação do veredito: num ícone, e o texto aparece só com o mouse em
+   cima (usuário, 14/10/2026) — o card fica com o número e o veredito */
+.info{position:relative;display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+  margin-left:6px;border-radius:50%;border:1px solid #b6c3d4;color:var(--brand);background:#fff;
+  font:700 11px/1 Georgia,serif;font-style:italic;cursor:help;vertical-align:middle}
+.info:hover,.info:focus{border-color:var(--brand-2);background:var(--brand-soft);outline:none}
+.info .dica{display:none;position:absolute;z-index:40;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  width:280px;padding:9px 11px;border-radius:8px;background:#0f172a;color:#f8fafc;
+  font-family:system-ui,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;font-weight:400;
+  line-height:1.45;font-style:normal;text-align:left;
+  box-shadow:0 8px 24px rgba(15,23,42,.25);pointer-events:none}
+.info .dica::before{content:"";position:absolute;top:-5px;left:50%;margin-left:-5px;width:10px;height:10px;
+  background:#0f172a;transform:rotate(45deg)}
+.info:hover .dica,.info:focus .dica{display:block}
+.prod-pessoas > summary{cursor:pointer;list-style:none;padding-bottom:14px}
+.prod-pessoas > summary::-webkit-details-marker{display:none}
+.prod-pessoas > summary h2::before{content:"▸ ";color:var(--ink-3)}
+.prod-pessoas[open] > summary h2::before{content:"▾ "}
+.an-garg{list-style:none;margin:0;padding:0}
+.an-garg li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.an-garg li:last-child{border-bottom:none}
+.an-garg .imp{flex:0 0 auto;min-width:58px;text-align:center}
+.an-garg .det{font-size:11px;color:var(--ink-3);margin-top:2px}
+.an-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.45px;color:var(--ink-2);
+  margin:14px 0 6px}
+
+/* gestão de nomes do efetivo */
+.pres-item.gerir{cursor:default;justify-content:space-between;border-color:#e2e8f0;background:#fff}
+.pres-item.gerir:hover{background:#f8fafc}
+.pres-acoes{display:flex;gap:2px;flex:0 0 auto}
+.pres-acoes button{border:none;background:none;cursor:pointer;color:var(--ink-3);font-size:12px;
+  padding:2px 5px;border-radius:4px;transition:background .15s,color .15s}
+.pres-acoes button:hover{background:var(--brand-soft);color:var(--brand)}
+.pres-acoes button.oc:hover{background:var(--neg-soft);color:var(--neg)}
+.pres-edit{display:flex;gap:4px;align-items:center;width:100%}
+.pres-edit input{flex:1;min-width:0;border:1px solid var(--brand-2);border-radius:5px;padding:2px 6px;
+  font:inherit;font-size:12px;text-transform:uppercase;box-shadow:0 0 0 3px rgba(47,125,225,.14)}
+.pres-ocultos{margin-top:10px;font-size:12px;color:var(--ink-2)}
+.pres-ocultos .tir-item{display:inline-flex;align-items:center;gap:6px;margin:4px 8px 0 0;
+  padding:2px 4px 2px 9px;border:1px dashed #cbd5e1;border-radius:99px;background:#f8fafc}
+.pres-ocultos button{border:none;background:var(--brand-soft);color:var(--brand);font:inherit;
+  font-size:11px;font-weight:650;border-radius:99px;padding:2px 9px;cursor:pointer}
+/* mapeamento de colunas (20/10/2026) */
+.mc-sub{font-size:12px;color:var(--ink-2);margin:4px 0 10px}
+.mc-grade{display:grid;grid-template-columns:minmax(150px,1fr) minmax(190px,1.5fr) minmax(110px,auto);
+  gap:6px 10px;align-items:center}
+.mc-cab{font-size:11px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.03em}
+.mc-rot{font-size:13px;color:var(--ink)}
+.mc-rot.mc-destaque{font-weight:700;color:var(--neg)}
+.mc-sel{width:100%;font-size:12px}
+.mc-sit{font-size:11px}
+.mc-ok{color:var(--pos)}.mc-aviso{color:var(--warn)}.mc-falta{color:var(--neg);font-weight:700}.mc-vazio{color:var(--ink-3)}
+.mc-erro{background:var(--neg-soft);border:1px solid var(--neg);border-radius:8px;padding:9px 12px;
+  font-size:12px;color:var(--neg);margin-bottom:10px}
+@media (max-width:640px){.mc-grade{grid-template-columns:1fr}.mc-cab{display:none}.mc-sit{margin-bottom:6px}}
+</style>
+</head>
+<body>
+
+<div class="abertura" id="abertura">
+  <div class="abertura-marca">🧭 Expedito</div>
+  <div class="bussola"></div>
+  <div class="abertura-sub" id="abertura-txt">Iniciando o copiloto da expedição…</div>
+  <div class="pista"><i></i></div>
+</div>
+
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Xsense</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/">‹ Painel</a>
+    <span class="topbar-logo">🧭</span>
+    <div>
+      <div class="topbar-title">Expedito</div>
+      <div class="topbar-sub">Copiloto da expedição — abastecimento do picking e acompanhamento da noite</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost sm" onclick="abrirPosicoes()">📍 Posições de picking</button>
+    <button class="btn ghost sm" onclick="abrirParametros()">⚙ Parâmetros</button>
+    <button class="btn ghost sm hidden" id="btn-gerente" onclick="abrirLateral()">📊 Visão do gerente</button>
+  </div>
+
+  <div class="abas">
+    <button class="aba-btn on" id="ab-picking" onclick="abrirAba('picking')">📦 Abastecimento do picking</button>
+    <button class="aba-btn" id="ab-noite" onclick="abrirAba('noite')">🌙 Acompanhamento da noite</button>
+  </div>
+
+  <div class="body">
+  <div class="pg">
+    <!-- ═══ ABASTECIMENTO ═══ -->
+    <section class="aba on" id="aba-picking">
+      <div class="cx mb">
+        <div class="cx-h"><div><h2>Arquivos do dia</h2>
+          <div class="d">O estoque entra agora, não de manhã: a foto do armazém muda ao longo do dia.
+            O follow up vem com a companhia inteira — o recorte sai dos TXTs carregados.</div></div>
+          <div class="dir">
+            <label class="d" style="margin-right:6px">Embarque em</label>
+            <input type="date" id="data-alvo">
+          </div></div>
+        <div class="cx-b">
+          <div class="slots">
+            <div class="slot-arq" id="slot-follow" onclick="document.getElementById('f-follow').click()"
+                 ondragover="arrasta(event,this)" ondragleave="this.classList.remove('sobre')"
+                 ondrop="solta(event,'follow',this)">
+              <b>📋 Follow up de pedidos</b>
+              <span>Planilha do ERP, um arquivo — traz todas as empresas</span>
+              <div class="lista-arq" id="lista-follow"></div>
+            </div>
+            <div class="slot-arq" id="slot-estoque" onclick="document.getElementById('f-estoque').click()"
+                 ondragover="arrasta(event,this)" ondragleave="this.classList.remove('sobre')"
+                 ondrop="solta(event,'estoque',this)">
+              <b>🏭 Estoque — Produto Paletizado</b>
+              <span>Um TXT por empresa; pode enviar vários de uma vez</span>
+              <div class="lista-arq" id="lista-estoque"></div>
+            </div>
+          </div>
+          <input type="file" id="f-follow" accept=".xlsx,.xls" class="hidden" onchange="pegou('follow',this.files)">
+          <input type="file" id="f-estoque" accept=".txt" multiple class="hidden" onchange="pegou('estoque',this.files)">
+          <div class="row" style="margin-top:12px;gap:10px;align-items:center">
+            <button class="btn" id="btn-gerar" onclick="gerarPicking()">🧭 Gerar plano de abastecimento</button>
+            <span id="gerando" class="pensando hidden"><i></i><i></i><i></i> <span id="gerando-txt">montando o plano…</span></span>
+            <div class="spacer"></div>
+            <button class="btn ghost sm" onclick="abrirMapeamento()" title="Indicar em qual coluna de cada relatório está cada informação">🧩 Mapeamento de colunas</button>
+            <span class="nota" id="msg-arq"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="plano-vazio" class="cx">
+        <div class="cx-b" style="text-align:center;padding:36px">
+          <div style="font-size:30px">🧭</div>
+          <h2 style="margin:10px 0 4px">Nenhum plano gerado hoje</h2>
+          <div class="nota">Envie o follow up e os TXTs de estoque para o Expedito dizer quais pallets descer.</div>
+        </div>
+      </div>
+
+      <div id="plano" class="hidden">
+        <div class="banner warn hidden" id="aviso-arquivo" style="margin-bottom:12px"></div>
+        <div class="grid g4 mb" id="kpis"></div>
+
+        <div class="cx mb">
+          <div class="cx-h"><div><h2>O que descer</h2>
+            <div class="d" id="sub-descer"></div></div>
+            <div class="dir row" style="gap:8px">
+              <select id="f-empresa" onchange="trocarEmpresa()"><option value="">Todas as empresas</option></select>
+              <select id="f-local" onchange="renderPlano()"><option value="">Todos os locais</option></select>
+              <select id="f-temp" onchange="renderPlano()">
+                <option value="">Todas as temperaturas</option>
+                <option>RESFRIADO</option><option>CONGELADO</option><option>AMBIENTE</option>
+              </select>
+              <input type="search" id="f-busca" class="fl" placeholder="Produto, pedido, pallet ou cliente"
+                     oninput="renderPlano()" style="max-width:190px">
+              <button class="btn ghost sm" onclick="imprimirLista()"
+                      title="Lista para o operador: item, descrição, demanda e pallets a baixar">🖨 Imprimir lista</button>
+            </div></div>
+          <div class="cx-b"><div class="tw"><table class="tb" id="tb-descer"></table></div></div>
+        </div>
+
+        <div class="grid g2 mb">
+          <div class="cx">
+            <div class="cx-h"><div><h2>Permanece no chão</h2>
+              <div class="d">Pallet que já está em posição de picking e atende à demanda</div></div></div>
+            <div class="cx-b"><div class="tw"><table class="tb" id="tb-chao"></table></div></div>
+          </div>
+          <div class="cx">
+            <div class="cx-h"><div><h2>Falta estoque</h2>
+              <div class="d">Demanda sem pallet elegível na janela do pedido</div></div></div>
+            <div class="cx-b"><div class="tw"><table class="tb" id="tb-faltas"></table></div></div>
+          </div>
+        </div>
+
+        <div class="cx">
+          <div class="cx-h"><div><h2>Como a demanda foi apurada</h2>
+            <div class="d">Cada corte, com o que saiu — nada é descartado em silêncio</div></div></div>
+          <div class="cx-b"><div class="tw"><table class="tb" id="tb-funil"></table></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ NOITE ═══ -->
+    <section class="aba" id="aba-noite">
+      <!-- data da operação: a noite é rotulada pelo dia do EMBARQUE, que é o
+           dia em que ela termina — chegar de manhã e abrir o dia de hoje
+           mostra o carregamento da madrugada -->
+      <div class="noite-topo">
+        <div class="dia-op">
+          <button class="btn ghost sm" onclick="mudarDia(-1)" title="Operação anterior">‹</button>
+          <label class="dia-op-campo">
+            <span>Embarque do dia</span>
+            <input type="date" id="noite-data" onchange="escolherDia(this.value)"
+                   title="A noite é identificada pelo dia do embarque — a madrugada em que ela termina">
+          </label>
+          <button class="btn ghost sm" onclick="mudarDia(1)" title="Operação seguinte">›</button>
+          <button class="btn ghost sm" onclick="escolherDia('')" id="btn-dia-atual">Operação atual</button>
+        </div>
+        <span class="chip" id="chip-operacao"></span>
+        <div class="spacer"></div>
+        <button class="btn ghost sm" onclick="voltarAoPlano()" id="btn-voltar-plano"
+                title="Volta para o plano de abastecimento do picking">← Plano de abastecimento</button>
+      </div>
+
+      <div class="noite-grade">
+        <div class="noite-principal">
+          <div class="cx mb" id="cx-efetivo">
+            <div class="cx-h"><div><h2>Efetivo presente <span class="efetivo-mini" id="efetivo-mini"></span></h2>
+              <div class="d">O painel do WMS registra quem separou, não quem está em turno. A alocação
+                sugerida depende desta marcação.</div></div>
+              <div class="dir row" style="gap:8px">
+                <button class="btn ghost sm" id="btn-efetivo-ocultar" onclick="alternarEfetivo()"
+                        title="Recolhe o card do efetivo depois de preenchido">Ocultar lista</button>
+                <input class="fl" id="presenca-busca" placeholder="Localizar operador"
+                       style="width:170px" oninput="filtrarPresenca()">
+                <button class="btn ghost sm so-edicao-presenca" onclick="marcarTodaPresenca(true)">Marcar todos</button>
+                <button class="btn ghost sm so-edicao-presenca" onclick="marcarTodaPresenca(false)">Limpar</button>
+                <button class="btn ghost sm so-edicao-presenca so-editor" id="btn-gerir-nomes"
+                        onclick="alternarGestaoNomes()" title="Renomear ou ocultar operadores da lista">Editar nomes</button>
+                <button class="btn ok sm" onclick="salvarPresenca()" id="btn-presenca">Salvar presença</button>
+              </div></div>
+            <div class="cx-b">
+              <div id="presenca-resumo" class="pres-resumo hidden"></div>
+              <div id="presenca-lista"></div>
+            </div>
+          </div>
+
+          <div class="cx mb">
+            <div class="cx-h"><div><h2>Painel do WMS</h2>
+              <div class="d">Carregue quantas vezes quiser durante o turno — cada carga vira um retrato
+                guardado, e a sequência deles forma o histórico do turno.</div></div>
+              <div class="dir row" style="gap:8px">
+                <label class="row hidden" id="painel-empresa-wrap" style="gap:6px;font-size:12px"
+                       title="Usada quando o painel exportado não traz a coluna Empresa">
+                  Local do painel
+                  <select class="fl" id="painel-empresa" style="width:auto" onchange="lembrarEmpresa()"></select>
+                </label>
+                <button class="btn ghost sm" onclick="document.getElementById('f-painel').click()">⬆ Carregar painel</button>
+                <input type="file" id="f-painel" accept=".xls,.xlsx" multiple class="hidden"
+                       onchange="carregarPainel(this.files)">
+                <button class="btn" onclick="atualizarNoite()">🔄 Atualizar retrato</button>
+              </div></div>
+            <div class="cx-b">
+              <span id="noite-carregando" class="pensando hidden"><i></i><i></i><i></i> lendo a operação…</span>
+              <div id="noite-msg" class="nota"></div>
+            </div>
+          </div>
+
+          <div id="noite" class="hidden">
+            <div class="grid g4 mb" id="noite-kpis"></div>
+            <div class="cx mb" id="cx-analise">
+              <div class="cx-h"><div><h2>Análise da operação</h2>
+                <div class="d" id="analise-sub">Término, janela de separação e de embarque contra o corte, e as medições da noite.</div></div></div>
+              <div class="cx-b" id="analise-corpo"></div>
+            </div>
+            <div class="cx mb">
+              <div class="cx-h"><div><h2>Veículos do turno</h2>
+                <div class="d" id="veic-sub">Posição pelo rastreio, atualizado a cada 20 minutos —
+                  o painel do WMS não distingue o veículo que já chegou</div></div>
+                <div class="dir row" style="gap:8px">
+                  <input class="fl" id="veic-busca" placeholder="Placa ou instrução" style="width:160px"
+                         oninput="renderVeiculos(_noite && _noite.veiculos)">
+                  <select class="fl" id="veic-ordem" style="width:auto"
+                          onchange="lembrarOrdemVeiculos(); renderVeiculos(_noite && _noite.veiculos)">
+                    <option value="separacao">Em separação primeiro</option>
+                    <option value="distancia">Distância do CD</option>
+                  </select>
+                  <span class="chip" id="veic-chip"></span></div></div>
+              <div class="cx-b">
+                <div class="grid g3 mb" id="veic-kpis"></div>
+                <div class="veic-legenda"><span>separado</span><span class="emb">embarcado (sobre o separado)</span></div>
+                <div class="veic-rolagem"><div class="veic-cards" id="veic-cards"></div></div>
+                <div class="tiradas hidden" id="veic-tiradas"></div>
+              </div>
+            </div>
+
+            <div class="cx mb">
+              <div class="cx-h"><div><h2>Projeção da noite</h2>
+                <div class="d" id="noite-sub"></div></div></div>
+              <div class="cx-b"><div id="noite-projecao"></div></div>
+            </div>
+            <div class="grid g2 mb">
+              <div class="cx">
+                <div class="cx-h"><div><h2>Próxima instrução sugerida</h2>
+                  <div class="d">Instrução em fila, com o critério da indicação</div></div></div>
+                <div class="cx-b"><div class="tw"><table class="tb" id="tb-sugestao"></table></div></div>
+              </div>
+              <div class="cx">
+                <div class="cx-h"><div><h2>Desempenho da equipe</h2>
+                  <div class="d">Ritmo medido por operador nos turnos anteriores</div></div></div>
+                <div class="cx-b"><div class="tw"><table class="tb" id="tb-equipe"></table></div></div>
+              </div>
+            </div>
+            <!-- produtividade por pessoa: consulta, não decisão da hora — fica no
+                 fim e recolhida (usuário, 15/10/2026) -->
+            <details class="cx mb prod-pessoas" id="cx-prod-pessoas">
+              <summary class="cx-h"><div><h2>Produtividade da noite por pessoa</h2>
+                <div class="d">Separação por separador e embarque por conferente</div></div></summary>
+              <div class="cx-b" id="prod-pessoas-corpo"></div>
+            </details>
+          </div>
+        </div>
+
+        <!-- o Expedito fica AO LADO da operação, à vista enquanto se lê o retrato -->
+        <aside class="noite-lateral">
+          <div class="cx" id="cx-conversa">
+            <div class="cx-h"><div><h2>🧭 Expedito</h2>
+              <div class="d">Copiloto do turno. A sessão é renovada no horário de abertura da operação.</div></div>
+              <div class="spacer"></div>
+              <button class="btn ghost sm" onclick="limparConversa('analista')" title="Recomeçar a conversa do dia">🗑</button></div>
+            <div class="cx-b">
+              <div class="sugestoes-ia" id="sugestoes-ia">
+                <button onclick="perguntarPronto('Qual a próxima instrução e para quem?')">Próxima instrução</button>
+                <button onclick="perguntarPronto('O ritmo atual fecha o turno no horário?')">O ritmo fecha?</button>
+                <button onclick="perguntarPronto('Quais veículos estão no CD e o que falta carregar neles?')">Veículos no CD</button>
+              </div>
+              <div class="conv" id="conv-analista"></div>
+              <div class="conv-barra">
+                <textarea id="conv-pergunta" class="conv-txt" rows="2"
+                          placeholder="Pergunte sobre a operação…"
+                          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarPergunta('analista')}"></textarea>
+                <button class="btn ok" id="conv-enviar" onclick="enviarPergunta('analista')">Enviar</button>
+              </div>
+              <div class="nota" id="conv-aviso"></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+  </div>
+</div>
+
+<!-- guia lateral do gerente — restrita a Gerente e Desenvolvedor -->
+<div class="lateral" id="lateral">
+  <div class="lateral-h"><b>📊 Visão do gerente</b><div class="spacer"></div>
+    <button class="btn ghost sm" onclick="fecharLateral()">✕</button></div>
+  <div class="lateral-b" id="lateral-b">
+    <div id="lateral-planos"></div>
+    <div id="lateral-conversa" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <b style="font-size:13px">Conversar sobre o dia</b>
+        <div class="spacer"></div>
+        <button class="btn ghost sm" onclick="pedirResumo()">Resumo</button>
+        <button class="btn ghost sm" onclick="limparConversa('gerente')">🗑</button>
+      </div>
+      <div class="conv" id="conv-gerente" style="max-height:300px"></div>
+      <div class="conv-barra">
+        <textarea id="conv-pergunta-gerente" class="conv-txt" rows="2"
+                  placeholder="O que explica o ritmo desta noite?"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviarPergunta('gerente')}"></textarea>
+        <button class="btn ok" onclick="enviarPergunta('gerente')">Perguntar</button>
+      </div>
+      <div class="nota" id="conv-aviso-gerente"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-map">
+  <div class="modal" style="width:min(780px,96vw)">
+    <h2>🧩 Mapeamento de colunas<span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharMapeamento()">✕</button></h2>
+    <div class="mbody">
+      <div class="nota" style="margin-bottom:10px">Os relatórios mudam de layout entre empresas, versões e computadores.
+        O sistema acha cada informação pelo nome da coluna; quando não acha, ou acha a coluna errada, indique aqui a coluna certa.
+        A escolha vale para os próximos arquivos do relatório.</div>
+      <div id="mc-erro" class="mc-erro hidden"></div>
+      <select id="mc-tipo" style="margin-bottom:10px;width:100%" onchange="renderMapeamento()"></select>
+      <div id="mc-corpo"></div>
+      <div id="mc-leitura" class="mc-sub hidden">Seu perfil consulta o mapeamento; a alteração é feita pelo coordenador, analista ou gerente.</div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="fecharMapeamento()">Fechar</button>
+      <button class="btn" id="mc-salvar" onclick="salvarMapeamento()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="m-param">
+  <div class="modal" style="width:min(680px,96vw)">
+    <h2>⚙ Parâmetros do Expedito<span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('m-param')">✕</button></h2>
+    <div class="mbody" id="param-corpo"></div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="fecharModal('m-param')">Fechar</button>
+      <button class="btn" id="btn-param-salvar" onclick="salvarParametros()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="impressao" class="so-impressao"></div>
+
+<div class="modal-bg" id="m-pos">
+  <div class="modal" style="width:min(900px,96vw)">
+    <h2>📍 Posições de picking<span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('m-pos')">✕</button></h2>
+    <div class="mbody" id="pos-corpo"></div>
+    <div class="mfoot">
+      <a class="btn ghost" href="/api/expedito/posicoes/modelo">⬇ Planilha modelo</a>
+      <button class="btn ghost" onclick="document.getElementById('f-pos').click()">⬆ Enviar planilha</button>
+      <input type="file" id="f-pos" accept=".xlsx,.xls" class="hidden" onchange="subirPosicoes(this.files[0])">
+      <div class="spacer"></div>
+      <button class="btn ghost" onclick="fecharModal('m-pos')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/static/js/mapeamento_colunas.js"></script>
+<script>
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  // módulo com telas (SLAs, 27/10/2026): o nome abre a lista das telas
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+
+function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebar-overlay').classList.add('show');}
+
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebar-overlay').classList.remove('show');}
+
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+
+function montarConfigSidebar(perfil, isMaster){
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+  if(admin){
+    /* nada específico aqui */
+  }
+}
+
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Xsense (Câmaras)', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+let _csrf = '', _plano = null, _admin = false, _feitos = new Set();
+
+const esc = v => String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = (n,c=1) => n==null||isNaN(n) ? '—' : Number(n).toLocaleString('pt-BR',{minimumFractionDigits:c,maximumFractionDigits:c});
+const fmt0 = n => n==null||isNaN(n) ? '—' : Math.round(n).toLocaleString('pt-BR');
+const _dia = s => s ? s.split('-').reverse().join('/') : '—';
+
+function toast(msg, tipo, ms){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show ' + (tipo||'');
+  clearTimeout(window._tt); window._tt = setTimeout(()=>t.className='', ms||3200);
+}
+function abrirModal(id){ document.getElementById(id).classList.add('show'); }
+function fecharModal(id){ document.getElementById(id).classList.remove('show'); }
+function abrirLateral(){
+  document.getElementById('lateral').classList.add('show');
+  carregarLateral();
+  // carga preguiçosa: reabrir a gaveta não recomeça a conversa
+  if(!_conv.gerente) carregarConversa('gerente');
+}
+function fecharLateral(){ document.getElementById('lateral').classList.remove('show'); }
+
+function abrirAba(id){
+  if(id === 'noite' && !_conv.analista) carregarConversa('analista');
+  if(id === 'noite' && !_noite){ carregarPresenca(); atualizarNoite(); }
+  document.querySelectorAll('.aba-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('ab-'+id).classList.add('on');
+  document.querySelectorAll('.aba').forEach(s=>s.classList.remove('on'));
+  document.getElementById('aba-'+id).classList.add('on');
+}
+
+async function _post(url, corpo, bruto){
+  const h = {'X-CSRF-Token': _csrf};
+  if(!bruto) h['Content-Type'] = 'application/json';
+  return fetch(url, {method:'POST', headers:h, body: bruto ? corpo : JSON.stringify(corpo)});
+}
+
+/* ── mapeamento de colunas (20/10/2026) ─────────────────────
+   Abre pelo botão ao lado de "Gerar plano", ou sozinho quando a geração volta
+   com "coluna não encontrada": o relatório e os campos que faltaram vêm
+   marcados e, depois de salvar, o plano é gerado de novo. */
+let _mc = {tipos: [], falha: null, depois: null, pode: false};
+async function abrirMapeamento(falha, depois){
+  _mc.falha = falha || null; _mc.depois = depois || null;
+  const err = document.getElementById('mc-erro');
+  err.classList.toggle('hidden', !falha);
+  err.textContent = falha ? falha.error : '';
+  document.getElementById('mc-corpo').innerHTML = '<div class="mc-sub">Carregando…</div>';
+  abrirModal('m-map');
+  try{
+    const d = await MapeamentoColunas.listar('expedito');
+    _mc.tipos = d.tipos || []; _mc.pode = !!d.pode_editar;
+  }catch(e){
+    document.getElementById('mc-corpo').innerHTML = '<div class="mc-erro">Não foi possível carregar o mapeamento: ' + esc(e.message) + '</div>';
+    return;
+  }
+  const sel = document.getElementById('mc-tipo');
+  sel.innerHTML = _mc.tipos.map(t => `<option value="${esc(t.tipo)}">${esc(t.rotulo)}</option>`).join('');
+  if(falha && falha.mapeamento) sel.value = falha.mapeamento.tipo;
+  document.getElementById('mc-salvar').classList.toggle('hidden', !_mc.pode);
+  document.getElementById('mc-leitura').classList.toggle('hidden', _mc.pode);
+  document.getElementById('mc-salvar').textContent = (_mc.depois && _mc.pode) ? 'Salvar e gerar de novo' : 'Salvar';
+  renderMapeamento();
+}
+function renderMapeamento(){
+  const tipo = document.getElementById('mc-tipo').value;
+  const desc = _mc.tipos.find(t => t.tipo === tipo);
+  if(!desc){ document.getElementById('mc-corpo').innerHTML = ''; return; }
+  const f = _mc.falha && _mc.falha.mapeamento && _mc.falha.mapeamento.tipo === tipo ? _mc.falha.mapeamento : {};
+  // a permissão é por relatório (o da OpenTech é do gerente)
+  const pode = desc.pode_editar !== undefined ? !!desc.pode_editar : _mc.pode;
+  document.getElementById('mc-salvar').classList.toggle('hidden', !pode);
+  document.getElementById('mc-leitura').classList.toggle('hidden', pode);
+  document.getElementById('mc-corpo').innerHTML =
+    MapeamentoColunas.montar(desc, {faltando: f.faltando, colunas: f.colunas, pode_editar: pode});
+}
+function fecharMapeamento(){ fecharModal('m-map'); _mc.depois = null; _mc.falha = null; }
+async function salvarMapeamento(){
+  const btn = document.getElementById('mc-salvar');
+  btn.disabled = true;
+  try{
+    const n = await MapeamentoColunas.salvar(document.getElementById('mc-corpo'), _csrf);
+    const depois = _mc.depois;
+    fecharMapeamento();
+    toast(n ? 'Mapeamento salvo' : 'Nenhuma alteração no mapeamento', 'ok');
+    if(depois) depois();
+  }catch(e){
+    toast('Não foi possível salvar o mapeamento: ' + e.message, 'err', 7000);
+  }finally{ btn.disabled = false; }
+}
+
+/* ── arquivos ───────────────────────────────────────────── */
+const _arqs = {follow: null, estoque: []};
+
+function arrasta(e, el){ e.preventDefault(); el.classList.add('sobre'); }
+function solta(e, qual, el){
+  e.preventDefault(); el.classList.remove('sobre');
+  pegou(qual, e.dataTransfer.files);
+}
+function pegou(qual, files){
+  if(!files || !files.length) return;
+  if(qual === 'follow') _arqs.follow = files[0];
+  else _arqs.estoque = [..._arqs.estoque, ...files];
+  renderArquivos();
+}
+function tirarEstoque(i){ _arqs.estoque.splice(i,1); renderArquivos(); }
+function renderArquivos(){
+  const f = document.getElementById('lista-follow');
+  f.innerHTML = _arqs.follow ? `<div>✅ ${esc(_arqs.follow.name)}</div>` : '';
+  document.getElementById('slot-follow').classList.toggle('cheio', !!_arqs.follow);
+  const e = document.getElementById('lista-estoque');
+  e.innerHTML = _arqs.estoque.map((a,i)=>
+    `<div>✅ ${esc(a.name)} <button class="btn ghost sm" onclick="event.stopPropagation();tirarEstoque(${i})">✕</button></div>`).join('');
+  document.getElementById('slot-estoque').classList.toggle('cheio', _arqs.estoque.length > 0);
+}
+
+// limite do envio no servidor (nginx client_max_body_size 50M), com folga
+const _LIMITE_ENVIO_MB = 48;
+
+/* O TXT de estoque vai COMPACTADO (gzip, no próprio navegador): é texto e
+   cai para cerca de 1/10 — follow up + TXT do CDA + TXT do CDB passavam dos
+   48 MB do envio (22/10/2026). O servidor descompacta antes de ler. O follow
+   up (.xlsx) já é compactado e vai como está. Navegador sem
+   CompressionStream manda o arquivo original. */
+async function _compactar(arq){
+  if(!window.CompressionStream || !/\.(txt|csv|tsv)$/i.test(arq.name)) return arq;
+  try{
+    const blob = await new Response(arq.stream().pipeThrough(new CompressionStream('gzip'))).blob();
+    return new File([blob], arq.name + '.gz', {type: 'application/gzip'});
+  }catch(e){ return arq; }
+}
+
+async function gerarPicking(){
+  if(!_arqs.follow){ toast('Envie o follow up de pedidos.', 'err'); return; }
+  if(!_arqs.estoque.length){ toast('Envie ao menos um TXT de estoque.', 'err'); return; }
+  const btn = document.getElementById('btn-gerar');
+  const txt = document.getElementById('gerando-txt');
+  btn.disabled = true;
+  txt.textContent = 'compactando os arquivos…';
+  document.getElementById('gerando').classList.remove('hidden');
+  const estoque = await Promise.all(_arqs.estoque.map(_compactar));
+  const mb = (_arqs.follow.size + estoque.reduce((s, a) => s + a.size, 0)) / 1048576;
+  if(mb > _LIMITE_ENVIO_MB){
+    btn.disabled = false;
+    document.getElementById('gerando').classList.add('hidden');
+    toast(`Os arquivos somam ${mb.toFixed(1).replace('.', ',')} MB mesmo compactados e o envio aceita até ${_LIMITE_ENVIO_MB} MB. `
+          + 'Gere o TXT filtrando o local de estoque ou envie uma empresa por vez.', 'err', 9000);
+    return;
+  }
+  txt.textContent = 'montando o plano…';
+  const fd = new FormData();
+  fd.append('follow_up', _arqs.follow);
+  estoque.forEach(a=>fd.append('estoque', a, a.name));
+  fd.append('data', document.getElementById('data-alvo').value || '');
+  // lerJson diz o motivo de cada falha (arquivo grande demais, tempo
+  // esgotado, sessão expirada) — antes toda falha era "Não foi possível gerar"
+  const r = await lerJson(_post('/api/expedito/picking', fd, true));
+  btn.disabled = false;
+  document.getElementById('gerando').classList.add('hidden');
+  if(r && r.mapeamento){ abrirMapeamento(r, gerarPicking); return; }
+  if(!r || r.error){
+    toast((r && r.error) || ('Não foi possível gerar o plano' + (_erroNoite ? ` (${_erroNoite})` : '') + '.'), 'err', 8000);
+    return;
+  }
+  _plano = r; _feitos = new Set();
+  document.getElementById('plano-vazio').classList.add('hidden');
+  document.getElementById('plano').classList.remove('hidden');
+  montarFiltroLocal();
+  renderPlano();
+  toast('Plano gerado', 'ok');
+}
+
+/* Empresa (CDA, CDB) e local de estoque ("CDA CB - CLIENTE X") são filtros
+   diferentes. Escolhida a empresa, a tela inteira — KPIs, demanda, mistos,
+   chão e faltas — mostra apenas ela (usuário, 14/10/2026), e a lista de
+   locais passa a ter os locais dela. */
+function _linhasDoPlano(){
+  return (_plano.descer||[]).concat(_plano.permanecer||[], _plano.itens||[], _plano.faltas||[]);
+}
+
+function montarFiltroLocal(){
+  const emps = [...new Set(_linhasDoPlano().map(x=>x.empresa).filter(Boolean))].sort();
+  const selE = document.getElementById('f-empresa');
+  const atual = selE.value;
+  selE.innerHTML = '<option value="">Todas as empresas</option>' +
+    emps.map(e=>`<option>${esc(e)}</option>`).join('');
+  if(emps.includes(atual)) selE.value = atual;
+  selE.classList.toggle('hidden', emps.length < 2);
+  montarLocais();
+}
+
+function montarLocais(){
+  const emp = document.getElementById('f-empresa').value;
+  const sel = document.getElementById('f-local');
+  const atual = sel.value;
+  const locais = [...new Set(_linhasDoPlano().filter(x=>!emp || x.empresa === emp)
+    .map(x=>x.local).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todos os locais</option>' +
+    locais.map(l=>`<option>${esc(l)}</option>`).join('');
+  if(locais.includes(atual)) sel.value = atual;
+}
+
+function trocarEmpresa(){
+  montarLocais();
+  renderPlano();
+}
+
+/* Códigos cuja demanda bate com a busca — inclusive pelo número do PEDIDO e
+   pelo cliente, que é o que o analista tem em mãos ao conferir o follow
+   (usuário, 14/10/2026: os pedidos "não apareciam" porque a busca não via
+   pedido). A linha do pallet entra quando o código dela bateu. */
+function _codigosDaBusca(b){
+  if(!b) return null;
+  return new Set((_plano.itens||[]).filter(it=>
+    [it.produto, it.nome, ...(it.pedidos||[]), ...(it.clientes||[])].join(' ').toUpperCase().includes(b))
+    .map(it=>String(it.produto)));
+}
+
+function _filtrar(lista){
+  const emp = document.getElementById('f-empresa').value;
+  const loc = document.getElementById('f-local').value;
+  const temp = document.getElementById('f-temp').value;
+  const b = (document.getElementById('f-busca').value||'').trim().toUpperCase();
+  const cods = _codigosDaBusca(b);
+  return (lista||[]).filter(x=>{
+    if(emp && (x.empresa||'') !== emp) return false;
+    if(loc && x.local !== loc) return false;
+    if(temp && x.temperatura !== temp) return false;
+    if(b){
+      const proprio = [x.produto, x.nome, x.palete, x.cliente, ...(x.pedidos||[]), ...(x.clientes||[])]
+        .join(' ').toUpperCase().includes(b);
+      const doCodigo = cods.has(String(x.produto))
+        || (x.tipo === 'misto' && (x.itens||[]).some(c=>cods.has(String(c.codigo))));
+      if(!proprio && !doCodigo) return false;
+    }
+    return true;
+  });
+}
+
+/* A descida aparece POR DEMANDA, não como lista de movimentações.
+
+   Antes o mesmo código saía em várias linhas soltas e o operador não
+   conseguia dizer quanto da demanda daquele produto estava coberto
+   (usuário, 08/10/2026, olhando o 258). Agora cada código é um bloco:
+   a demanda apurada, o que já está no chão (que abate), o que desce, o que
+   falta e a cobertura — e os pallets que atendem ficam por baixo, do maior
+   aproveitamento para o menor.
+
+   É o que separa as duas decisões da noite: a maior demanda compensa descer
+   em pallet inteiro, e a menor vai para o misto, em vez de baixar um pallet
+   inteiro para pegar uma caixa. */
+let _abertos = new Set();
+
+function alternarItem(chave){
+  if(_abertos.has(chave)) _abertos.delete(chave); else _abertos.add(chave);
+  renderDescer(_filtrar(_plano.descer));
+}
+
+function barraCobertura(pct){
+  const p = Math.max(0, Math.min(100, pct||0));
+  const cor = p >= 99.5 ? '#15803d' : (p >= 70 ? '#b45309' : '#b91c1c');
+  return `<span class="barra-cob" title="${fmt(p,0)}% da demanda coberta"><i style="width:${p}%;background:${cor}"></i></span>`;
+}
+
+function renderDescer(d){
+  const el = document.getElementById('tb-descer');
+  // Agrupa por CÓDIGO, somando os grupos de demanda daquele produto. O
+  // cálculo apura a demanda por (local, temperatura, produto), mas o que o
+  // operador pergunta é "quanto do 258 está sendo pedido" — então o bloco é
+  // o código, e os locais aparecem por dentro (usuário, 08/10/2026).
+  //
+  // O MISTO não pertence a um código: ele carrega vários, e o campo `produto`
+  // dele é um texto ("258 / 409 / 3 …"). Vai para bloco próprio, e o peso de
+  // cada componente é somado no "a descer" do código certo — senão o bloco do
+  // produto mostraria menos do que realmente desce.
+  const movsPorCod = new Map();
+  const mistos = [];
+  const kgMistoPorCod = new Map();
+  d.forEach((x,i)=>{
+    if(x.tipo === 'misto'){
+      mistos.push(Object.assign({}, x, {_i: i}));
+      (x.componentes||[]).forEach(cp=>{
+        const c = String(cp.codigo);
+        kgMistoPorCod.set(c, (kgMistoPorCod.get(c)||0) + (cp.peso_kg||0));
+      });
+      return;
+    }
+    const c = String(x.produto);
+    if(!movsPorCod.has(c)) movsPorCod.set(c, []);
+    movsPorCod.get(c).push(Object.assign({}, x, {_i: i}));
+  });
+  const porCod = new Map();
+  const misto_dem = new Set();
+  _filtrar(_plano.itens).forEach(it=>{
+    if(it.misto_por_demanda) misto_dem.add(String(it.produto));
+    const c = String(it.produto);
+    // Todo código da demanda entra, inclusive o que o chão já cobre: o
+    // analista confere o follow item a item, e o código coberto sumia da lista
+    // (usuário, 14/10/2026 — o mocotó de 4,6 t "não aparecia" porque 5,0 t já
+    // estavam no chão)
+    const g = porCod.get(c) || {produto: c, nome: it.nome, kg_demanda: 0,
+      caixas_demanda: 0, kg_no_chao: 0, kg_falta: 0, locais: [], candidatos: []};
+    g.kg_demanda += it.kg_demanda || 0;
+    g.caixas_demanda += it.caixas_demanda || 0;
+    g.kg_no_chao += it.kg_no_chao || 0;
+    g.kg_falta += it.kg_falta || 0;
+    if(it.local && !g.locais.includes(it.local)) g.locais.push(it.local);
+    g.candidatos = g.candidatos.concat(it.candidatos || []);
+    porCod.set(c, g);
+  });
+  const itens = [...porCod.values()];
+  itens.forEach(g=>{
+    // cobertura recalculada sobre a soma, não a média das partes
+    g.cobertura_pct = g.kg_demanda > 0
+      ? Math.max(0, (g.kg_demanda - g.kg_falta) / g.kg_demanda * 100) : 0;
+  });
+
+  const rs = _plano.resumo || {};
+  const comDescida = itens.filter(g=>movsPorCod.has(g.produto) || kgMistoPorCod.has(g.produto)).length;
+  const cobertos = itens.filter(g=>!movsPorCod.has(g.produto) && !kgMistoPorCod.has(g.produto) && !g.kg_falta).length;
+  document.getElementById('sub-descer').textContent = (itens.length || mistos.length)
+    ? `${itens.length} código(s) na demanda: ${comDescida} com descida, ${cobertos} coberto(s) pelo chão · ${d.length} movimentação(ões)`
+      + (mistos.length ? `, ${mistos.length} em pallet misto` : '')
+      + (rs.limite_misto_kg ? `. Demanda até ${fmt0(rs.limite_misto_kg)} kg vai para o misto` : '')
+      + (rs.pallets_em_posicao_misto ? `. ${fmt0(rs.pallets_em_posicao_misto)} pallet(s) em box de misto desconsiderado(s)` : '')
+      + '. Clique no código para ver os pallets que atendem aquela demanda.'
+    : 'Nada a descer com os filtros atuais.';
+
+  if(!itens.length && !mistos.length){
+    el.innerHTML = '<tbody><tr><td class="fraco">Nada a descer com os filtros atuais.</td></tr></tbody>';
+    return;
+  }
+  // maior demanda primeiro: é a que compensa descer em pallet inteiro
+  itens.sort((a,b)=> (b.kg_demanda||0) - (a.kg_demanda||0));
+
+  el.innerHTML = `<thead><tr><th style="width:26px"></th><th>Código</th><th>Produto</th><th class="n">Demanda</th><th class="n">No chão</th><th class="n">A descer</th><th class="n">Falta</th><th style="width:90px">Cobertura</th><th class="n">Mov.</th></tr></thead>`
+    + itens.map(it=>{
+      const k = it.produto;
+      const movs = movsPorCod.get(k) || [];
+      const aberto = _abertos.has(k);
+      const kgMisto = kgMistoPorCod.get(k) || 0;
+      const kgDescer = movs.reduce((a,x)=>a+(x.kg||0), 0) + kgMisto;
+      const cxDescer = movs.reduce((a,x)=>a+(x.caixas||0), 0);
+      const cabeca = `<tbody><tr class="linha-desce" onclick="alternarItem('${esc(k)}')">
+        <td>${aberto?'▾':'▸'}</td>
+        <td><b>${esc(it.produto)}</b></td>
+        <td><span class="nome-prod">${esc(it.nome||'')}</span><div class="fraco" style="font-size:11px">${esc(it.locais.join(' · '))}</div></td>
+        <td class="n"><b>${fmt(it.kg_demanda,1)} kg</b><div class="fraco" style="font-size:11px">${fmt0(it.caixas_demanda)} cx pedidas</div></td>
+        <td class="n">${it.kg_no_chao ? fmt(it.kg_no_chao,1)+' kg' : '—'}</td>
+        <td class="n">${!movs.length && !kgMisto
+          ? (it.kg_falta ? '—' : '<span class="chip ok">coberto pelo chão</span>')
+          : `${fmt(kgDescer,1)} kg<div class="fraco" style="font-size:11px">${misto_dem.has(k) && !movs.length
+          ? 'no pallet misto' : fmt0(cxDescer)+' cx'+(kgMisto?' + '+fmt(kgMisto,1)+' kg em misto':'')}</div>`}</td>
+        <td class="n ${it.kg_falta?'neg':''}">${it.kg_falta ? fmt(it.kg_falta,1)+' kg' : '—'}</td>
+        <td>${barraCobertura(it.cobertura_pct)}</td>
+        <td class="n">${fmt0(movs.length)}</td></tr>`;
+      if(!aberto) return cabeca + '</tbody>';
+      const linhas = movs.map(x=>{
+        const id = (x.palete||'misto')+x._i;
+        const feito = _feitos.has(id);
+        return `<tr class="linha-desce sub ${feito?'feito':''}" onclick="marcarFeito('${esc(id)}')">
+          <td>${feito?'✅':'⬜'}</td>
+          <td colspan="2"><span class="chip ${x.tipo==='misto'?'at':''}">${x.tipo==='misto'?'misto':'inteiro'}</span>
+            <b>${esc(x.palete||'—')}</b>
+            <span class="fraco end-pal">${esc(x.endereco || [x.camara,x.rua,x.box].filter(Boolean).join('-') || 'sem endereço')}</span></td>
+          <td class="n">${fmt(x.kg,1)} kg</td>
+          <td class="n fraco">${x.aproveitamento==null?'—':fmt(x.aproveitamento,0)+'%'}</td>
+          <td class="n">${fmt0(x.caixas)} cx</td>
+          <td class="n fraco">${_dia(x.producao)}</td>
+          <td class="fraco" colspan="2" style="font-size:11px">${esc(x.motivo||'')}</td></tr>`;
+      }).join('');
+      // código sem descida: mostra os pallets do chão que cobrem a demanda
+      const chao = !movs.length ? _filtrar(_plano.permanecer).filter(x=>String(x.produto) === k) : [];
+      const linhasChao = chao.map(x=>`<tr class="linha-desce sub"><td></td>
+          <td colspan="2"><span class="chip ok">no chão</span> <b>${esc(x.palete||'—')}</b>
+            <span class="fraco end-pal">${esc(x.endereco||'—')}</span></td>
+          <td class="n">${fmt(x.kg,1)} kg</td><td></td><td class="n">${fmt0(x.caixas)} cx</td><td></td>
+          <td class="fraco" colspan="2" style="font-size:11px">permanece no chão e atende à demanda</td></tr>`).join('');
+      const naoEleitos = (it.candidatos||[]).filter(c=>!c.sugerido);
+      const mostra = naoEleitos.slice(0, 8);
+      const extra = mostra.length ? `<tr class="sub"><td></td><td colspan="8" class="fraco" style="font-size:11px">Também atendem, não eleitos: ${mostra.map(c=>`${esc(c.palete)} (${fmt0(c.caixas)} cx · ${fmt(c.aproveitamento,0)}%)`).join(' · ')}${naoEleitos.length > 8 ? ' e mais ' + fmt0(naoEleitos.length - 8) : ''}</td></tr>` : '';
+      return cabeca + linhas + linhasChao + extra + '</tbody>';
+    }).join('')
+    + (mistos.length ? blocoMistos(mistos) : '');
+}
+
+/* Pallets mistos: não pertencem a um código, então ficam em bloco próprio.
+   São a saída para a MENOR demanda — juntar caixa de pouca saída num pallet
+   em vez de baixar um pallet inteiro para pegar uma caixa (usuário,
+   08/10/2026). */
+/* Produção da caixa do misto e a janela que o pedido aceita: o misto pega a
+   caixa mais velha que ainda cabe na janela (usuário, 14/10/2026). */
+function _idadeMisto(c){
+  const jp = c.janela_pedido;
+  return (c.producao ? `produção ${_dia(c.producao).slice(0,5)}` : '')
+    + (c.idade_no_embarque != null ? ` (${c.idade_no_embarque} dias no embarque)` : '')
+    + (jp ? ` · pedido aceita ${fmt0(jp.min_dias||0)} a ${jp.max_dias == null ? 'sem limite' : fmt0(jp.max_dias)} dias` : '');
+}
+
+function blocoMistos(mistos){
+  const kg = mistos.reduce((a,x)=>a+(x.kg||0), 0);
+  const cx = mistos.reduce((a,x)=>a+(x.caixas||0), 0);
+  const aberto = _abertos.has('__mistos__');
+  const cabeca = `<tbody><tr class="linha-desce" onclick="alternarItem('__mistos__')">
+    <td>${aberto?'▾':'▸'}</td>
+    <td><b>Mistos</b></td>
+    <td>${fmt0(mistos.length)} pallet(es) montado(s) com as demandas pequenas
+      <div class="fraco" style="font-size:11px">agrupa itens de pouco peso em vez de baixar um pallet inteiro para cada um</div></td>
+    <td class="n">—</td><td class="n">—</td>
+    <td class="n">${fmt(kg,1)} kg<div class="fraco" style="font-size:11px">${fmt0(cx)} cx</div></td>
+    <td class="n">—</td><td></td><td class="n">${fmt0(mistos.length)}</td></tr>`;
+  if(!aberto) return cabeca + '</tbody>';
+  const linhas = mistos.map(m=>{
+    const id = 'misto'+m._i;
+    const feito = _feitos.has(id);
+    const comp = (m.itens||[]).length
+      ? m.itens.map(c=>`<b>${esc(c.codigo)}</b> ${esc(c.nome||'')} · ${fmt0(c.caixas)} cx · ${fmt(c.kg,1)} kg`
+          + (c.origens && c.origens.length ? ` · de ${esc(c.origens.join(', '))}` : '')
+          + (_idadeMisto(c) ? ` · ${esc(_idadeMisto(c))}` : '')).join('<br>')
+      : (m.componentes||[]).map(c=>
+          `${esc(c.codigo)} (${fmt(c.peso_kg,1)} kg${c.origem?' · '+esc(c.origem):''})`).join(' · ');
+    return `<tr class="linha-desce sub ${feito?'feito':''}" onclick="marcarFeito('${esc(id)}')">
+      <td>${feito?'✅':'⬜'}</td>
+      <td colspan="2"><span class="chip at">misto</span>
+        <span class="fraco">${esc(m.local||'')} · ${esc(m.temperatura||'')}</span></td>
+      <td class="n">${fmt(m.kg,1)} kg</td>
+      <td class="n fraco">—</td>
+      <td class="n">${fmt0(m.caixas)} cx</td>
+      <td class="n fraco">${_dia(m.producao)}</td>
+      <td class="fraco" colspan="2" style="font-size:11px">${comp}</td></tr>`;
+  }).join('');
+  return cabeca + linhas + '</tbody>';
+}
+
+/* KPI com faixa de estado (ok, at, er, neutro) e número que conta até o
+   valor novo. A contagem só roda quando o valor MUDA — reabrir a tela com o
+   mesmo número não anima, para não parecer que algo aconteceu. */
+function htmlKpis(lista){
+  return lista.map(([t,v,sb,est])=>`<div class="kpi ${est||''}"><div class="kpi-t">${t}</div>
+    <div class="kpi-v">${v}</div><div class="kpi-r">${sb}</div></div>`).join('');
+}
+
+const _kpiAnterior = {};
+function animarKpis(raiz){
+  if(!raiz) return;
+  const calmo = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  raiz.querySelectorAll('.kpi').forEach(k=>{
+    const t = k.querySelector('.kpi-t'), v = k.querySelector('.kpi-v');
+    if(!t || !v) return;
+    const txt = v.textContent.trim();
+    // hora (21:31) e traço não são quantidade: não animam
+    if(/\d:\d/.test(txt)) return;
+    const m = txt.match(/^(-?[\d.]*\d(?:,\d+)?)(.*)$/);
+    if(!m) return;
+    const casas = (m[1].split(',')[1] || '').length;
+    const alvo = parseFloat(m[1].replace(/\./g,'').replace(',','.'));
+    if(isNaN(alvo)) return;
+    const chave = raiz.id + '|' + t.textContent.trim();
+    const de = (chave in _kpiAnterior) ? _kpiAnterior[chave] : 0;
+    _kpiAnterior[chave] = alvo;
+    if(calmo || de === alvo) return;
+    const ini = performance.now(), dur = 750, suf = m[2];
+    const passo = agora=>{
+      const q = Math.min(1, (agora - ini) / dur), e = 1 - Math.pow(1 - q, 3);
+      v.textContent = (de + (alvo - de) * e).toLocaleString('pt-BR',
+        {minimumFractionDigits: casas, maximumFractionDigits: casas}) + suf;
+      if(q < 1) requestAnimationFrame(passo); else v.textContent = txt;
+    };
+    requestAnimationFrame(passo);
+  });
+}
+
+function renderPlano(){
+  if(!_plano) return;
+  const d = _filtrar(_plano.descer);
+  // os números seguem o filtro: com uma empresa escolhida, é a operação dela
+  const nInt = d.filter(x=>x.tipo !== 'misto').length, nMis = d.length - nInt;
+  const kgT = d.reduce((a,x)=>a+(x.kg||0), 0), cxT = d.reduce((a,x)=>a+(x.caixas||0), 0);
+  const nChao = _filtrar(_plano.permanecer).length, nFal = _filtrar(_plano.faltas).length;
+  document.getElementById('kpis').innerHTML = htmlKpis([
+    ['Movimentações', fmt0(d.length), `${fmt0(nInt)} inteiros · ${fmt0(nMis)} mistos`],
+    ['Peso a descer', fmt(kgT/1000,1)+' t', `${fmt0(cxT)} caixas`],
+    ['Permanecem no chão', fmt0(nChao), 'já em posição de picking', 'ok'],
+    ['Faltas', fmt0(nFal), nFal ? 'demanda sem estoque elegível' : 'demanda coberta',
+      nFal ? 'er' : 'ok'],
+  ]);
+  animarKpis(document.getElementById('kpis'));
+
+  const av = document.getElementById('aviso-arquivo');
+  const arq = _plano.arquivo_estoque || {};
+  av.classList.toggle('hidden', !arq.suspeito);
+  if(arq.suspeito) av.innerHTML = '⚠️ ' + esc(arq.aviso);
+
+  renderDescer(d);
+
+  const chao = _filtrar(_plano.permanecer);
+  document.getElementById('tb-chao').innerHTML = !chao.length
+    ? '<tbody><tr><td class="fraco">Nenhum pallet já posicionado atende à demanda.</td></tr></tbody>'
+    : `<thead><tr><th>Pallet</th><th>Endereço</th><th>Produto</th><th class="n">Caixas</th>
+        <th class="n">Peso</th></tr></thead><tbody>` +
+      chao.map(x=>`<tr><td><b>${esc(x.palete)}</b></td><td>${esc(x.endereco||'—')}</td>
+        <td>${esc(x.produto)} ${esc(x.nome||'')}</td><td class="n">${fmt0(x.caixas)}</td>
+        <td class="n">${fmt(x.kg,1)} kg</td></tr>`).join('') + '</tbody>';
+
+  const f = _filtrar(_plano.faltas);
+  document.getElementById('tb-faltas').innerHTML = !f.length
+    ? '<tbody><tr><td class="fraco">Demanda do dia coberta pelo estoque.</td></tr></tbody>'
+    : `<thead><tr><th>Produto</th><th>Local</th><th class="n">Falta</th><th>Motivo</th></tr></thead><tbody>` +
+      f.map(x=>`<tr><td>${esc(x.produto)} ${esc(x.nome||'')}</td><td>${esc(x.local)}</td>
+        <td class="n neg">${fmt(x.kg_faltando,1)} kg</td><td class="fraco">${esc(x.motivo)}</td></tr>`).join('') + '</tbody>';
+
+  document.getElementById('tb-funil').innerHTML =
+    `<thead><tr><th>Etapa</th><th class="n">Linhas</th><th class="n">Saíram</th></tr></thead><tbody>` +
+    (_plano.funil||[]).map(e=>`<tr><td>${esc(e.etapa)}</td><td class="n">${fmt0(e.linhas)}</td>
+      <td class="n fraco">${e['saíram']==null?'':fmt0(e['saíram'])}</td></tr>`).join('') + '</tbody>';
+}
+
+/* Lista para o operador: item, descrição, demanda e os pallets a baixar já
+   abertos, sem precisar expandir nada; depois os pallets mistos com o que
+   juntar em cada um, e o que permanece no chão. Segue o filtro da tela. */
+function imprimirLista(){
+  if(!_plano) return;
+  const d = _filtrar(_plano.descer);
+  const itens = _filtrar(_plano.itens);
+  const emp = document.getElementById('f-empresa').value;
+  const loc = document.getElementById('f-local').value;
+  const temp = document.getElementById('f-temp').value;
+  const porCod = new Map();
+  itens.forEach(it=>{
+    const g = porCod.get(String(it.produto)) || {produto: it.produto, nome: it.nome, kg: 0, cx: 0,
+      chao: 0, misto: !!it.misto_por_demanda, pallets: []};
+    g.kg += it.kg_demanda||0; g.cx += it.caixas_demanda||0; g.chao += it.kg_no_chao||0;
+    g.misto = g.misto || !!it.misto_por_demanda;
+    porCod.set(String(it.produto), g);
+  });
+  d.filter(x=>x.tipo !== 'misto').forEach(x=>{
+    const g = porCod.get(String(x.produto));
+    if(g) g.pallets.push(x);
+  });
+  // o endereço já vem com a altura de onde o pallet desce
+  const end = x => x.endereco || [x.camara, x.rua, x.box].filter(Boolean).join('-') || 'sem endereço';
+  const grupos = [...porCod.values()].filter(g=>g.pallets.length)
+    .sort((a,b)=>b.kg - a.kg);
+  grupos.forEach(g=>g.pallets.sort((a,b)=>end(a).localeCompare(end(b))));
+  const mistos = d.filter(x=>x.tipo === 'misto');
+  const chao = _filtrar(_plano.permanecer);
+  const filtro = [emp && 'Empresa ' + emp, loc, temp].filter(Boolean).join(' · ') || 'Todas as empresas';
+
+  let h = `<h1>Abastecimento do picking — embarque ${_dia(_plano.data_embarque)}</h1>
+    <div class="imp-sub">${esc(filtro)} · gerado em ${esc((_plano.gerado_em||'').slice(8,10)+'/'+(_plano.gerado_em||'').slice(5,7)+' '+(_plano.gerado_em||'').slice(11,16))}
+      · ${fmt0(grupos.reduce((a,g)=>a+g.pallets.length,0))} pallet(s) inteiro(s), ${fmt0(mistos.length)} misto(s),
+      ${fmt(d.reduce((a,x)=>a+(x.kg||0),0)/1000,1)} t</div>`;
+
+  // Tabela dinâmica: uma linha por item, com a descrição inteira numa linha
+  // só, e os pallets a baixar logo abaixo (usuário, 15/10/2026)
+  h += `<h2>Pallets a baixar por item</h2><table><colgroup><col style="width:22px"><col style="width:90px">
+    <col style="width:110px"><col style="width:50px"><col style="width:90px"><col></colgroup>
+    <thead><tr><th></th><th>Pallet</th><th>Endereço</th>
+    <th class="n">Cx</th><th class="n">Peso</th><th>Produção</th></tr></thead>`;
+  h += grupos.map(g=>`<tbody><tr class="imp-item"><td colspan="6"><div class="imp-cab">
+      <span>${esc(g.produto)} <span class="imp-desc">${esc(g.nome||'')}</span></span>
+      <span class="imp-nota">demanda ${fmt(g.kg,1)} kg · ${fmt0(g.cx)} cx${g.chao ? ' · no chão ' + fmt(g.chao,1) + ' kg' : ''}
+        · baixar ${fmt0(g.pallets.length)} pallet(s), ${fmt(g.pallets.reduce((a,x)=>a+(x.kg||0),0),1)} kg</span></div></td></tr>`
+    + g.pallets.map(x=>`<tr class="imp-pal"><td>☐</td><td><b>${esc(x.palete||'—')}</b></td>
+      <td class="imp-end">${esc(end(x))}</td><td class="n">${fmt0(x.caixas)}</td>
+      <td class="n">${fmt(x.kg,1)} kg</td><td>${_dia(x.producao)}</td></tr>`).join('') + '</tbody>').join('')
+    || '<tbody><tr><td colspan="6">Nenhum pallet inteiro a baixar com os filtros atuais.</td></tr></tbody>';
+  h += '</table>';
+
+  if(mistos.length){
+    h += `<h2>Pallets mistos a montar</h2><table><thead><tr><th></th><th>Item</th><th>Descrição</th>
+      <th class="n">Cx</th><th class="n">Peso</th><th>Retirar de</th><th>Produção</th></tr></thead>`;
+    h += mistos.map((m,i)=>`<tbody><tr class="imp-item"><td></td><td colspan="2">Misto ${i+1} · ${esc(m.local||'')} · ${esc(m.temperatura||'')}</td>
+        <td class="n">${fmt0(m.caixas)}</td><td class="n">${fmt(m.kg,1)} kg</td><td></td><td></td></tr>`
+      + (m.itens||[]).map(c=>`<tr class="imp-pal"><td>☐</td><td>${esc(c.codigo)}</td><td class="imp-desc">${esc(c.nome||'')}</td>
+        <td class="n">${fmt0(c.caixas)}</td><td class="n">${fmt(c.kg,1)} kg</td>
+        <td class="imp-nota">${esc((c.origens||[]).join(', '))}</td>
+        <td class="imp-nota">${esc(_idadeMisto(c))}</td></tr>`).join('') + '</tbody>').join('');
+    h += '</table>';
+  }
+  if(chao.length){
+    h += `<h2>Permanece no chão — não movimentar</h2><table><thead><tr><th>Item</th><th>Descrição</th>
+      <th>Pallet</th><th>Endereço</th><th class="n">Cx</th><th class="n">Peso</th></tr></thead><tbody>`
+      + chao.map(x=>`<tr><td>${esc(x.produto)}</td><td class="imp-desc">${esc(x.nome||'')}</td><td>${esc(x.palete)}</td>
+        <td class="imp-end">${esc(x.endereco||'—')}</td><td class="n">${fmt0(x.caixas)}</td><td class="n">${fmt(x.kg,1)} kg</td></tr>`).join('')
+      + '</tbody></table>';
+  }
+  document.getElementById('impressao').innerHTML = h;
+  window.print();
+}
+
+function marcarFeito(id){
+  if(_feitos.has(id)) _feitos.delete(id); else _feitos.add(id);
+  renderPlano();
+}
+
+/* ── parâmetros ─────────────────────────────────────────── */
+async function abrirParametros(){
+  abrirModal('m-param');
+  const r = await fetch('/api/expedito/parametros').then(x=>x.json()).catch(()=>null);
+  if(!r){ document.getElementById('param-corpo').innerHTML = '<div class="nota">Não foi possível carregar.</div>'; return; }
+  const p = r.parametros, meta = r.meta;
+  document.getElementById('btn-param-salvar').style.display = r.pode_editar ? '' : 'none';
+  document.getElementById('param-corpo').innerHTML =
+    Object.entries(meta).map(([k,m])=>`
+      <div class="row" style="justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border-vis)">
+        <div><b>${esc(m.rotulo)}</b><div class="nota">${m.unidade === 'hh:mm'
+          ? 'HH:MM · vazio = não cadastrado' : `até ${m.maximo} ${esc(m.unidade)}`}</div></div>
+        <input class="fl" style="max-width:110px;text-align:right" id="p-${k}" value="${esc(p[k] ?? '')}"
+               ${m.unidade === 'hh:mm' ? 'placeholder="HH:MM"' : ''}
+               ${r.pode_editar?'':'disabled'}></div>`).join('') +
+    `<div class="row" style="gap:14px;padding:10px 0;border-bottom:1px solid var(--border-vis)">
+       <label><input type="checkbox" id="p-usar_data_embarque" ${p.usar_data_embarque?'checked':''}
+         ${r.pode_editar?'':'disabled'}> Considerar data de embarque</label>
+       <label><input type="checkbox" id="p-usar_data_entrega" ${p.usar_data_entrega?'checked':''}
+         ${r.pode_editar?'':'disabled'}> Considerar data de entrega</label>
+       <label><input type="checkbox" id="p-iniciativa_ativa" ${p.iniciativa_ativa !== false?'checked':''}
+         ${r.pode_editar?'':'disabled'}> Expedito sugere por iniciativa durante a operação</label></div>
+     <div style="padding:10px 0">
+       <b>Bloqueios aceitos no abastecimento</b>
+       <div class="nota">A força-tarefa libera PRC e PRL por volta das 18:30; Status e Limite podem não cair.</div>
+       <input class="fl" id="p-bloqueios" style="margin-top:6px" value="${(p.bloqueios_aceitos||[]).join(', ')}"
+              placeholder="PRC, PRL" ${r.pode_editar?'':'disabled'}></div>
+    <div style="padding:10px 0">
+       <b>Tipos de venda considerados</b>
+       <div class="nota">Desmarque o que não passa pela separação. O redespacho sai pronto do turno anterior. Tipo novo do ERP entra marcado.</div>
+       ${montarTiposVenda(r)}
+       <label class="tv-item" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">
+         <input type="checkbox" id="p-considerar_pedido_mae" ${p.considerar_pedido_mae?'checked':''} ${r.pode_editar?'':'disabled'}>
+         <span><b>Pedido mãe</b> — o pedido desdobrado aparece duas vezes, e a filha é que carrega a demanda</span>
+       </label>
+    </div>`;
+}
+
+/* Caixas do que ENTRA, parâmetro guardando o que fica FORA: tipo novo do ERP
+   nasce considerado. O catálogo vem do último follow up carregado; antes da
+   primeira geração não há nomes para listar e a tela cai no texto livre. */
+function montarTiposVenda(r){
+  const fora = (r.parametros.tipos_venda_fora||[]).map(t=>String(t).toUpperCase());
+  const estaFora = v => fora.some(t => String(v).toUpperCase().includes(t));
+  const tipos = r.tipos_venda || [];
+  if(!tipos.length){
+    return `<input class="fl" id="p-tipos_venda_texto" style="margin-top:6px"
+            value="${esc(fora.join(', '))}" placeholder="Redespacho"
+            ${r.pode_editar?'':'disabled'}>
+            <div class="nota">Gere um plano de abastecimento para a tela listar os nomes completos.</div>`;
+  }
+  return `<div class="tv-lista">` + tipos.map(t=>`
+    <label class="tv-item">
+      <input type="checkbox" class="tv-chk" data-valor="${esc(t.valor)}"
+             ${estaFora(t.valor)?'':'checked'} ${r.pode_editar?'':'disabled'}>
+      <span>${esc(t.valor)} <i class="tv-n">${fmt0(t.linhas)}</i></span>
+    </label>`).join('') + `</div>`;
+}
+
+async function salvarParametros(){
+  const corpo = {};
+  const caixas = document.querySelectorAll('.tv-chk');
+  if(caixas.length){
+    // o parâmetro guarda o que fica FORA: o desmarcado
+    corpo['tipos_venda_fora'] = [...caixas].filter(c=>!c.checked).map(c=>c.dataset.valor);
+  }
+  document.querySelectorAll('[id^="p-"]').forEach(el=>{
+    const k = el.id.slice(2);
+    if(el.type === 'checkbox') corpo[k] = el.checked;
+    else if(k === 'bloqueios') corpo['bloqueios_aceitos'] = el.value.split(',').map(s=>s.trim()).filter(Boolean);
+    else if(k === 'tipos_venda_texto') corpo['tipos_venda_fora'] = el.value.split(',').map(s=>s.trim()).filter(Boolean);
+    else corpo[k] = el.value;
+  });
+  const r = await _post('/api/expedito/parametros', corpo).then(x=>x.json()).catch(()=>null);
+  if(!r || r.error){ toast((r && r.error) || 'Não foi possível salvar.', 'err', 5000); return; }
+  toast('Parâmetros salvos', 'ok'); fecharModal('m-param');
+}
+
+/* ── posições de picking ────────────────────────────────── */
+async function abrirPosicoes(){
+  abrirModal('m-pos');
+  const r = await fetch('/api/expedito/posicoes').then(x=>x.json()).catch(()=>null);
+  const el = document.getElementById('pos-corpo');
+  if(!r){ el.innerHTML = '<div class="nota">Não foi possível carregar.</div>'; return; }
+  const cap = r.capacidade || {por_local:[], total:0};
+  el.innerHTML =
+    `<div class="nota" style="margin-bottom:10px">O cadastro guarda ESPAÇO, não produto: o endereço de cada
+      código é definido a cada noite. Posição marcada como meia vira duas faces (A e B).</div>
+     <div class="grid g4 mb">
+       <div class="kpi"><div class="kpi-t">Faces ativas</div><div class="kpi-v">${fmt0(cap.ativas||cap.total)}</div>
+         <div class="kpi-r">${fmt0(cap.cadastradas||cap.total)} cadastradas</div></div>
+       <div class="kpi"><div class="kpi-t">Inativas</div><div class="kpi-v">${fmt0(cap.inativas||0)}</div>
+         <div class="kpi-r">câmara fora de operação ou box que não é picking</div></div>
+     </div>
+     <div class="tw"><table class="tb">
+       <thead><tr><th>Câmara</th><th>Local</th><th>Temperatura</th><th class="n">Faces</th><th class="n">Metades</th></tr></thead>
+       <tbody>${cap.por_local.map(x=>`<tr><td>${esc(x.camara||'—')}</td><td>${esc(x.local||'—')}</td>
+         <td>${esc(x.temperatura||'—')}</td>
+         <td class="n">${fmt0(x.posicoes)}</td><td class="n">${fmt0(x.meias)}</td></tr>`).join('')
+         || '<tr><td class="fraco">Nenhuma posição cadastrada. Baixe a planilha modelo para começar.</td></tr>'}
+       </tbody></table></div>
+     <div id="pos-misto"></div>`;
+  carregarBoxesMisto();
+}
+
+/* Boxes de pallet misto no picking (usuário, 14/10/2026): o pallet que está
+   neles carrega vários códigos e sai do plano — não conta como "permanece no
+   chão" de nenhum item nem é mandado descer. */
+async function carregarBoxesMisto(){
+  const el = document.getElementById('pos-misto');
+  if(!el) return;
+  const r = await lerJson(fetch('/api/expedito/posicoes/misto'));
+  if(!r || r.error){ el.innerHTML = '<div class="nota">Não foi possível carregar os boxes de misto.</div>'; return; }
+  el.innerHTML = `<div style="margin-top:14px"><b>Boxes de pallet misto</b>
+      <div class="nota">O pallet nesses boxes é desconsiderado no plano: não entra como "permanece no chão" nem desce.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${(r.boxes||[]).map(b=>`
+        <span class="chip">${esc(b)}${r.pode_editar ? ` <a href="#" onclick="tirarBoxMisto('${esc(b)}');return false"
+          title="Tirar" style="margin-left:4px;color:var(--neg)">✕</a>` : ''}</span>`).join('')
+        || '<span class="nota">Nenhum box marcado.</span>'}</div>
+      ${r.pode_editar ? `<div class="row" style="gap:6px"><input class="fl" id="pos-misto-novo"
+          placeholder="C5-F28, C5-F29" style="max-width:260px">
+        <button class="btn ghost sm" onclick="incluirBoxMisto()">Marcar como misto</button></div>` : ''}</div>`;
+}
+
+async function incluirBoxMisto(){
+  const v = (document.getElementById('pos-misto-novo').value||'').trim();
+  if(!v) return;
+  const r = await lerJson(_post('/api/expedito/posicoes/misto', {boxes: v}));
+  if(!r || r.error){ toast((r && r.error) || 'Não foi possível salvar.', 'err'); return; }
+  toast('Boxes de misto atualizados. Gere o plano de novo para aplicar.', 'ok');
+  carregarBoxesMisto();
+}
+
+async function tirarBoxMisto(box){
+  const r = await lerJson(fetch('/api/expedito/posicoes/misto', {method: 'DELETE',
+    headers: {'X-CSRF-Token': _csrf, 'Content-Type': 'application/json'}, body: JSON.stringify({box})}));
+  if(!r || r.error){ toast((r && r.error) || 'Não foi possível tirar.', 'err'); return; }
+  carregarBoxesMisto();
+}
+
+async function subirPosicoes(arquivo){
+  if(!arquivo) return;
+  const fd = new FormData(); fd.append('planilha', arquivo); fd.append('conferir', '1');
+  const prev = await _post('/api/expedito/posicoes/planilha', fd, true).then(x=>x.json()).catch(()=>null);
+  if(!prev || prev.error){ toast((prev && prev.error) || 'Não foi possível ler a planilha.', 'err', 6000); return; }
+  const partes = [`${prev.incluir} inclusão(ões)`, `${prev.alterar} alteração(ões)`, `${prev.remover} remoção(ões)`];
+  if(prev.erros && prev.erros.length) partes.push(`${prev.erros.length} linha(s) com erro`);
+  if(!confirm('Confirma?\n\n' + partes.join('\n') +
+      (prev.remover_detalhe && prev.remover_detalhe.length ? '\n\nSerão removidas: ' + prev.remover_detalhe.join(', ') : ''))){
+    return;
+  }
+  const fd2 = new FormData(); fd2.append('planilha', arquivo);
+  const r = await _post('/api/expedito/posicoes/planilha', fd2, true).then(x=>x.json()).catch(()=>null);
+  if(!r || r.error){ toast((r && r.error) || 'Não foi possível gravar.', 'err', 6000); return; }
+  toast(`${r.incluir} incluídas · ${r.alterar} alteradas · ${r.remover} removidas`, 'ok', 5000);
+  abrirPosicoes();
+}
+
+/* ── visão do gerente ───────────────────────────────────── */
+async function carregarLateral(){
+  const el = document.getElementById('lateral-planos');
+  el.innerHTML = '<span class="pensando"><i></i><i></i><i></i> carregando o histórico…</span>';
+  const r = await fetch('/api/expedito/planos?tipo=abastecimento').then(x=>x.json()).catch(()=>null);
+  if(!r || !r.itens){ el.innerHTML = '<div class="nota">Não foi possível carregar o histórico.</div>'; return; }
+  el.innerHTML = !r.itens.length
+    ? '<div class="nota">Nenhum plano gerado ainda.</div>'
+    : `<div class="nota" style="margin-bottom:10px">Planos por dia. Abra um dia para reler a operação.</div>
+       <div class="tw"><table class="tb"><thead><tr><th>Dia</th><th class="n">Gerações</th><th>Última</th></tr></thead>
+       <tbody>${r.itens.map(x=>`<tr><td><b>${_dia(x.data_op)}</b></td><td class="n">${x.n}</td>
+         <td class="fraco">${esc((x.ultimo||'').slice(11,16))}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+
+/* Volta para a guia do abastecimento. O plano gerado fica em memória
+   (`_plano`), então voltar não exige gerar de novo — e quando ainda não há
+   plano na sessão, a guia abre no estado vazio, com os slots de arquivo. */
+function voltarAoPlano(){
+  abrirAba('picking');
+  const alvo = document.getElementById(_plano ? 'plano' : 'plano-vazio');
+  if(alvo) alvo.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+/* ── conversa com o Expedito ─────────────────────────────── */
+/* A resposta NÃO vem na mesma requisição: o servidor grava a pergunta,
+   dispara o Gemini em thread e devolve na hora, porque o Gunicorn de
+   produção é 1 worker sync e segurar 45 s travaria o site para todos.
+   Aqui a tela pergunta de novo até a resposta ficar pronta. */
+const _conv = {analista: null, gerente: null};
+const _convTimer = {analista: null, gerente: null};
+
+function campoDaConversa(papel){
+  return papel === 'gerente'
+    ? {log: 'conv-gerente', txt: 'conv-pergunta-gerente', aviso: 'conv-aviso-gerente'}
+    : {log: 'conv-analista', txt: 'conv-pergunta', aviso: 'conv-aviso'};
+}
+
+async function carregarConversa(papel){
+  const ids = campoDaConversa(papel);
+  const r = await fetch(`/api/expedito/ia/conversa?papel=${papel}${qsData('&')}`)
+    .then(x=>x.json()).catch(()=>null);
+  if(!r || r.error){
+    document.getElementById(ids.aviso).textContent = (r && r.error) || 'Não foi possível carregar a conversa.';
+    return;
+  }
+  _conv[papel] = r;
+  renderConversa(papel);
+  // enquanto houver resposta pendente, volta a perguntar
+  clearTimeout(_convTimer[papel]);
+  if(r.pendente) _convTimer[papel] = setTimeout(()=>carregarConversa(papel), 2500);
+}
+
+/* Mensagem com avatar e autor: a do analista à direita, em azul, a do
+   Expedito à esquerda, em branco com contorno e faixa — a diferença se vê
+   sem ler o texto. A tela re-renderiza a cada 2,5 s enquanto espera a
+   resposta, então a animação de entrada vale só para o que é NOVO (a chave
+   inclui o estado, para a resposta animar quando chega). */
+const _vistas = {analista: new Set(), gerente: new Set()};
+let _iniciais = '•';
+
+/* Resposta do Expedito com formatação: títulos, negrito, listas, tabela e
+   alerta (> ) — "igual você faz no Claude Code" (usuário, 09/10/2026).
+   SEGURANÇA: o texto é ESCAPADO antes de qualquer transformação, então as
+   únicas tags que existem no resultado são as que este código põe. A
+   resposta vem de um serviço externo e nunca entra crua no HTML. */
+function renderMd(texto){
+  const inst = new Set(((_noite && _noite.retrato && _noite.retrato.detalhe) || [])
+                        .map(x=>String(x.instrucao)));
+  const inline = t => esc(t)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[\s(])\*([^*\s][^*]*?)\*(?=[\s.,;:)!?]|$)/g, '$1<em>$2</em>')
+    // número de instrução da noite vira etiqueta — o olho acha na hora
+    .replace(/\b(\d{4,7})\b/g, (m, n)=> inst.has(n) ? `<span class="ref">${n}</span>` : m);
+  const linhas = String(texto || '').replace(/\r/g, '').split('\n');
+  const out = [];
+  let lista = null, tabela = null, citacao = null, par = [];
+  const fechaPar = ()=>{ if(par.length){ out.push('<p>' + par.join('<br>') + '</p>'); par = []; } };
+  const fechaLista = ()=>{ if(lista){ out.push(`<${lista.t}>` + lista.i.map(x=>`<li>${x}</li>`).join('') + `</${lista.t}>`); lista = null; } };
+  const fechaCit = ()=>{ if(citacao){ out.push('<blockquote>' + citacao.join('<br>') + '</blockquote>'); citacao = null; } };
+  const fechaTab = ()=>{
+    if(!tabela) return;
+    const [cab, ...corpo] = tabela;
+    out.push('<div class="md-tab"><table><thead><tr>' + cab.map(c=>`<th>${inline(c)}</th>`).join('') +
+      '</tr></thead><tbody>' + corpo.map(l=>'<tr>' + l.map(c=>`<td>${inline(c)}</td>`).join('') + '</tr>').join('') +
+      '</tbody></table></div>');
+    tabela = null;
+  };
+  const fechaTudo = ()=>{ fechaPar(); fechaLista(); fechaCit(); fechaTab(); };
+  for(const bruta of linhas){
+    const l = bruta.trimEnd();
+    const t = l.trim();
+    if(!t){ fechaTudo(); continue; }
+    if(/^\|.*\|$/.test(t)){
+      fechaPar(); fechaLista(); fechaCit();
+      if(/^\|[\s:|-]+\|$/.test(t)) continue;          // linha separadora da tabela
+      (tabela = tabela || []).push(t.slice(1, -1).split('|').map(c=>c.trim()));
+      continue;
+    }
+    fechaTab();
+    let m;
+    if((m = t.match(/^#{1,4}\s+(.*)$/))){ fechaTudo(); out.push(`<h3>${inline(m[1])}</h3>`); continue; }
+    if(/^(-{3,}|\*{3,})$/.test(t)){ fechaTudo(); out.push('<hr>'); continue; }
+    if((m = t.match(/^>\s?(.*)$/))){ fechaPar(); fechaLista(); (citacao = citacao || []).push(inline(m[1])); continue; }
+    fechaCit();
+    if((m = t.match(/^[-*•]\s+(.*)$/))){
+      fechaPar(); if(lista && lista.t !== 'ul') fechaLista();
+      (lista = lista || {t:'ul', i:[]}).i.push(inline(m[1])); continue;
+    }
+    if((m = t.match(/^\d+[.)]\s+(.*)$/))){
+      fechaPar(); if(lista && lista.t !== 'ol') fechaLista();
+      (lista = lista || {t:'ol', i:[]}).i.push(inline(m[1])); continue;
+    }
+    fechaLista();
+    par.push(inline(t));
+  }
+  fechaTudo();
+  return out.join('');
+}
+
+function perguntarPronto(texto){
+  const caixa = document.getElementById('conv-pergunta');
+  caixa.value = texto;
+  enviarPergunta('analista');
+}
+
+function htmlMsg(autor, corpo, rodape, nova){
+  const eu = autor === 'eu';
+  const quem = eu ? 'Você' : (autor === 'erro' ? 'Expedito · falha'
+    : (autor === 'ini' ? 'Expedito · por iniciativa' : 'Expedito'));
+  return `<div class="msg ${autor}${nova?' nova':''}">
+    <div class="av">${eu ? esc(_iniciais) : (autor === 'ini' ? '💡' : '🧭')}</div>
+    <div class="msg-corpo"><div class="autor">${quem}</div>
+      <div class="bolha${autor === 'ia' || autor === 'ini' ? ' md' : ''}">${corpo}${rodape ? `<span class="q">${rodape}</span>` : ''}</div></div></div>`;
+}
+
+const DIGITANDO = '<span class="digitando" aria-label="Processando a resposta"><i></i><i></i><i></i></span>';
+
+function renderConversa(papel){
+  const r = _conv[papel]; if(!r) return;
+  const ids = campoDaConversa(papel);
+  const el = document.getElementById(ids.log);
+  const msgs = r.mensagens || [];
+  if(!msgs.length){
+    el.innerHTML = `<div class="conv-vazia"><span style="font-size:18px">🧭</span><span>${r.configurada
+      ? 'Pergunte o que precisa decidir agora. O Expedito responde em cima dos números medidos no painel.'
+      : 'A conversa está desligada: cadastre a chave da IA do Expedito em Configurações.'}</span></div>`;
+  } else {
+    const vistas = _vistas[papel];
+    el.innerHTML = msgs.map(m=>{
+      const chave = m.id + ':' + m.status;
+      const nova = !vistas.has(chave);
+      vistas.add(chave);
+      if(m.autor === 'usuario')
+        return htmlMsg('eu', esc(m.texto), esc(m.momento), nova);
+      const ini = !!(m.meta && m.meta.iniciativa);
+      if(m.status === 'pendente') return htmlMsg(ini ? 'ini' : 'ia', DIGITANDO
+        + ` <span class="fraco" style="font-size:12px">${ini ? 'acompanhando a operação…' : 'analisando a operação…'}</span>`, '', nova);
+      const tok = ((m.meta && m.meta.tokens_total) ? ` · ${fmt0(m.meta.tokens_total)} tokens` : '')
+        + ((m.meta && m.meta.modelo_reserva) ? ` · respondido pelo ${m.meta.modelo}, o configurado estava ocupado` : '');
+      return m.status === 'erro'
+        ? htmlMsg('erro', esc(m.texto), esc(m.momento), nova)
+        : htmlMsg(ini ? 'ini' : 'ia', renderMd(m.texto), esc(m.momento) + esc(tok), nova);
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+  const aviso = document.getElementById(ids.aviso);
+  if(!r.configurada) aviso.textContent = 'Conversa desligada — a chave da IA do Expedito não está cadastrada.';
+  else if(!r.pode_perguntar) aviso.textContent = 'Seu perfil tem acesso de leitura nesta conversa.';
+  else aviso.textContent = `Sessão de ${_dia(r.data_op)} · nomes e clientes não saem da VM`;
+  const bt = document.getElementById('conv-enviar');
+  if(bt && papel === 'analista') bt.disabled = !r.configurada || !r.pode_perguntar || r.pendente;
+}
+
+async function enviarPergunta(papel, textoFixo){
+  const ids = campoDaConversa(papel);
+  const caixa = document.getElementById(ids.txt);
+  const pergunta = (textoFixo || caixa.value || '').trim();
+  if(!pergunta) return;
+  if(!textoFixo) caixa.value = '';
+  // mostra a pergunta na hora, sem esperar o servidor
+  const el = document.getElementById(ids.log);
+  if(el) el.insertAdjacentHTML('beforeend',
+    htmlMsg('eu', esc(pergunta), '', true) + htmlMsg('ia', DIGITANDO, '', true)),
+    el.scrollTop = el.scrollHeight;
+  const res = await _post(`/api/expedito/ia/conversa?papel=${papel}${qsData('&')}`, {pergunta});
+  const d = await res.json().catch(()=>null);
+  if(!d || d.error){
+    toast((d && d.error) || 'Falha ao enviar a pergunta.', 'err');
+    document.getElementById(ids.aviso).textContent = (d && d.error) || '';
+  }
+  carregarConversa(papel);
+}
+
+function pedirResumo(){
+  enviarPergunta('gerente', 'Faça o resumo desta noite: o que explica o ritmo, '
+    + 'onde a operação perdeu tempo, se a carga ficou equilibrada, e o que mudaria '
+    + 'o resultado da próxima.');
+}
+
+async function limparConversa(papel){
+  if(!confirm('Recomeçar a conversa deste dia? As mensagens são apagadas.')) return;
+  const res = await _post(`/api/expedito/ia/limpar?papel=${papel}${qsData('&')}`, {});
+  const d = await res.json().catch(()=>null);
+  if(d && d.ok){ toast('Conversa recomeçada.', 'ok'); carregarConversa(papel); }
+  else toast((d && d.error) || 'Falha ao recomeçar.', 'err');
+}
+
+/* ── guia da noite ──────────────────────────────────────── */
+let _noite = null, _conhecidos = [], _presentes = new Set();
+let _confConhecidos = [], _confPresentes = new Set(), _janela = {};
+document.addEventListener('DOMContentLoaded', ()=>{
+  let f = false;
+  try{ f = localStorage.getItem('expedito_efetivo_oculto') === '1'; }catch(e){}
+  if(f) alternarEfetivo(true);
+});
+
+let _ocultos = [], _podeEditarPresenca = false, _gerirNomes = false;
+
+/* "Noite de 08/10 para 09/10": o rótulo é o dia do embarque, e o chip diz a
+   noite inteira para ninguém confundir com o turno que começa naquele dia. */
+function _rotuloNoite(dataOp){
+  if(!dataOp) return '';
+  const d = new Date(dataOp + 'T12:00:00'); d.setDate(d.getDate() - 1);
+  const vespera = d.toISOString().slice(0, 10);
+  return `noite de ${_dia(vespera).slice(0,5)} para ${_dia(dataOp).slice(0,5)}`;
+}
+
+async function carregarPresenca(){
+  const r = await lerJson(fetch('/api/expedito/presenca' + qsData('?')));
+  if(!r || r.error){
+    if(r && r.error) toast(r.error, 'err');
+    return;
+  }
+  _conhecidos = r.conhecidos || [];
+  _confConhecidos = r.conferentes_conhecidos || [];
+  _ocultos = r.ocultos || [];
+  _presentes = new Set(r.presentes || []);
+  _confPresentes = new Set(r.conferentes_presentes || []);
+  _janela = r.janela || {};
+  _podeEditarPresenca = !!r.pode_editar;
+  document.getElementById('chip-operacao').textContent = _rotuloNoite(r.data_op) + ' · ' + r.turno;
+  document.getElementById('btn-presenca').style.display = r.pode_editar ? '' : 'none';
+  renderPresenca();
+}
+
+/* A lista chegou a 28 nomes embolados numa linha só, difícil de varrer numa
+   troca de turno. Agora é grade de colunas, em ordem alfabética, com busca e
+   marcação em lote. Marcar NÃO re-renderiza: antes cada clique remontava a
+   lista inteira, o que apagaria o filtro digitado. */
+/* Com a presença já salva, o card recolhe para uma linha: o efetivo é marcado
+   na abertura do turno e não precisa ocupar a tela a noite inteira. "Editar
+   efetivo" abre a grade de novo. */
+let _presencaAberta = false;
+
+/* Ocultar a lista do efetivo: lembrado neste navegador. Fechado, o card
+   mostra o título e a contagem de separadores e conferentes. */
+function alternarEfetivo(fechar){
+  const cx = document.getElementById('cx-efetivo');
+  if(!cx) return;
+  const f = fechar === undefined ? !cx.classList.contains('fechado') : !!fechar;
+  cx.classList.toggle('fechado', f);
+  document.getElementById('btn-efetivo-ocultar').textContent = f ? 'Mostrar lista' : 'Ocultar lista';
+  try{ localStorage.setItem('expedito_efetivo_oculto', f ? '1' : '0'); }catch(e){}
+}
+
+function _miniEfetivo(){
+  const el = document.getElementById('efetivo-mini');
+  if(el) el.textContent = `· ${_presentes.size} separador(es), ${_confPresentes.size} conferente(s)`;
+}
+
+function abrirPresenca(abrir){
+  _presencaAberta = abrir;
+  renderPresenca();
+}
+
+function renderPresenca(){
+  _miniEfetivo();
+  const el = document.getElementById('presenca-lista');
+  const resumo = document.getElementById('presenca-resumo');
+  const barra = ['presenca-busca','btn-presenca'].map(id=>document.getElementById(id));
+  const recolher = !_presencaAberta && (_presentes.size + _confPresentes.size) > 0;
+  resumo.classList.toggle('hidden', !recolher);
+  el.classList.toggle('hidden', recolher);
+  document.querySelectorAll('.so-edicao-presenca').forEach(b=>b.classList.toggle('hidden', recolher));
+  barra.forEach(b=>b && b.classList.toggle('hidden', recolher));
+  if(recolher){
+    const ord = s => [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    const j = _janela || {};
+    resumo.innerHTML = `<span><b>${fmt0(_presentes.size)}</b> separador(es) · <b>${fmt0(_confPresentes.size)}</b> conferente(s)</span>
+      <span class="nomes">${esc(ord(_presentes).join(' · '))}${_confPresentes.size
+        ? ' <span class="fraco">| conferentes: ' + esc(ord(_confPresentes).join(' · ')) + '</span>' : ''}
+        <div class="fraco" style="font-size:11.5px;margin-top:2px">Separação ${esc(j.sep_inicio||'—')}–${esc(j.sep_fim||'—')}
+          · Embarque ${esc(j.emb_inicio||'—')}–${esc(j.emb_fim||'—')} · Corte ${esc(j.corte||'—')}</div></span>
+      <button class="btn ghost sm" onclick="abrirPresenca(true)">Editar efetivo</button>`;
+    return;
+  }
+  const bg = document.getElementById('btn-gerir-nomes');
+  if(bg){
+    bg.classList.toggle('hidden', recolher || !_podeEditarPresenca);
+    bg.textContent = _gerirNomes ? 'Concluir edição' : 'Editar nomes';
+  }
+  // editando nomes, a marcação de presença sai de cena
+  if(!recolher){
+    document.querySelectorAll('.so-edicao-presenca:not(.so-editor)')
+      .forEach(b=>b.classList.toggle('hidden', _gerirNomes));
+    document.getElementById('btn-presenca').classList.toggle('hidden', _gerirNomes);
+  }
+  if(!_conhecidos.length && !_confConhecidos.length && !_ocultos.length){
+    el.innerHTML = '<div class="nota">Nenhum operador registrado ainda. Carregue um painel do WMS ' +
+      'para o Expedito reconhecer a equipe deste CD.</div>';
+    return;
+  }
+  const ord = l => l.slice().sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  if(_gerirNomes){ renderGestaoNomes(el, ord([...new Set(_conhecidos.concat(_confConhecidos))])); return; }
+  // Separador e conferente em listas próprias: cada etapa tem a sua equipe,
+  // a sua janela e a sua produtividade (usuário, 14/10/2026)
+  // na mesma noite a pessoa separa OU confere: marcada numa lista, fica
+  // bloqueada na outra (usuário, 14/10/2026)
+  const grade = (nomes, marcados, funcao) => `<div class="pres-grade">` + ord(nomes).map(n=>{
+    const outraSet = funcao === 'conferente' ? _presentes : _confPresentes;
+    const bloq = outraSet.has(n) && !marcados.has(n);
+    return `
+    <label class="pres-item ${marcados.has(n)?'on':''} ${bloq?'outra':''}" data-nome="${esc(n.toUpperCase())}"
+      data-funcao="${funcao}" data-outra="${funcao === 'conferente' ? 'separador' : 'conferente'}"
+      title="${bloq ? 'Marcado como ' + (funcao === 'conferente' ? 'separador' : 'conferente') + ' nesta noite' : ''}">
+      <input type="checkbox" ${marcados.has(n)?'checked':''} ${bloq?'disabled':''}
+             onchange="marcarPresente('${esc(n).replace(/'/g, "\\'")}',this.checked,'${funcao}')">
+      <span>${esc(n)}</span></label>`;}).join('') + `</div>`;
+  const j = _janela || {};
+  const campo = (k, rot) => `<label>${rot} <input type="time" id="jan-${k}" value="${esc(j[k]||'')}"
+    ${_podeEditarPresenca ? '' : 'disabled'}></label>`;
+  el.innerHTML = `<div class="pres-secao"><div class="pres-tit">Separadores <span id="pc-separador"></span></div>
+      ${grade(_conhecidos, _presentes, 'separador')}</div>
+    <div class="pres-secao"><div class="pres-tit">Conferentes <span id="pc-conferente"></span></div>
+      ${_confConhecidos.length ? grade(_confConhecidos, _confPresentes, 'conferente')
+        : '<div class="nota">Nenhum conferente nos painéis deste CD ainda.</div>'}</div>
+    <div class="pres-janela"><b style="color:var(--ink)">Janela da noite</b>
+      ${campo('sep_inicio','Separação')}<span>a</span>${campo('sep_fim','')}
+      ${campo('emb_inicio','Embarque')}<span>a</span>${campo('emb_fim','')}
+      ${campo('corte','Corte final')}</div>
+    <div class="nota" id="presenca-conta" style="margin-top:8px"></div>`;
+  contarPresenca();
+}
+
+/* Renomear e ocultar (usuário, 09/10/2026). O nome do WMS é o do cadastro;
+   aqui fica o nome pelo qual a operação conhece a pessoa. Dar a dois
+   cadastros o mesmo nome junta a pessoa; ocultar tira da lista quem não faz
+   mais parte do efetivo, sem apagar o histórico. */
+function alternarGestaoNomes(){
+  _gerirNomes = !_gerirNomes;
+  renderPresenca();
+}
+
+function renderGestaoNomes(el, nomes){
+  const sel = n => esc(n).replace(/'/g, "\\'");
+  el.innerHTML = `<div class="nota" style="margin-bottom:8px">Renomeie para o nome usado na operação.
+      Dar o mesmo nome a dois cadastros junta a pessoa. Ocultar tira da lista sem apagar o histórico.</div>
+    <div class="pres-grade">` + nomes.map(n=>`
+    <div class="pres-item gerir" data-nome="${esc(n.toUpperCase())}">
+      <span>${esc(n)}</span>
+      <span class="pres-acoes">
+        <button title="Renomear" onclick="editarNome(this,'${sel(n)}')">✎</button>
+        <button class="oc" title="Ocultar da lista" onclick="ocultarOperador('${sel(n)}')">✕</button>
+      </span></div>`).join('') + `</div>` +
+    (_ocultos.length ? `<div class="pres-ocultos">Ocultos:
+      ${_ocultos.map(n=>`<span class="tir-item">${esc(n)}
+        <button onclick="reexibirOperador('${sel(n)}')">Reexibir</button></span>`).join('')}</div>` : '');
+  filtrarPresenca();
+}
+
+function editarNome(botao, nome){
+  const item = botao.closest('.pres-item');
+  item.innerHTML = `<div class="pres-edit"><input maxlength="60" value="${esc(nome)}">
+    <span class="pres-acoes"><button title="Salvar">✓</button><button title="Cancelar">↺</button></span></div>`;
+  const campo = item.querySelector('input');
+  const [salvar, cancelar] = item.querySelectorAll('button');
+  const enviar = ()=>salvarNomeOperador(nome, campo.value);
+  salvar.onclick = enviar;
+  cancelar.onclick = ()=>renderPresenca();
+  campo.onkeydown = e=>{ if(e.key === 'Enter') enviar(); if(e.key === 'Escape') renderPresenca(); };
+  campo.focus(); campo.select();
+}
+
+async function _postOperador(corpo, aviso){
+  const r = await lerJson(_post('/api/expedito/operador', corpo));
+  if(!r || r.error){
+    toast((r && r.error) || ('Não foi possível alterar o operador' + (_erroNoite ? ` (${_erroNoite})` : '') + '.'), 'err');
+    return false;
+  }
+  toast(aviso, 'ok');
+  await carregarPresenca();
+  if(_noite) atualizarNoite();
+  return true;
+}
+
+function salvarNomeOperador(nome, novo){
+  novo = (novo || '').trim().replace(/\s+/g, ' ').toUpperCase();
+  if(!novo || novo === nome){ renderPresenca(); return; }
+  const junta = _conhecidos.includes(novo);
+  if(junta && !confirm(`${novo} já está na lista. Juntar ${nome} com ${novo}?\n\n`
+    + 'Os dois cadastros do WMS passam a contar como a mesma pessoa.')) return;
+  _postOperador({nome, novo_nome: novo}, junta ? `${nome} junto com ${novo}` : `${nome} agora é ${novo}`);
+}
+
+function ocultarOperador(nome){
+  if(!confirm(`Ocultar ${nome} da lista do efetivo?\n\nO histórico fica guardado e dá para reexibir depois.`)) return;
+  _postOperador({nome, oculto: true}, `${nome} ocultado`);
+}
+
+function reexibirOperador(nome){
+  _postOperador({nome, oculto: false}, `${nome} de volta à lista`);
+}
+
+function marcarPresente(nome, marcado, funcao){
+  const alvo = funcao === 'conferente' ? _confPresentes : _presentes;
+  if(marcado) alvo.add(nome); else alvo.delete(nome);
+  _miniEfetivo();
+  // o mesmo nome na outra lista fica bloqueado enquanto este estiver marcado
+  const outra = funcao === 'conferente' ? 'separador' : 'conferente';
+  document.querySelectorAll(`#presenca-lista .pres-item[data-funcao="${outra}"]`).forEach(el=>{
+    if(el.dataset.nome !== String(nome).toUpperCase()) return;
+    const cx = el.querySelector('input');
+    cx.disabled = marcado;
+    el.classList.toggle('outra', marcado);
+    el.title = marcado ? `Marcado como ${funcao} nesta noite` : '';
+  });
+  contarPresenca();
+}
+
+function filtrarPresenca(){
+  const t = (document.getElementById('presenca-busca').value || '').trim().toUpperCase();
+  document.querySelectorAll('#presenca-lista .pres-item').forEach(el=>{
+    el.classList.toggle('hidden', !!t && !el.dataset.nome.includes(t));
+  });
+  contarPresenca();
+}
+
+function marcarTodaPresenca(valor){
+  if(_gerirNomes) return;
+  document.querySelectorAll('#presenca-lista .pres-item').forEach(el=>{
+    if(el.classList.contains('hidden')) return;      // respeita o filtro ativo
+    const cx = el.querySelector('input');
+    if(cx.disabled) return;                          // marcado na outra função
+    if(cx.checked === valor) return;
+    cx.checked = valor;
+    marcarPresente(el.dataset.nome, valor, el.dataset.funcao);
+  });
+}
+
+function contarPresenca(){
+  if(_gerirNomes) return;
+  const itens = [...document.querySelectorAll('#presenca-lista .pres-item')];
+  itens.forEach(el=>el.classList.toggle('on', el.querySelector('input').checked));
+  const visiveis = itens.filter(el=>!el.classList.contains('hidden'));
+  ['separador','conferente'].forEach(f=>{
+    const daF = itens.filter(el=>el.dataset.funcao === f);
+    const c = document.getElementById('pc-' + f);
+    if(c) c.textContent = `${daF.filter(el=>el.querySelector('input').checked).length} de ${daF.length} marcados`;
+  });
+  const el = document.getElementById('presenca-conta');
+  if(el) el.textContent = visiveis.length < itens.length ? `${visiveis.length} exibidos pelo filtro` : '';
+}
+
+async function salvarPresenca(){
+  const janela = {};
+  ['sep_inicio','sep_fim','emb_inicio','emb_fim','corte'].forEach(k=>{
+    const c = document.getElementById('jan-' + k);
+    if(c && c.value) janela[k] = c.value;
+  });
+  const corpo = {presentes: [..._presentes], conferentes: [..._confPresentes]};
+  if(Object.keys(janela).length) corpo.janela = janela;
+  const r = await lerJson(_post('/api/expedito/presenca' + qsData('?'), corpo));
+  if(!r || r.error){ toast((r && r.error) || 'Não foi possível salvar.', 'err'); return; }
+  _janela = r.janela || _janela;
+  toast(`${r.presentes.length} separador(es) e ${(r.conferentes||[]).length} conferente(s) salvos`, 'ok');
+  _presencaAberta = false;          // salvo: o card recolhe para uma linha
+  _gerirNomes = false;
+  renderPresenca();
+  atualizarNoite();
+}
+
+/* Painel sem a coluna Empresa. O WMS nem sempre exporta a coluna — o painel
+   de 08/10 às 19h30 veio sem ela, e o upload gravava ZERO instruções dizendo
+   "arquivo lido". CDA e CDB são o MESMO Local e uma operação só, então para
+   a conta de um Local não há pergunta: o painel vai para a consolidadora. A
+   escolha aparece apenas para quem enxerga mais de um Local (admin fora do
+   espelho), onde a dúvida é real. */
+let _arquivosPendentes = null;
+let _podeEditar = false;
+
+function montarEmpresas(lista){
+  const wrap = document.getElementById('painel-empresa-wrap');
+  const sel = document.getElementById('painel-empresa');
+  const emps = lista || [];
+  wrap.classList.toggle('hidden', emps.length < 2);
+  // Um Local só (CDA e CDB juntas): não há o que escolher. Limpa a lista para
+  // nenhum valor lembrado de antes seguir no envio.
+  if(emps.length < 2){ sel.innerHTML = ''; return; }
+  const atual = sel.value || (()=>{ try{ return localStorage.getItem('expedito_empresa_painel')||''; }
+                                    catch(e){ return ''; } })();
+  sel.innerHTML = '<option value="">escolha</option>' +
+    emps.map(e=>`<option value="${esc(e)}">${esc(e)}</option>`).join('');
+  if(emps.includes(atual)) sel.value = atual;
+}
+
+function lembrarEmpresa(){
+  const v = document.getElementById('painel-empresa').value;
+  try{ localStorage.setItem('expedito_empresa_painel', v); }catch(e){}
+  // se o envio anterior parou pedindo a empresa, reenvia agora
+  if(v && _arquivosPendentes){ const f = _arquivosPendentes; _arquivosPendentes = null; carregarPainel(f); }
+}
+
+let _erroNoite = '';
+/* Toda falha diz o motivo. "Não foi possível ler a operação", sem mais nada,
+   foi o que o outro PC mostrou em 09/10/2026 — a causa provável era um NaN
+   no JSON, que o navegador recusa sem aviso. */
+const _MOTIVO_HTTP = {
+  401: 'sessão expirada — entre de novo',
+  403: 'sem acesso ao módulo Expedito nesta sessão',
+  413: 'arquivo grande demais para o envio',
+  500: 'erro interno no servidor (HTTP 500)',
+  502: 'o servidor não respondeu a tempo (HTTP 502) — tente de novo em instantes',
+  503: 'o servidor não respondeu a tempo (HTTP 503) — tente de novo em instantes',
+  504: 'o servidor não respondeu a tempo (HTTP 504) — tente de novo em instantes',
+};
+async function lerJson(promessa){
+  _erroNoite = '';
+  let resp;
+  try{ resp = await promessa; }
+  catch(e){ _erroNoite = 'sem conexão com o servidor'; return null; }
+  let txt = '';
+  try{ txt = await resp.text(); }catch(e){ txt = ''; }
+  const tipo = resp.headers.get('content-type') || '';
+  if(tipo.includes('json')){
+    try{ return JSON.parse(txt); }
+    catch(e){
+      _erroNoite = /\bNaN\b/.test(txt) ? 'o servidor devolveu um valor inválido (NaN) no rastreio'
+                                       : `HTTP ${resp.status} com resposta ilegível`;
+      console.error('[noite]', resp.status, tipo, txt.slice(0, 300));
+      return null;
+    }
+  }
+  _erroNoite = _MOTIVO_HTTP[resp.status]
+    || (resp.redirected ? 'o servidor redirecionou a chamada — entre de novo'
+                        : `o servidor respondeu HTTP ${resp.status} sem dados`);
+  console.error('[noite]', resp.status, tipo, txt.slice(0, 300));
+  return null;
+}
+
+async function carregarPainel(files){
+  if(!files || !files.length) return;
+  const fd = new FormData();
+  [...files].forEach(f=>fd.append('painel', f));
+  const emp = document.getElementById('painel-empresa').value;
+  if(emp) fd.append('empresa', emp);
+  _arquivosPendentes = files;
+  await atualizarNoite(fd);
+}
+
+async function atualizarNoite(fd){
+  document.getElementById('noite-carregando').classList.remove('hidden');
+  let r = null;
+  try{
+    if(fd && _dataNoite) fd.append('data', _dataNoite);
+    r = await lerJson(fd ? _post('/api/expedito/noite', fd, true)
+                         : fetch('/api/expedito/noite' + qsData('?')));
+  }catch(e){ r = null; }
+  document.getElementById('noite-carregando').classList.add('hidden');
+  if(r && r.precisa_empresa){
+    // o arquivo fica guardado: escolher a empresa reenvia sozinho
+    montarEmpresas(r.empresas_upload);
+    toast(r.error + ' Escolha a empresa ao lado de "Carregar painel".', 'err', 8000);
+    document.getElementById('painel-empresa').focus();
+    return;
+  }
+  _arquivosPendentes = null;
+  if(!r || r.error){
+    const motivo = (r && r.error) || ('Não foi possível ler a operação'
+      + (_erroNoite ? ` (${_erroNoite})` : '') + '.');
+    toast(motivo, 'err', 8000);
+    // fica escrito na tela, não só no aviso que some
+    document.getElementById('noite-msg').innerHTML = '⚠️ ' + esc(motivo);
+    return;
+  }
+  _noite = r;
+  _podeEditar = !!r.pode_editar;
+  marcarDia(r);
+  montarEmpresas(r.empresas_upload);
+  // o aviso diz quantas INSTRUÇÕES entraram, não quantos arquivos foram
+  // abertos — "1 arquivo lido" com zero gravadas foi o que escondeu o defeito
+  if(r.arquivos && r.arquivos.length){
+    const n = r.arquivos.reduce((a,x)=>a+(x.instrucoes||0), 0);
+    toast(`${fmt0(n)} instrução(ões) gravada(s) de ${r.arquivos.length} arquivo(s)`, 'ok');
+  }
+  // quem aparece separando ou conferindo no painel entra na presença
+  const pa = r.presenca_automatica;
+  if(pa && (pa.separadores || pa.conferentes)){
+    toast(`Presença marcada pelo painel: ${pa.separadores} separador(es), ${pa.conferentes} conferente(s)`, 'ok', 6000);
+    carregarPresenca();
+  }
+  (r.erros||[]).forEach(e=>toast(e, 'err', 7000));
+  renderNoite();
+}
+
+/* Onde estão as carretas do turno. A fonte é o rastreio (OpenTech + Ravex),
+   não o painel do WMS: lá a coluna de status do veículo mostra "Chegada
+   Prevista" para todas, sempre, porque o WMS não tem integração com a Ravex
+   (usuário, 08/10/2026). O que a operação decide com isto: qual tonelada dá
+   para atacar agora, porque o veículo já está no pátio. */
+const VEIC_ESTADO = {
+  no_cd:        ['ok', 'No CD'],
+  a_caminho:    ['at', 'A caminho'],
+  sem_rastreio: ['exp', 'Sem rastreio'],
+  carregado:    ['exp', 'Carregado'],
+};
+
+function renderVeiculos(v){
+  const r = (v && v.resumo) || {};
+  const todos = (v && v.veiculos) || [];
+  const chip = document.getElementById('veic-chip');
+  const sub = document.getElementById('veic-sub');
+  const kpis = document.getElementById('veic-kpis');
+  const caixa = document.getElementById('veic-cards');
+  if(!chip || !caixa) return;
+
+  if(r.indisponivel){
+    chip.textContent = 'rastreio indisponível';
+    kpis.innerHTML = '';
+    caixa.innerHTML = '<div class="veic-vazio">O rastreio não respondeu. O restante do retrato segue válido.</div>';
+    return;
+  }
+  sub.textContent = r.sem_cd_cadastrado
+    ? 'Cadastre a localização do CD em Configurações para medir a distância das carretas.'
+    : 'Posição pelo rastreio, atualizado a cada 20 minutos. Carreta com embarque fechado conta como carregada.';
+  chip.textContent = `${fmt0(r.total||0)} veículo(s) no turno`;
+
+  kpis.innerHTML = htmlKpis([
+    ['No CD', fmt0(r.no_cd||0), `${fmt(r.t_no_cd||0,1)} t ainda a carregar`, r.no_cd ? 'ok' : 'neutro'],
+    ['A caminho', fmt0(r.a_caminho||0), `${fmt(r.t_a_caminho||0,1)} t prevista`],
+    ['Carregados', fmt0(r.carregados||0), `${fmt(r.t_carregado||0,1)} t embarcada`, r.carregados ? 'ok' : 'neutro'],
+  ]);
+  animarKpis(kpis);
+
+  const busca = (document.getElementById('veic-busca').value || '').trim().toUpperCase();
+  const filtrados = !busca ? todos : todos.filter(x=>
+    x.placa.includes(busca) || x.instrucoes.some(i=>String(i).includes(busca)));
+  // Ordem: em separação primeiro (padrão), ou pela distância do CD — quem
+  // está mais perto antes; carreta carregada e sem rastreio no fim
+  const ordem = (document.getElementById('veic-ordem') || {}).value || 'separacao';
+  const pesoSep = {andamento: 0, fila: 1, concluida: 2};
+  const lista = filtrados.slice().sort((a, b)=>{
+    if(ordem === 'distancia'){
+      const ka = a.estado === 'carregado' ? 1e9 : (a.km == null ? 1e8 : a.km);
+      const kb = b.estado === 'carregado' ? 1e9 : (b.km == null ? 1e8 : b.km);
+      return ka - kb;
+    }
+    const sa = a.estado === 'carregado' ? 3 : (pesoSep[a.separacao] ?? 2);
+    const sb = b.estado === 'carregado' ? 3 : (pesoSep[b.separacao] ?? 2);
+    return sa - sb || (b.pct_sep || 0) - (a.pct_sep || 0);
+  });
+  if(!lista.length){
+    caixa.innerHTML = `<div class="veic-vazio">${todos.length ? 'Nenhum veículo para essa busca.'
+      : 'Nenhuma placa nas instruções do turno.'}</div>`;
+    return;
+  }
+  const pct = (a, b)=> b > 0 ? Math.max(0, Math.min(100, a / b * 100)) : 0;
+  caixa.innerHTML = lista.map(x=>{
+    const e = VEIC_ESTADO[x.estado] || ['', x.rotulo];
+    const ps = x.pct_sep != null ? x.pct_sep : pct(x.sep_t, x.prev_t);
+    const pe = x.pct_emb != null ? x.pct_emb : pct(x.emb_t, x.prev_t);
+    const ref = (x.itens||[]).map(i=>`${i.empresa}:${i.instrucao}`).join(',');
+    return `<div class="vc ${esc(x.estado)}">
+      <div class="vc-top"><span class="vc-placa">${esc(x.placa)}</span>
+        <span class="chip ${e[0]}">${esc(x.rotulo)}</span></div>
+      <div class="vc-inst">Instrução ${esc(x.instrucoes.join(', ') || '—')} · ${fmt(x.prev_t,1)} t previstas${
+        x.separacao === 'andamento' ? ' · <b style="color:var(--brand-2)">em separação</b>' : ''}</div>
+      <div class="vc-uma" title="Azul: separado · verde: embarcado">
+        <i class="sep" style="width:${ps}%"></i><i class="emb" style="width:${pe}%"></i></div>
+      <div class="vc-num"><span>sep. <b>${fmt(x.sep_t,1)} t · ${fmt0(ps)}%</b></span>
+        <span>emb. <b>${fmt(x.emb_t,1)} t · ${fmt0(pe)}%</b></span></div>
+      ${(()=>{ // rodapé só quando tem o que dizer: o card fica mais baixo
+        const pe = x.chegada || (x.estado==='no_cd' ? 'no pátio'
+          : (x.estado==='carregado' ? 'embarque encerrado' : (x.cidade || '')));
+        const bt = _podeEditar && ref ? `<button class="vc-tirar" title="Tirar esta instrução da noite"
+          onclick="tirarInstrucoes('${esc(ref)}','${esc(x.placa)}')">✕ tirar</button>` : '';
+        return (pe || bt) ? `<div class="vc-pe"><span>${esc(pe)}</span>${bt}</div>` : '';
+      })()}
+    </div>`;
+  }).join('');
+}
+
+/* Análise da operação (usuário, 14/10/2026): o término é o fechamento de
+   status da última instrução; separação e embarque são medidos contra a
+   janela de cada um e contra o corte final; depois, as medições da noite.
+   O julgamento do que é gargalo fica com o Expedito, que recebe a mesma
+   análise. */
+const VEREDITO = {
+  dentro: ['ok', 'dentro do previsto'],
+  fora_dentro_corte: ['at', 'após o previsto, dentro do corte'],
+  alem_do_corte: ['er', 'além do corte'],
+  sem_base: ['', 'sem base para projetar'],
+  sem_janela: ['', 'previsto não cadastrado'],
+  fora_previsto: ['at', 'após o previsto'],
+};
+
+function renderAnalise(a){
+  const cx = document.getElementById('cx-analise');
+  const corpo = document.getElementById('analise-corpo');
+  if(!cx) return;
+  cx.classList.toggle('hidden', !a);
+  const ppc = document.getElementById('cx-prod-pessoas');
+  if(ppc) ppc.classList.toggle('hidden', !a);
+  if(!a) return;
+  const bloco = (titulo, et, extra) => {
+    const v = VEREDITO[et.situacao] || ['', ''];
+    return `<div class="an-bloco"><div class="an-t">${titulo}</div>
+      <div class="an-v">${esc(et.fim || '—')} <span class="fraco" style="font-size:12px;font-weight:600">
+        ${et.base === 'projetado' ? 'projetado' : (et.base === 'medido' ? 'real' : '')}</span></div>
+      <span class="chip ${v[0]}">${v[1]}</span>${et.texto
+        ? `<span class="info" tabindex="0" aria-label="${esc(et.texto)}">i<span class="dica">${esc(et.texto)}</span></span>` : ''}
+      ${extra ? `<div class="an-r" style="margin-top:6px">${extra}</div>` : ''}</div>`;
+  };
+  const m = a.marcos || {};
+  const emb = a.embarque || {};
+  document.getElementById('analise-sub').textContent = a.concluida
+    ? `Operação concluída. Fechamento de status às ${a.marcos.fechamento_status}.`
+    : `Leitura das ${a.momento}. Término projetado às ${a.termino_operacao || '—'}`
+      + (a.corte ? `, corte às ${a.corte}.` : '.');
+  const jn = a.janela || {};
+  let h = (a.faltam_horarios || []).length
+    ? `<div class="banner warn" style="margin-bottom:10px">Horários não cadastrados em Parâmetros:
+        ${esc(a.faltam_horarios.join(', '))}. Sem eles, o veredito de janela e corte fica incompleto.</div>` : '';
+  h += `<div class="grid g3 mb">
+    ${bloco('Separação · prevista até ' + esc(jn.sep_fim || '—'), a.separacao,
+      `Início ${esc(m.inicio_separacao || '—')} · faltam ${fmt(a.separacao.falta_t,1)} t`)}
+    ${bloco('Embarque · previsto até ' + esc(jn.emb_fim || '—'), emb,
+      `Início ${esc(m.inicio_embarque || '—')} · faltam ${fmt(emb.falta_t,1)} t`
+      + (emb.conferentes ? ` · ${emb.conferentes} conferente(s)` : '')
+      + (emb.ritmo_conferente_t_h ? ` a ${fmt(emb.ritmo_conferente_t_h,2)} t/h` : ''))}
+    <div class="an-bloco"><div class="an-t">Término da operação · corte ${esc(a.corte || 'não cadastrado')}</div>
+      <div class="an-v">${esc(a.termino_operacao || '—')} <span class="fraco" style="font-size:12px;font-weight:600">
+        ${a.termino_base === 'fechamento_status' ? 'fechamento de status' : (a.termino_base === 'projetado' ? 'projetado' : '')}</span></div>
+      ${a.termino_apos_corte_min ? `<span class="chip at">${fmt0(a.termino_apos_corte_min)} min após o corte</span>` : ''}
+      <div class="an-r" style="margin-top:6px">Última caixa ${esc(m.ultima_caixa || '—')} · fim do embarque ${esc(m.fim_embarque || '—')}</div></div>
+  </div>`;
+  // Medições, sem julgamento: o que é gargalo quem diz é o Expedito
+  // (usuário, 14/10/2026: "deixe a análise de gargalos para o Expedito")
+  const md = a.medicoes || {};
+  const pc = a.pausas_consideradas || {};
+  const esp = md.espera_separacao_embarque || {}, fec = md.fechamento_apos_ultima_caixa || {};
+  const minf = v => v == null ? '—' : (v >= 60 ? `${Math.floor(v/60)}h${String(Math.round(v%60)).padStart(2,'0')}` : `${fmt0(v)} min`);
+  const top = l => (l||[]).slice(0,4).map(x=>`${esc(x.instrucao)} (${minf(x.min)})`).join(', ');
+  h += `<div class="an-sec" style="display:flex;align-items:center;gap:10px">Medições da noite
+      <button class="btn ghost sm" style="margin-left:auto;text-transform:none;letter-spacing:0"
+        onclick="perguntarPronto('Analise a operação desta noite: o que houve, o término e os gargalos, com os números de cada um.')">
+        🧭 Pedir a análise ao Expedito</button></div>
+    <div class="tw"><table class="tb"><tbody>
+      <tr><td>Início da separação contra o previsto</td><td class="n"><b>${md.inicio_separacao_vs_previsto_min == null ? '—'
+        : (md.inicio_separacao_vs_previsto_min > 0 ? minf(md.inicio_separacao_vs_previsto_min) + ' depois'
+        : (md.inicio_separacao_vs_previsto_min < 0 ? minf(-md.inicio_separacao_vs_previsto_min) + ' antes' : 'no horário'))}</b></td>
+        <td class="fraco">início ${esc(m.inicio_separacao || '—')} · previsto ${esc(jn.sep_inicio || 'não cadastrado')}</td></tr>
+      <tr><td>Espera entre o fim da separação e o início do embarque</td><td class="n"><b>${minf(esp.mediana_min)}</b> mediana</td>
+        <td class="fraco">${top(esp.instrucoes) ? 'maiores: ' + top(esp.instrucoes) : '—'}</td></tr>
+      <tr><td>Da última caixa ao fechamento de status</td><td class="n"><b>${minf(fec.mediana_min)}</b> mediana</td>
+        <td class="fraco">${top(fec.instrucoes) ? 'maiores: ' + top(fec.instrucoes) : '—'}</td></tr>
+      <tr><td>Intervalos livres entre instruções</td><td class="n"><b>${minf(md.intervalos_livres_total_min)}</b> na equipe</td>
+        <td class="fraco">já sem refeição (${minf(pc.refeicao_min)}) e pausa térmica (${minf(pc.pausa_termica_min)} a cada ${minf(pc.a_cada_min)})</td></tr>
+    </tbody></table></div>`;
+  // As ondas de liberação não aparecem na tela: o resumo do painel nem sempre
+  // é carregado, e a informação serve à análise do Expedito, que a recebe
+  // (usuário, 15/10/2026).
+  const livre = {};
+  (a.intervalos || []).forEach(o=>{ livre[o.pessoa] = o.livre_total_min; });
+  const tab = (titulo, lista, comLivre) => `<div><div class="an-sec">${titulo}</div>${lista.length ? `<div class="tw"><table class="tb">
+      <thead><tr><th>Nome</th><th class="n">Toneladas</th><th class="n">Horas</th><th class="n">t/h</th><th>Janela</th>
+        ${comLivre ? '<th class="n" title="Entre instruções, já sem refeição e pausas térmicas">Livre</th>' : ''}</tr></thead>
+      <tbody>${lista.map(x=>`<tr><td>${esc(x.pessoa)}</td><td class="n">${fmt(x.t,1)}</td><td class="n">${fmt(x.horas,1)}</td>
+        <td class="n">${x.t_h == null ? '—' : fmt(x.t_h,2)}</td><td class="fraco">${esc(x.inicio||'')}–${esc(x.fim||'')}</td>
+        ${comLivre ? `<td class="n">${minf(livre[x.pessoa] || 0)}</td>` : ''}</tr>`).join('')}
+      </tbody></table></div>` : '<div class="nota">Sem registro na noite.</div>'}</div>`;
+  const pr = a.produtividade || {};
+  corpo.innerHTML = h;
+  // a produtividade por pessoa vai para o card recolhido no fim da guia
+  const pp = document.getElementById('prod-pessoas-corpo');
+  if(pp) pp.innerHTML = `<div class="grid g2">${tab('Separação por separador', pr.separadores || [], true)}${tab('Embarque por conferente', pr.conferentes || [], false)}</div>`;
+}
+
+/* Instruções tiradas desta noite, com o caminho de volta à vista. */
+function renderTiradas(lista){
+  const el = document.getElementById('veic-tiradas');
+  if(!el) return;
+  const itens = lista || [];
+  el.classList.toggle('hidden', !itens.length);
+  if(!itens.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `<b>${itens.length} instrução(ões) fora da operação</b> — não contam no retrato nem na Produtividade.<br>`
+    + itens.map(x=>`<span class="tir-item">${esc(x.instrucao)}${x.placa ? ' · ' + esc(x.placa) : ''}
+        · ${fmt(x.prev_t||0,1)} t
+        ${_podeEditar ? `<button onclick="devolverInstrucao('${esc(x.empresa)}','${esc(x.instrucao)}')">Devolver</button>` : ''}
+      </span>`).join('');
+}
+
+async function devolverInstrucao(empresa, instrucao){
+  const d = await lerJson(_post('/api/expedito/instrucao/desconsiderar',
+                                {itens: [{empresa, instrucao}], desconsiderar: false}));
+  if(!d || d.error){ toast((d && d.error) || 'Não foi possível devolver a instrução.', 'err'); return; }
+  toast(`Instrução ${instrucao} de volta à operação`, 'ok');
+  atualizarNoite();
+}
+
+function lembrarOrdemVeiculos(){
+  try{ localStorage.setItem('expedito_veic_ordem', document.getElementById('veic-ordem').value); }catch(e){}
+}
+document.addEventListener('DOMContentLoaded', ()=>{
+  let o = '';
+  try{ o = localStorage.getItem('expedito_veic_ordem') || ''; }catch(e){}
+  const sel = document.getElementById('veic-ordem');
+  if(sel && o) sel.value = o;
+});
+
+/* Tira instrução da noite — o "lixo" de teste que ficava na lista. Usa a
+   mesma marcação de "desconsiderar" da Produtividade, que fica guardada à
+   parte da instrução: carregar o painel de novo NÃO a traz de volta. */
+async function tirarInstrucoes(ref, placa){
+  const itens = ref.split(',').filter(Boolean).map(x=>{ const [empresa, instrucao] = x.split(':');
+    return {empresa, instrucao}; });
+  if(!itens.length) return;
+  const nums = itens.map(i=>i.instrucao).join(', ');
+  if(!confirm(`Tirar da operação a instrução ${nums} (${placa})?\n\n`
+    + 'Ela deixa de contar no retrato e na Produtividade. Dá para devolver depois.')) return;
+  const d = await lerJson(_post('/api/expedito/instrucao/desconsiderar', {itens, desconsiderar: true}));
+  if(!d || d.error){ toast((d && d.error) || 'Não foi possível tirar a instrução.', 'err'); return; }
+  toast(`${d.alteradas} instrução(ões) fora da operação`, 'ok');
+  atualizarNoite();
+}
+
+
+/* Dia da operação escolhido no calendário. Vazio = a operação atual, que o
+   servidor resolve pelo horário de abertura. A noite é rotulada pelo dia do
+   EMBARQUE: às 10h de 09/10, o dia atual é a madrugada que acabou de sair. */
+let _dataNoite = '';
+
+function qsData(prefixo){
+  return _dataNoite ? `${prefixo}data=${encodeURIComponent(_dataNoite)}` : '';
+}
+
+function escolherDia(valor){
+  // o campo de data manda o ano pela metade enquanto a pessoa digita
+  if(valor && !/^(20\d\d|2100)-\d\d-\d\d$/.test(valor)) return;
+  _dataNoite = valor || '';
+  // a conversa é por dia: troca junto com a data
+  _conv.analista = null; _conv.gerente = null;
+  _vistas.analista.clear(); _vistas.gerente.clear();
+  _presencaAberta = false;
+  carregarPresenca();
+  atualizarNoite();
+  carregarConversa('analista');
+}
+
+function mudarDia(delta){
+  const base = document.getElementById('noite-data').value;
+  if(!base) return;
+  const d = new Date(base + 'T12:00:00');
+  d.setDate(d.getDate() + delta);
+  escolherDia(d.toISOString().slice(0, 10));
+}
+
+function marcarDia(r){
+  // o campo mostra o dia que o servidor de fato devolveu
+  if(!r || !r.data_op) return;
+  const campo = document.getElementById('noite-data');
+  campo.value = r.data_op;
+  const atual = !_dataNoite || (r.operacao_atual && r.data_op === r.operacao_atual);
+  document.querySelector('.noite-topo').classList.toggle('passado', !atual);
+  document.getElementById('btn-dia-atual').classList.toggle('hidden', atual);
+}
+
+function renderNoite(){
+  const r = _noite, f = r.retrato, msg = document.getElementById('noite-msg');
+  const avisos = [];
+  if(r.sem_painel) avisos.push('Nenhuma instrução deste dia no banco — carregue o painel do WMS.');
+  if(r.sem_presentes) avisos.push('Marque o efetivo presente para o Expedito indicar a alocação.');
+  (r.erros||[]).forEach(e=>avisos.push(e));
+  msg.innerHTML = avisos.length ? '⚠️ ' + avisos.map(esc).join(' · ')
+    : `<span class="vivo ${f.painel_ha_min >= 40 ? 'at' : 'ok'}"></span>`
+      + `Dados do painel de ${esc((f.momento||'').slice(11))}`
+      + (f.painel_ha_min > 0 ? ` (há ${fmt0(f.painel_ha_min)} min)` : '')
+      + ` · ${f.instrucoes.total} instrução(ões) no turno`
+      + (f.painel_ha_min >= 40 ? ' · carregue um painel novo para atualizar o ritmo' : '');
+  if(r.sem_painel){ document.getElementById('noite').classList.add('hidden'); return; }
+  document.getElementById('noite').classList.remove('hidden');
+
+  const t = f.toneladas, pr = f.projecao, ri = f.ritmo;
+  const RISCO = {no_horario:['ok','fecha no horário'], apertado:['at','prazo apertado'],
+                 atraso:['er pisca','encaminha para atraso'], concluido:['ok','turno concluído'],
+                 sem_base:['','sem base para projetar']};
+  const risco = RISCO[pr.risco] || ['',''];
+  renderVeiculos(r.veiculos);
+  renderTiradas(r.tiradas);
+  renderAnalise(r.analise);
+  const ai = document.getElementById('conv-aviso');
+  if(ai && r.iniciativa && r.iniciativa !== 'ativa') ai.title = 'Sugestão por iniciativa pausada: ' + r.iniciativa;
+  // a sugestão por iniciativa aparece na conversa assim que fica pronta
+  if(r.iniciativa === 'ativa') setTimeout(()=>carregarConversa('analista'), 1500);
+  document.getElementById('noite-kpis').innerHTML = htmlKpis([
+    // concluído = previsto das instruções prontas (separadas, embarcadas ou
+    // faturadas) + o feito das abertas. Somar só o separado deixava a noite
+    // de 09/10 em 80%: 19,4 t embarcaram sem passar pelo picking.
+    ['Concluído', (t.pct_concluido==null?'—':fmt(t.pct_concluido,0)+'%'),
+      `${fmt(t.concluidas ?? t.separadas,1)} t de ${fmt(t.previstas,1)} t previstas`,
+      t.pct_concluido >= 100 ? 'ok' : undefined],
+    ['Falta concluir', fmt(t.faltam,1)+' t', `${f.instrucoes.fila} na fila · ${f.instrucoes.andamento} em andamento`],
+    // Enquanto a medição da noite é pequena, o número do ritmo é amostra e a
+    // projeção usa o histórico — o card diz isso, para 4 t/h medidos em
+    // 7 minutos não parecerem o ritmo da equipe
+    ['Ritmo', (ri.t_h_por_pessoa==null?'—':fmt(ri.t_h_por_pessoa,2)+' t/h'),
+      pr.base==='historico'
+        ? `amostra de ${fmt0((ri.horas_pessoa_ate_agora||0)*60)} min-pessoa · projeção pelo histórico`
+        : `por pessoa · ${ri.pessoas_com_registro} com registro`],
+    // separação e embarque têm fim e equipe próprios: um card para cada
+    // (usuário, 15/10/2026); os dois perseguem o previsto cadastrado
+    ['Término da separação', (pr.termino_estimado||'—').slice(11) || '—',
+      (f.fim_base === 'separacao_prevista' ? `previsto ${(f.fim_previsto_turno||'').slice(11)} · ` : '') + risco[1],
+      ({no_horario:'ok', concluido:'ok', apertado:'at', atraso:'er'})[pr.risco] || 'neutro'],
+    ['Término do embarque', (r.analise && r.analise.embarque && r.analise.embarque.fim) || '—',
+      (r.analise && r.analise.embarque)
+        ? (r.analise.janela && r.analise.janela.emb_fim ? `previsto ${r.analise.janela.emb_fim} · ` : '')
+          + (VEREDITO[r.analise.embarque.situacao] || ['',''])[1]
+        : 'sem análise',
+      ({dentro:'ok', fora_dentro_corte:'at', fora_previsto:'at', alem_do_corte:'er'})[
+        r.analise && r.analise.embarque && r.analise.embarque.situacao] || 'neutro'],
+  ]);
+  animarKpis(document.getElementById('noite-kpis'));
+
+  const jn = (r.analise && r.analise.janela) || {};
+  document.getElementById('noite-sub').textContent =
+    (jn.sep_inicio && jn.sep_fim
+      ? `Separação ${jn.sep_inicio}–${jn.sep_fim}` + (jn.emb_inicio && jn.emb_fim ? ` · embarque ${jn.emb_inicio}–${jn.emb_fim}` : '')
+        + (jn.corte ? ` · corte ${jn.corte}` : '')
+      : `Turno de ${(f.inicio_turno||'').slice(11)} às ${(f.fim_previsto_turno||'').slice(11)}`) + ' · ' +
+    `${Math.floor(f.decorrido_min/60)}h${String(f.decorrido_min%60).padStart(2,'0')} decorridos`;
+  const folga = pr.folga_min;
+  document.getElementById('noite-projecao').innerHTML = `
+    <div class="row" style="gap:18px;flex-wrap:wrap;align-items:center">
+      <div><div class="nota">Capacidade da equipe agora</div>
+        <b style="font-size:16px">${pr.capacidade_t_h==null?'—':fmt(pr.capacidade_t_h,1)+' t/h'}</b>
+        <div class="nota">${f.equipe.presentes.length} presente(s)${pr.base==='historico'
+          ? ' · pelo ritmo histórico de cada um, até haver 1 hora-pessoa medida na noite'
+          : (pr.base==='medido' ? ' · pelo ritmo medido na noite' : '')}</div></div>
+      <div><div class="nota">Situação</div>
+        <span class="chip ${risco[0]}" style="font-size:13px">${risco[1]}</span>
+        <div class="nota">${folga==null?'':(folga>=0?`${Math.floor(folga/60)}h${String(Math.abs(folga)%60).padStart(2,'0')} de folga`
+          :`${Math.floor(Math.abs(folga)/60)}h${String(Math.abs(folga)%60).padStart(2,'0')} além do previsto`)}</div></div>
+      <div><div class="nota">Disponíveis</div>
+        <b style="font-size:16px">${f.equipe.livres.length}</b>
+        <div class="nota">${f.equipe.livres.slice(0,4).map(esc).join(', ')||'—'}</div></div>
+      <div><div class="nota">Docas em uso</div>
+        <b style="font-size:16px">${f.docas.em_uso.length}</b>
+        <div class="nota">${f.docas.em_uso.slice(0,8).join(', ')||'—'}</div></div>
+      <div><div class="nota">Separado no picking · embarcado</div>
+        <b style="font-size:16px">${fmt(t.separadas,1)} t · ${fmt(t.embarcadas ?? 0,1)} t</b>
+        <div class="nota">${f.instrucoes.carregadas ?? 0} instrução(ões) com embarque encerrado</div></div>
+    </div>
+    ${f.equipe.no_painel_fora_da_lista.length ? `<div class="nota" style="margin-top:10px">
+      No painel e fora da lista de presentes: <b>${f.equipe.no_painel_fora_da_lista.map(esc).join(', ')}</b></div>` : ''}`;
+
+  const sug = (r.sugestoes||[]);
+  document.getElementById('tb-sugestao').innerHTML = !sug.length
+    ? '<tbody><tr><td class="fraco">Nenhuma instrução na fila agora.</td></tr></tbody>'
+    : `<thead><tr><th>Instrução</th><th>Separador</th><th class="n">Falta</th><th class="n">SKU</th>
+        <th>Motivo</th></tr></thead><tbody>` +
+      sug.map(x=>`<tr><td><b>${esc(x.instrucao)}</b></td>
+        <td>${x.separador?esc(x.separador):'<span class="fraco">aguarda liberar alguém</span>'}</td>
+        <td class="n">${fmt(x.falta_t,1)} t</td><td class="n">${fmt0(x.sku)}</td>
+        <td class="fraco">${esc(x.motivo)}</td></tr>`).join('') + '</tbody>';
+
+  const des = r.desempenho || {};
+  const equipe = f.equipe.presentes.map(n=>({nome:n, ritmo:des[n]??null,
+    estado: f.equipe.ocupados.includes(n) ? 'ocupado' : 'livre'}))
+    .sort((a,b)=>(b.ritmo||0)-(a.ritmo||0));
+  document.getElementById('tb-equipe').innerHTML = !equipe.length
+    ? '<tbody><tr><td class="fraco">Marque o efetivo presente para ver o desempenho.</td></tr></tbody>'
+    : `<thead><tr><th>Separador</th><th>Agora</th><th class="n">Ritmo medido</th></tr></thead><tbody>` +
+      equipe.map(x=>`<tr><td>${esc(x.nome)}</td>
+        <td><span class="chip ${x.estado==='livre'?'ok':''}">${x.estado}</span></td>
+        <td class="n">${x.ritmo==null?'<span class="fraco">sem histórico</span>':fmt(x.ritmo,2)+' t/h'}</td></tr>`).join('')
+      + '</tbody>';
+}
+
+/* ── início ─────────────────────────────────────────────── */
+(async function(){
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({user:null}));
+  if(!me.user){ window.location.href = '/login'; return; }
+  _csrf = me.csrf_token || '';
+  _iniciais = String(me.user || '•').trim().charAt(0).toUpperCase() || '•';
+  _admin = me.perfil === 'admin' || me.perfil === 'master';
+  if(_admin) document.getElementById('btn-gerente').classList.remove('hidden');
+  montarSidebar(me.modulos_permitidos, 'expedito');
+  montarConfigSidebar(me.perfil, me.is_master);
+
+  // amanhã no relógio do computador — toISOString() é UTC e, depois das
+  // 21h, já caía em depois de amanhã (20/10/2026)
+  const amanha = new Date(); amanha.setDate(amanha.getDate() + 1);
+  document.getElementById('data-alvo').value =
+    `${amanha.getFullYear()}-${String(amanha.getMonth() + 1).padStart(2, '0')}-${String(amanha.getDate()).padStart(2, '0')}`;
+
+  document.getElementById('abertura-txt').textContent = 'Pronto para a operação de hoje';
+  setTimeout(()=>document.getElementById('abertura').classList.add('sai'), 650);
+  setTimeout(()=>document.getElementById('abertura').style.display = 'none', 1150);
+})();
+</script>
+{% if DEMO_MODE %}
+<script>
+/* Demo: abre direto no plano de amanhã que a carga de exemplo gerou
+   (na operação o plano fica só na tela de quem gerou). */
+(function abrirPlanoDaDemo(tentativa){
+  const campo = document.getElementById('data-alvo');
+  if(!campo || !campo.value || !_csrf){
+    if((tentativa||0) < 40) setTimeout(()=>abrirPlanoDaDemo((tentativa||0)+1), 150);
+    return;
+  }
+  fetch('/api/expedito/planos?tipo=abastecimento&data=' + campo.value).then(r=>r.json()).then(l=>{
+    if(_plano || !l || !l.itens || !l.itens.length) return;
+    return fetch('/api/expedito/plano/' + l.itens[0].id).then(r=>r.json()).then(p=>{
+      if(_plano || !p || !p.dados) return;
+      _plano = p.dados; _feitos = new Set();
+      document.getElementById('plano-vazio').classList.add('hidden');
+      document.getElementById('plano').classList.remove('hidden');
+      montarFiltroLocal();
+      renderPlano();
+    });
+  }).catch(()=>{});
+})(0);
+</script>
+{% endif %}
+</body>
+</html>

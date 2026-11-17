@@ -1,0 +1,9 @@
+flask>=3.0
+flask-cors>=4.0
+pandas>=2.2
+openpyxl>=3.1
+xlrd>=2.0
+pillow>=10.0
+requests>=2.31
+cryptography>=42.0
+tzdata>=2024.1

@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configurações — CD Demo</title>
+<style>
+:root{
+  --glass:rgba(255,255,255,0.62); --glass-b:rgba(255,255,255,0.28);
+  --text:#1a1a2e; --text-s:rgba(26,26,46,0.58);
+  --accent:#007AFF; --accent-l:rgba(0,122,255,0.10);
+  --ok:#28a745; --warn:#ff9500; --danger:#ff3b30;
+  --radius:16px; --rsm:10px; --shadow:0 4px 24px rgba(0,0,0,0.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Inter,sans-serif;
+  font-size:13px;color:var(--text);
+  background:linear-gradient(135deg,#eef2f7 0%,#e6ecf5 60%,#eaf0f8 100%)}
+.wrap{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 18px;height:52px;flex-shrink:0;
+  background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);border-bottom:1px solid var(--glass-b)}
+.topbar a.back{text-decoration:none;color:var(--accent);font-weight:600;font-size:13px}
+.topbar-logo{font-size:22px}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.topbar-sub{font-size:12px;color:var(--text-s)}
+.spacer{flex:1}
+.btn{border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-family:inherit;
+  cursor:pointer;font-weight:600;background:var(--accent);color:#fff;transition:.15s}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:rgba(0,0,0,.05);color:var(--text)}
+.btn.ok{background:var(--ok)} .btn.sm{padding:5px 10px;font-size:12px}
+.btn.danger{background:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* ── SIDEBAR DE MÓDULOS (padrão idêntico aos outros módulos) ── */
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);
+  z-index:998;opacity:0;pointer-events:none;transition:opacity .2s}
+.sidebar-overlay.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:999;
+  background:var(--glass);backdrop-filter:blur(20px) saturate(1.6);
+  border-right:1px solid var(--glass-b);box-shadow:4px 0 24px rgba(0,0,0,.15);
+  transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;padding:14px 0}
+.sidebar.show{transform:translateX(0)}
+.sidebar-header{display:flex;align-items:center;gap:8px;padding:0 16px 14px;
+  border-bottom:1px solid var(--glass-b);margin-bottom:8px}
+.sidebar-header .sidebar-logo{font-size:20px}
+.sidebar-header .sidebar-title{font-size:14px;font-weight:700;flex:1}
+.sidebar-close{background:none;border:none;font-size:16px;color:var(--text-s);cursor:pointer;padding:4px;line-height:1}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  text-decoration:none;color:var(--text);font-size:13px;font-weight:500;transition:.15s}
+.sidebar-link:hover{background:rgba(0,122,255,.08)}
+.sidebar-spacer{flex:1}
+.sidebar-config{border-top:1px solid var(--glass-b);padding:8px 10px 4px}
+.sidebar-config-toggle{width:100%;background:none;border:none;text-align:left;padding:10px 12px;
+  border-radius:10px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;gap:10px;font-family:inherit}
+.sidebar-config-toggle:hover{background:rgba(0,122,255,.08)}
+.sidebar-config-toggle .arrow{margin-left:auto;font-size:11px;color:var(--text-s);transition:transform .15s}
+.sidebar-config-toggle.open .arrow{transform:rotate(90deg)}
+.sidebar-config-sub{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px 10px}
+.sidebar-sublink{display:block;padding:8px 12px;border-radius:8px;text-decoration:none;
+  color:var(--text-s);font-size:12.5px}
+.sidebar-sublink:hover{background:rgba(0,122,255,.08);color:var(--text)}
+.sidebar-link.active{background:var(--accent-l);color:var(--accent);font-weight:700}
+
+.body{flex:1;overflow:auto;padding:16px 18px 40px;max-width:760px}
+.card{background:var(--glass);backdrop-filter:blur(14px) saturate(1.5);
+  border:1px solid var(--glass-b);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px 16px;margin-bottom:14px;transition:box-shadow .3s}
+.card h3{margin:0 0 6px;font-size:13px;font-weight:700;color:var(--text);letter-spacing:.2px}
+.cfg-desc{font-size:12px;color:var(--text-s);margin-bottom:10px;line-height:1.5}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hidden{display:none}
+.muted{color:var(--text-s)}
+input,select{border:1px solid var(--glass-b);background:rgba(255,255,255,.75);border-radius:8px;
+  padding:6px 9px;font-size:12px;font-family:inherit;color:var(--text)}
+input:focus,select:focus{outline:1.5px solid var(--accent)}
+.cfg-result{font-size:12px}
+.cfg-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.cfg-table th{padding:7px 10px;text-align:left;font-size:11px;color:var(--text-s);text-transform:uppercase;letter-spacing:.3px}
+.cfg-table td{padding:7px 10px;border-top:1px solid var(--glass-b)}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;
+  padding:10px 18px;border-radius:10px;font-size:12.5px;z-index:200;opacity:0;pointer-events:none;transition:.25s}
+.toast.show{opacity:1}
+.toast.err{background:#b91c1c}
+
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR DE MÓDULOS -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Xsense</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm icon" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/">‹ Painel</a>
+    <span class="topbar-logo">⚙️</span>
+    <span class="topbar-title">Configurações</span>
+    <span class="topbar-sub">Conta, integrações e credenciais</span>
+    <span class="spacer"></span>
+  </div>
+
+  <div class="body">
+
+    <div class="card" id="cfg-section-senha">
+      <h3>🔑 Minha conta</h3>
+      <div class="cfg-desc">Trocar a senha da sua própria conta.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input type="password" id="pwd-atual" placeholder="Senha atual" style="flex:1;min-width:150px">
+        <input type="password" id="pwd-nova" placeholder="Nova senha (mín. 6 caracteres)" style="flex:1;min-width:150px">
+        <input type="password" id="pwd-confirma" placeholder="Confirmar nova senha" style="flex:1;min-width:150px">
+      </div>
+      <div class="row">
+        <button class="btn ok sm" onclick="confirmarTrocarSenha()">Salvar nova senha</button>
+        <span id="pwd-erro" class="cfg-result" style="color:var(--danger)"></span>
+      </div>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-cd">
+      <h3>📍 Localizações dos CDs</h3>
+      <div class="cfg-desc">Coordenadas usadas para calcular distância/tempo de viagem. O raio de chegada
+        define quando a carreta passa a constar como no CD (chegada, tempo aguardando e tempo de descarga);
+        em branco, vale 1 km. Para alterar um CD já cadastrado, use o botão de edição ou informe a mesma sigla.</div>
+      <div class="row">
+        <input id="loc-sigla" placeholder="Sigla (CDA)" style="width:90px;text-transform:uppercase">
+        <input id="loc-lat" placeholder="Latitude" style="flex:1;min-width:120px">
+        <input id="loc-lon" placeholder="Longitude" style="flex:1;min-width:120px">
+        <input id="loc-raio" placeholder="Raio de chegada (km)" style="width:150px" inputmode="decimal">
+        <button class="btn ok sm" onclick="salvarLocalizacao()">Salvar</button>
+      </div>
+      <table class="cfg-table">
+        <thead><tr><th>Sigla</th><th>Latitude</th><th>Longitude</th><th>Raio de chegada</th><th></th></tr></thead>
+        <tbody id="loc-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-opentech">
+      <h3>🔐 Credenciais OpenTech</h3>
+      <div class="cfg-desc">Usadas para baixar automaticamente o Painel de Monitoração. A senha não é exibida após salva.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="ot-usuario" placeholder="Usuário OpenTech" style="flex:1;min-width:150px">
+        <input id="ot-senha" type="password" placeholder="Nova senha (deixe vazio p/ manter)" style="flex:1;min-width:150px">
+        <input id="ot-intervalo" type="number" min="1" placeholder="Intervalo (min)" style="width:130px">
+      </div>
+      <div class="row">
+        <button class="btn ok sm" onclick="salvarOpentech()">Salvar</button>
+        <button class="btn ghost sm" onclick="testarOpentech()">🔌 Testar conexão</button>
+        <button class="btn ghost sm" onclick="atualizarOpentechAgora()">🔄 Atualizar agora</button>
+        <span id="ot-test-result" class="cfg-result"></span>
+      </div>
+      <div id="ot-status-info" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-ravex">
+      <h3>🔐 Credenciais Ravex</h3>
+      <div class="cfg-desc">Segundo sistema de rastreio — placas que não aparecem na OpenTech. A senha não é exibida após salva.
+        Download automático ainda não está ativo (só o cadastro das credenciais por enquanto).</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="rx-usuario" placeholder="Usuário Ravex" style="flex:1;min-width:150px">
+        <input id="rx-senha" type="password" placeholder="Nova senha (deixe vazio p/ manter)" style="flex:1;min-width:150px">
+        <input id="rx-intervalo" type="number" min="1" placeholder="Intervalo (min)" style="width:130px">
+      </div>
+      <div class="row">
+        <button class="btn ok sm" onclick="salvarRavex()">Salvar</button>
+        <button class="btn ghost sm" onclick="testarRavex()">🔌 Testar conexão</button>
+        <button class="btn ghost sm" onclick="atualizarRavexAgora()">🔄 Atualizar agora</button>
+        <span id="rx-test-result" class="cfg-result"></span>
+      </div>
+      <div id="rx-status-info" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-xsense">
+      <h3>🔐 Credenciais Xsense (Câmaras)</h3>
+      <div class="cfg-desc">Login do portal xsenseccm.com — usado pra sincronizar as câmaras e coletar as leituras de
+        temperatura automaticamente. A senha não é exibida após salva.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="xs-usuario" placeholder="Email do portal Xsense" style="flex:1;min-width:150px">
+        <input id="xs-senha" type="password" placeholder="Nova senha (deixe vazio p/ manter)" style="flex:1;min-width:150px">
+        <input id="xs-node-id" placeholder="ID da instalação (opcional — auto-detecta)" style="flex:1;min-width:150px">
+      </div>
+      <div class="row">
+        <button class="btn ok sm" onclick="salvarXsense()">Salvar</button>
+        <button class="btn ghost sm" onclick="testarXsense()">🔌 Testar conexão</button>
+        <span id="xs-test-result" class="cfg-result"></span>
+      </div>
+      <div id="xs-status-info" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-telegram">
+      <h3>🔐 Bot do Telegram (Alertas Xsense)</h3>
+      <div class="cfg-desc">Canal de alerta enquanto o WhatsApp Business API não destrava. Crie um bot com o
+        <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> no Telegram (/newbot) e cole o
+        token aqui — não pede CNPJ nem verificação nenhuma. O token não é exibido após salvo.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="tg-token" type="password" placeholder="Token do bot (deixe vazio p/ manter)" style="flex:1;min-width:220px">
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn ok sm" onclick="salvarTelegram()">Salvar</button>
+        <button class="btn ghost sm" onclick="testarTelegram()">🔌 Testar conexão</button>
+        <span id="tg-test-result" class="cfg-result"></span>
+      </div>
+      <div id="tg-status-info" class="muted" style="font-size:12px;margin-bottom:12px"></div>
+      <div class="cfg-desc"><b>Modo de resposta:</b> por padrão o bot responde via polling (cron a cada 1 min, com atraso).
+        Ativando o webhook abaixo, a resposta fica quase instantânea — precisa da URL pública (https) do site.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="tg-webhook-url" placeholder="https://seu-dominio.com.br" style="flex:1;min-width:220px">
+      </div>
+      <div class="row">
+        <button class="btn ok sm" onclick="ativarWebhookTelegram()">⚡ Ativar webhook</button>
+        <button class="btn ghost sm" onclick="desativarWebhookTelegram()">Desativar (voltar pro polling)</button>
+        <span id="tg-webhook-result" class="cfg-result"></span>
+      </div>
+      <div class="cfg-desc" style="margin-top:10px">
+        <b>URL do site (Mini App /painel):</b> usa o mesmo campo acima, mas salva
+        separado do webhook — funciona mesmo em polling (ex.: homolog, sem HTTPS público estável).</div>
+      <div class="row">
+        <button class="btn ghost sm" onclick="salvarSiteUrlTelegram()">💾 Salvar URL do site</button>
+        <span id="tg-siteurl-result" class="cfg-result"></span>
+      </div>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-telegram-carretas">
+      <h3>🚛 Bot do Telegram (Carretas)</h3>
+      <div class="cfg-desc">Bot próprio das carretas, separado do bot de temperatura: avisa a chegada ao CD
+        (coligada e redespacho), responde "em trânsito" e "na unidade" e abre o painel com cards e mapa.
+        Crie o bot no <a href="https://t.me/BotFather" target="_blank" rel="noopener">@BotFather</a> (/newbot) e
+        cole o token aqui. O token fica cifrado e não é exibido depois de salvo; o token do bot de
+        temperatura é recusado.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="tgc-token" type="password" placeholder="Token do bot de carretas" style="flex:1;min-width:220px" autocomplete="off">
+        <button class="btn ok sm" onclick="salvarBotCarretas()">Salvar token</button>
+        <button class="btn ghost sm" style="color:#b91c1c" onclick="apagarBotCarretas()">Remover token</button>
+      </div>
+      <div id="tgc-status" class="muted" style="font-size:12px;margin-bottom:12px"></div>
+      <div class="cfg-desc"><b>Endereço do site</b> (https), usado pelo webhook e pelos botões do painel no Telegram.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="tgc-url" placeholder="https://seu-dominio.com.br" style="flex:1;min-width:220px">
+        <button class="btn ok sm" onclick="webhookBotCarretas(true)">⚡ Ativar webhook</button>
+        <button class="btn ghost sm" onclick="webhookBotCarretas(false)">Desativar</button>
+        <button class="btn ghost sm" onclick="processarBotCarretas()" title="Para ambientes sem https (homolog)">📥 Buscar mensagens</button>
+      </div>
+      <div class="row" style="margin-bottom:10px"><span id="tgc-result" class="cfg-result"></span></div>
+      <div class="cfg-desc"><b>Conta com os cards de cada CD.</b> O bot lê os cards do painel dessa conta.
+        Em branco, vale a conta dona do CD (cadastro de usuários).</div>
+      <table class="cfg-table">
+        <thead><tr><th>CD</th><th>Conta do painel</th></tr></thead>
+        <tbody id="tgc-contas"></tbody>
+      </table>
+      <div class="row" style="margin-top:8px">
+        <button class="btn ghost sm" onclick="salvarContasBotCarretas()">💾 Salvar contas</button>
+      </div>
+      <div class="cfg-desc" style="margin-top:10px">Os pedidos de acesso (/start) são aprovados no painel de
+        carretas, menu Ferramentas → Bot de carretas, pelo coordenador ou analista do CD ou pelo gerente.</div>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-expedito-ia">
+      <h3>🔐 IA do Expedito (Gemini)</h3>
+      <div class="cfg-desc">Liga a conversa do Expedito: o copiloto do analista durante a noite e a
+        guia do gerente. Crie a chave no
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+        e cole aqui. A chave não é exibida depois de salva.
+        <br><br><b>Sobre o plano gratuito:</b> os termos da API dizem que o conteúdo enviado no plano
+        gratuito é usado para treinar os modelos e pode passar por revisão humana. Por isso o Expedito
+        manda <b>codinome</b> no lugar do nome da pessoa e não manda cliente, cidade, placa nem o número
+        real da instrução — a tradução de volta acontece na tela. Sem chave configurada, o painel
+        calculado continua inteiro: a IA raciocina em cima do número medido, não no lugar dele.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="ia-chave" type="password" placeholder="Chave da API (deixe vazio p/ manter)" style="flex:1;min-width:240px">
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <select id="ia-modelo" style="flex:1;min-width:240px"></select>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <label style="display:flex;gap:6px;align-items:center;font-size:13px">
+          <input type="checkbox" id="ia-ativo"> Conversa ligada
+        </label>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn ok sm" onclick="salvarIaExpedito()">Salvar</button>
+        <button class="btn ghost sm" onclick="testarIaExpedito()">🔌 Testar chave</button>
+        <button class="btn ghost sm" onclick="limparIaExpedito()">🗑 Remover chave</button>
+        <span id="ia-test-result" class="cfg-result"></span>
+      </div>
+      <div id="ia-status-info" class="muted" style="font-size:12px"></div>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-captcha">
+      <h3>🤖 Segurança do login (CAPTCHA)</h3>
+      <div class="cfg-desc">Cloudflare Turnstile — exige confirmação de "não sou um robô" a partir de uma certa
+        quantidade de tentativas de login erradas do mesmo IP (além do limite de 10 tentativas/5min que já existe
+        sempre). Crie uma chave grátis em
+        <a href="https://dash.cloudflare.com/?to=/:account/turnstile" target="_blank" rel="noopener">dash.cloudflare.com → Turnstile</a>
+        (widget tipo "Managed", domínio do site) — cole as duas chaves abaixo. Sem chave configurada, essa
+        verificação fica desligada e só o limite de tentativas por IP continua valendo.</div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="cap-site-key" placeholder="Site key (pública)" style="flex:1;min-width:220px">
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <input id="cap-secret-key" type="password" placeholder="Secret key (deixe vazio p/ manter)" style="flex:1;min-width:220px">
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <label class="muted" style="font-size:12px">A partir da tentativa nº</label>
+        <input id="cap-ativo-apos" type="number" min="1" value="3" style="width:70px">
+      </div>
+      <div class="row">
+        <button class="btn ok sm" onclick="salvarCaptcha()">Salvar</button>
+        <span id="cap-result" class="cfg-result"></span>
+      </div>
+      <div id="cap-status-info" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div>
+
+    <div class="card hidden cfg-admin" id="cfg-section-admin">
+      <h3>🛠 Administração</h3>
+      <div class="cfg-desc">Gestão de usuários, permissões por módulo e log de auditoria.</div>
+      <button class="btn ok sm" onclick="window.location.href='/admin'">Abrir Administração</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SIDEBAR DE MÓDULOS ─────────────────────────────────
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Xsense (Câmaras)', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebar-overlay').classList.add('show');}
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebar-overlay').classList.remove('show');}
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+function montarConfigSidebar(perfil, isMaster){
+  // admin e master unificados (29/08/2026) — mesmo nível de acesso, sem
+  // distinção de sublinks nenhuma mais (isMaster/'master' mantidos só
+  // como fallback pra sessão antiga em cache até relogar).
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+}
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  // módulo com telas (SLAs, 27/10/2026): o nome abre a lista das telas
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+
+let _csrf='';
+const fetchPost=(url,body,method)=>fetch(url,{method:method||'POST',
+  headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body:JSON.stringify(body)});
+
+function toast(msg, tipo){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  t.classList.toggle('err', tipo==='err');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function fecharModal(id){ document.getElementById(id).classList.remove('show'); }
+function escHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ── MINHA CONTA ──────────────────────────────────────────
+async function confirmarTrocarSenha(){
+  const atual=document.getElementById('pwd-atual').value;
+  const nova=document.getElementById('pwd-nova').value;
+  const conf=document.getElementById('pwd-confirma').value;
+  const erroEl=document.getElementById('pwd-erro');
+  erroEl.textContent='';
+  if(nova!==conf){erroEl.textContent='As senhas não coincidem.';return;}
+  if(nova.length<6){erroEl.textContent='A nova senha deve ter pelo menos 6 caracteres.';return;}
+  const res=await fetchPost('/api/trocar_senha',{senha_atual:atual,nova_senha:nova});
+  const d=await res.json();
+  if(d.ok){
+    toast('Senha alterada ✓');
+    document.getElementById('pwd-atual').value='';
+    document.getElementById('pwd-nova').value='';
+    document.getElementById('pwd-confirma').value='';
+  } else erroEl.textContent=d.msg||'Erro ao trocar senha.';
+}
+
+// ── LOCALIZAÇÕES DOS CDs ─────────────────────────────────
+async function carregarLocalizacoes(){
+  const res = await fetch('/api/master/cds');
+  const cds = await res.json();
+  const tbody = document.getElementById('loc-tbody');
+  tbody.innerHTML = cds.map(cd=>`
+    <tr>
+      <td style="font-weight:700">${escHtml(cd.sigla)}</td>
+      <td>${escHtml(String(cd.latitude))}</td>
+      <td>${escHtml(String(cd.longitude))}</td>
+      <td>${cd.raio_chegada_km ? escHtml(String(cd.raio_chegada_km).replace('.', ','))+' km'
+             : '<span style="color:var(--text-s)">1 km (padrão)</span>'}</td>
+      <td style="text-align:right">
+        <button class="btn ghost sm" title="Editar" onclick="editarLocalizacao(${cd.id})">✎</button>
+        <button class="btn ghost sm" style="color:#e53e3e" onclick="excluirLocalizacao(${cd.id})">✕</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-s)">Nenhum CD cadastrado</td></tr>';
+  window._cdsLoc = cds;
+}
+async function salvarLocalizacao(){
+  const sigla = document.getElementById('loc-sigla').value.trim().toUpperCase();
+  const lat   = document.getElementById('loc-lat').value.trim();
+  const lon   = document.getElementById('loc-lon').value.trim();
+  const raio  = document.getElementById('loc-raio').value.trim();
+  if(!sigla||!lat||!lon){alert('Preencha sigla, latitude e longitude');return;}
+  const res = await fetchPost('/api/master/cds',{sigla,latitude:lat,longitude:lon,raio_chegada_km:raio});
+  const d = await res.json();
+  if(d.ok){
+    ['loc-sigla','loc-lat','loc-lon','loc-raio'].forEach(id=>document.getElementById(id).value='');
+    await carregarLocalizacoes();
+  } else { alert(d.error||'Erro ao salvar'); }
+}
+function editarLocalizacao(id){
+  const cd = (window._cdsLoc||[]).find(c=>c.id===id);
+  if(!cd) return;
+  document.getElementById('loc-sigla').value = cd.sigla;
+  document.getElementById('loc-lat').value = cd.latitude;
+  document.getElementById('loc-lon').value = cd.longitude;
+  document.getElementById('loc-raio').value = cd.raio_chegada_km ? String(cd.raio_chegada_km).replace('.', ',') : '';
+  document.getElementById('loc-raio').focus();
+}
+async function excluirLocalizacao(id){
+  if(!confirm('Remover este CD?')) return;
+  await fetch('/api/master/cds/'+id,{method:'DELETE',headers:{'X-CSRF-Token':_csrf}});
+  await carregarLocalizacoes();
+}
+
+// ── OPENTECH ──────────────────────────────────────────────
+async function carregarOpentechConfig(){
+  const res = await fetch('/api/master/opentech');
+  const cfg = await res.json();
+  document.getElementById('ot-usuario').value = cfg.usuario || '';
+  document.getElementById('ot-senha').value = '';
+  document.getElementById('ot-senha').placeholder = cfg.has_senha
+    ? 'Senha configurada — deixe vazio p/ manter' : 'Nova senha';
+  document.getElementById('ot-intervalo').value = cfg.intervalo_min || 20;
+  const info = document.getElementById('ot-status-info');
+  if(cfg.ultima_atualizacao){
+    const cor = cfg.status==='ok' ? '#15803d' : '#b91c1c';
+    const txt = cfg.status==='ok' ? 'Atualizado' : 'Falha';
+    info.innerHTML = `Última verificação: <strong style="color:${cor}">${txt}</strong> em ${cfg.ultima_atualizacao}`;
+  } else {
+    info.textContent = 'Ainda não houve nenhuma atualização automática.';
+  }
+}
+async function salvarOpentech(){
+  const usuario = document.getElementById('ot-usuario').value.trim();
+  const senha = document.getElementById('ot-senha').value;
+  const intervalo = parseInt(document.getElementById('ot-intervalo').value)||20;
+  const res = await fetchPost('/api/master/opentech',{usuario, senha, intervalo_min:intervalo});
+  const d = await res.json();
+  const resEl = document.getElementById('ot-test-result');
+  if(d.ok){
+    resEl.textContent = '✓ Salvo';
+    resEl.style.color = '#15803d';
+    document.getElementById('ot-senha').value='';
+    await carregarOpentechConfig();
+  } else {
+    resEl.textContent = d.error || 'Erro ao salvar';
+    resEl.style.color = '#b91c1c';
+  }
+}
+async function testarOpentech(){
+  const resEl = document.getElementById('ot-test-result');
+  resEl.textContent = 'Testando...';
+  resEl.style.color = 'var(--text-s)';
+  const res = await fetchPost('/api/master/opentech/testar',{});
+  const d = await res.json();
+  resEl.textContent = (d.ok?'✓ ':'✗ ') + (d.msg||'');
+  resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+}
+async function atualizarOpentechAgora(){
+  const resEl = document.getElementById('ot-test-result');
+  resEl.textContent = 'Disparando atualização em segundo plano...';
+  resEl.style.color = 'var(--text-s)';
+  try{
+    const res = await fetchPost('/api/master/opentech/atualizar_agora',{});
+    const d = await res.json();
+    resEl.textContent = (d.ok?'✓ ':'✗ ') + (d.msg||'');
+    resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+    await carregarOpentechConfig();
+  }catch(e){
+    resEl.textContent = '✗ Erro: '+e.message;
+    resEl.style.color = '#b91c1c';
+  }
+}
+
+// ── RAVEX ─────────────────────────────────────────────────
+async function carregarRavexConfig(){
+  const res = await fetch('/api/master/ravex');
+  const cfg = await res.json();
+  document.getElementById('rx-usuario').value = cfg.usuario || '';
+  document.getElementById('rx-senha').value = '';
+  document.getElementById('rx-senha').placeholder = cfg.has_senha
+    ? 'Senha configurada — deixe vazio p/ manter' : 'Nova senha';
+  document.getElementById('rx-intervalo').value = cfg.intervalo_min || 20;
+  const info = document.getElementById('rx-status-info');
+  if(cfg.ultima_atualizacao){
+    const cor = cfg.status==='ok' ? '#15803d' : '#b91c1c';
+    const txt = cfg.status==='ok' ? 'Atualizado' : 'Falha';
+    info.innerHTML = `Última verificação: <strong style="color:${cor}">${txt}</strong> em ${cfg.ultima_atualizacao}`;
+  } else {
+    info.textContent = 'Ainda não houve nenhuma atualização automática.';
+  }
+}
+async function salvarRavex(){
+  const usuario = document.getElementById('rx-usuario').value.trim();
+  const senha = document.getElementById('rx-senha').value;
+  const intervalo = parseInt(document.getElementById('rx-intervalo').value)||20;
+  const res = await fetchPost('/api/master/ravex',{usuario, senha, intervalo_min:intervalo});
+  const d = await res.json();
+  const resEl = document.getElementById('rx-test-result');
+  if(d.ok){
+    resEl.textContent = '✓ Salvo';
+    resEl.style.color = '#15803d';
+    document.getElementById('rx-senha').value='';
+    await carregarRavexConfig();
+  } else {
+    resEl.textContent = d.error || 'Erro ao salvar';
+    resEl.style.color = '#b91c1c';
+  }
+}
+async function testarRavex(){
+  const resEl = document.getElementById('rx-test-result');
+  resEl.textContent = 'Testando...';
+  resEl.style.color = 'var(--text-s)';
+  const res = await fetchPost('/api/master/ravex/testar',{});
+  const d = await res.json();
+  resEl.textContent = (d.ok?'✓ ':'✗ ') + (d.msg||'');
+  resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+}
+async function atualizarRavexAgora(){
+  const resEl = document.getElementById('rx-test-result');
+  resEl.textContent = 'Disparando atualização em segundo plano...';
+  resEl.style.color = 'var(--text-s)';
+  try{
+    const res = await fetchPost('/api/master/ravex/atualizar_agora',{});
+    const d = await res.json();
+    resEl.textContent = (d.ok?'✓ ':'✗ ') + (d.msg||'');
+    resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+    setTimeout(carregarRavexConfig, 8000);
+  }catch(e){
+    resEl.textContent = '✗ Erro: '+e.message;
+    resEl.style.color = '#b91c1c';
+  }
+}
+
+// ── XSENSE ────────────────────────────────────────────────
+async function carregarXsenseConfig(){
+  const res = await fetch('/api/master/xsense');
+  const cfg = await res.json();
+  document.getElementById('xs-usuario').value = cfg.usuario || '';
+  document.getElementById('xs-senha').value = '';
+  document.getElementById('xs-senha').placeholder = cfg.has_senha
+    ? 'Senha configurada — deixe vazio p/ manter' : 'Nova senha';
+  document.getElementById('xs-node-id').value = cfg.node_id || '';
+  const info = document.getElementById('xs-status-info');
+  if(cfg.ultima_atualizacao){
+    const cor = cfg.status==='ok' ? '#15803d' : '#b91c1c';
+    const txt = cfg.status==='ok' ? 'OK' : 'Falha';
+    info.innerHTML = `Última verificação: <strong style="color:${cor}">${txt}</strong> em ${cfg.ultima_atualizacao}`;
+  } else {
+    info.textContent = 'Ainda não foi testado.';
+  }
+}
+async function salvarXsense(){
+  const usuario = document.getElementById('xs-usuario').value.trim();
+  const senha = document.getElementById('xs-senha').value;
+  const node_id = document.getElementById('xs-node-id').value.trim();
+  const res = await fetchPost('/api/master/xsense',{usuario, senha, node_id});
+  const d = await res.json();
+  const resEl = document.getElementById('xs-test-result');
+  if(d.ok){
+    resEl.textContent = '✓ Salvo';
+    resEl.style.color = '#15803d';
+    document.getElementById('xs-senha').value='';
+    await carregarXsenseConfig();
+  } else {
+    resEl.textContent = d.error || 'Erro ao salvar';
+    resEl.style.color = '#b91c1c';
+  }
+}
+async function testarXsense(){
+  const resEl = document.getElementById('xs-test-result');
+  resEl.textContent = 'Testando...';
+  resEl.style.color = 'var(--text-s)';
+  const res = await fetchPost('/api/master/xsense/testar',{});
+  const d = await res.json();
+  resEl.textContent = (d.ok?'✓ ':'✗ ') + (d.msg||'');
+  resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+  await carregarXsenseConfig();
+}
+
+// ── IA DO EXPEDITO (GEMINI) ───────────────────────────────
+// A chave nunca é exibida: o servidor devolve has_chave e os 4 últimos
+// caracteres, e o campo nasce sempre vazio.
+async function carregarIaExpedito(){
+  const res = await fetch('/api/master/expedito/ia');
+  if(!res.ok) return;
+  const cfg = await res.json();
+  const campo = document.getElementById('ia-chave');
+  campo.value = '';
+  campo.placeholder = cfg.has_chave
+    ? `Chave configurada (…${cfg.chave_final||''}) — deixe vazio p/ manter`
+    : 'Chave da API (deixe vazio p/ manter)';
+  const sel = document.getElementById('ia-modelo');
+  sel.innerHTML = (cfg.modelos||[]).map(m=>
+    `<option value="${m.id}">${m.rotulo}</option>`).join('');
+  sel.value = cfg.modelo || cfg.modelo_padrao || '';
+  document.getElementById('ia-ativo').checked = cfg.ativo !== false;
+  const info = document.getElementById('ia-status-info');
+  if(!cfg.has_chave){ info.textContent = 'Sem chave: a conversa fica desligada e o painel calculado segue inteiro.'; }
+  else if(cfg.ultimo_teste){ info.textContent = (cfg.ultimo_teste_ok?'✓ Chave validada em ':'✗ Último teste falhou em ') + cfg.ultimo_teste; }
+  else { info.textContent = 'Chave salva, ainda não testada.'; }
+}
+async function salvarIaExpedito(){
+  const corpo = {chave: document.getElementById('ia-chave').value,
+                 modelo: document.getElementById('ia-modelo').value,
+                 ativo: document.getElementById('ia-ativo').checked};
+  const res = await fetchPost('/api/master/expedito/ia', corpo);
+  const d = await res.json();
+  const el = document.getElementById('ia-test-result');
+  el.textContent = d.ok ? '✓ Salvo' : ('✗ ' + (d.error||'Falha ao salvar'));
+  el.style.color = d.ok ? '#15803d' : '#b91c1c';
+  if(d.ok) await carregarIaExpedito();
+}
+async function testarIaExpedito(){
+  const el = document.getElementById('ia-test-result');
+  el.textContent = 'Testando…'; el.style.color = 'var(--text-s)';
+  const res = await fetchPost('/api/master/expedito/ia/testar', {});
+  const d = await res.json();
+  el.textContent = (d.ok?'✓ ':'✗ ') + (d.msg || d.error || '');
+  el.style.color = d.ok ? '#15803d' : '#b91c1c';
+  await carregarIaExpedito();
+}
+async function limparIaExpedito(){
+  if(!confirm('Remover a chave do Gemini? A conversa do Expedito fica desligada até cadastrar outra.')) return;
+  const res = await fetchPost('/api/master/expedito/ia', {limpar: true});
+  const d = await res.json();
+  const el = document.getElementById('ia-test-result');
+  el.textContent = d.ok ? '✓ Chave removida' : ('✗ ' + (d.error||''));
+  el.style.color = d.ok ? '#15803d' : '#b91c1c';
+  if(d.ok){ document.getElementById('ia-chave').value=''; await carregarIaExpedito(); }
+}
+
+// ── BOT TELEGRAM DE CARRETAS (19/10/2026) ─────────────────
+function _tgcMsg(texto, ok){
+  const el = document.getElementById('tgc-result');
+  el.textContent = texto; el.style.color = ok === null ? 'var(--text-s)' : (ok ? '#15803d' : '#b91c1c');
+}
+async function carregarBotCarretas(){
+  const res = await fetch('/api/master/carretas/telegram');
+  if(!res.ok) return;
+  const cfg = await res.json();
+  document.getElementById('tgc-token').value = '';
+  document.getElementById('tgc-token').placeholder = cfg.has_token
+    ? 'Token configurado — deixe vazio para manter' : 'Token do bot de carretas';
+  document.getElementById('tgc-status').textContent = cfg.has_token
+    ? `Bot: @${cfg.bot_username || '—'} · ${cfg.webhook_ativo ? 'webhook ativo (resposta imediata)' : 'sem webhook (use Buscar mensagens)'}`
+    : 'Nenhum token configurado.';
+  const url = document.getElementById('tgc-url');
+  if(!url.value) url.value = cfg.site_url || (location.protocol === 'https:' ? location.origin : '');
+  const contas = cfg.contas_por_local || {};
+  document.getElementById('tgc-contas').innerHTML = (cfg.locais||[]).map(l=>`<tr>
+      <td style="font-weight:700">${escHtml(l)}</td>
+      <td><input class="tgc-conta" data-local="${escHtml(l)}" value="${escHtml(contas[l]||'')}"
+           placeholder="conta dona do CD" style="width:100%"></td></tr>`).join('')
+    || '<tr><td colspan="2" style="color:var(--text-s)">Cadastre a localização dos CDs primeiro.</td></tr>';
+}
+async function salvarBotCarretas(){
+  const token = document.getElementById('tgc-token').value.trim();
+  if(!token){ _tgcMsg('Cole o token do bot.', false); return; }
+  _tgcMsg('Validando com o Telegram...', null);
+  const d = await (await fetchPost('/api/master/carretas/telegram', {token})).json();
+  _tgcMsg(d.ok ? `✓ Token salvo (@${d.bot_username||''})` : (d.error||'Erro ao salvar'), !!d.ok);
+  document.getElementById('tgc-token').value = '';
+  await carregarBotCarretas();
+}
+async function apagarBotCarretas(){
+  if(!confirm('Remover o token do bot de carretas? O bot para de responder e de avisar.')) return;
+  const d = await (await fetchPost('/api/master/carretas/telegram', {apagar:true})).json();
+  _tgcMsg(d.ok ? '✓ Token removido' : (d.error||'Erro'), !!d.ok);
+  await carregarBotCarretas();
+}
+async function webhookBotCarretas(ativar){
+  const url_base = document.getElementById('tgc-url').value.trim();
+  _tgcMsg(ativar ? 'Ativando...' : 'Desativando...', null);
+  const d = await (await fetchPost('/api/master/carretas/telegram/webhook', {ativar, url_base})).json();
+  _tgcMsg((d.ok?'✓ ':'✗ ') + (d.msg||d.error||''), !!d.ok);
+  await carregarBotCarretas();
+}
+async function processarBotCarretas(){
+  _tgcMsg('Buscando mensagens...', null);
+  const d = await (await fetchPost('/api/carretas/telegram/processar', {})).json();
+  _tgcMsg(d.ok ? `✓ ${d.processadas} mensagem(ns) processada(s)` : (d.error||'Erro'), !!d.ok);
+}
+async function salvarContasBotCarretas(){
+  const contas = {};
+  document.querySelectorAll('.tgc-conta').forEach(i=>{ if(i.value.trim()) contas[i.dataset.local] = i.value.trim(); });
+  const url = document.getElementById('tgc-url').value.trim();
+  const d = await (await fetchPost('/api/master/carretas/telegram', {contas_por_local: contas, site_url: url})).json();
+  _tgcMsg(d.ok ? '✓ Contas e endereço salvos' : (d.error||'Erro'), !!d.ok);
+  await carregarBotCarretas();
+}
+
+// ── BOT TELEGRAM ──────────────────────────────────────────
+async function carregarTelegramConfig(){
+  const res = await fetch('/api/master/xsense/telegram');
+  const cfg = await res.json();
+  document.getElementById('tg-token').value = '';
+  document.getElementById('tg-token').placeholder = cfg.has_token
+    ? 'Token configurado — deixe vazio p/ manter' : 'Token do bot (deixe vazio p/ manter)';
+  const info = document.getElementById('tg-status-info');
+  info.textContent = cfg.bot_username ? `Bot conectado: @${cfg.bot_username}` : 'Ainda não testado.';
+  if(!document.getElementById('tg-webhook-url').value) document.getElementById('tg-webhook-url').value = location.origin;
+  const resEl = document.getElementById('tg-webhook-result');
+  resEl.textContent = cfg.webhook_ativo ? '⚡ Webhook ativo (resposta instantânea)' : 'Modo polling (via cron, com atraso)';
+  resEl.style.color = cfg.webhook_ativo ? '#15803d' : 'var(--text-s)';
+}
+async function salvarTelegram(){
+  const token = document.getElementById('tg-token').value;
+  const res = await fetchPost('/api/master/xsense/telegram',{token});
+  const d = await res.json();
+  const resEl = document.getElementById('tg-test-result');
+  if(d.ok){
+    resEl.textContent = '✓ Salvo';
+    resEl.style.color = '#15803d';
+    document.getElementById('tg-token').value='';
+    await carregarTelegramConfig();
+  } else {
+    resEl.textContent = d.error || 'Erro ao salvar';
+    resEl.style.color = '#b91c1c';
+  }
+}
+async function testarTelegram(){
+  const resEl = document.getElementById('tg-test-result');
+  resEl.textContent = 'Testando...';
+  resEl.style.color = 'var(--text-s)';
+  const res = await fetchPost('/api/master/xsense/telegram/testar',{});
+  const d = await res.json();
+  resEl.textContent = (d.ok?'✓ ':'✗ ') + (d.msg||'');
+  resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+  await carregarTelegramConfig();
+}
+async function ativarWebhookTelegram(){
+  const url_base = document.getElementById('tg-webhook-url').value.trim();
+  const resEl = document.getElementById('tg-webhook-result');
+  resEl.textContent = 'Ativando...'; resEl.style.color = 'var(--text-s)';
+  const res = await fetchPost('/api/master/xsense/telegram/webhook',{ativar:true, url_base});
+  const d = await res.json();
+  resEl.textContent = (d.ok?'✓ ':'✗ ') + (d.msg||d.error||'');
+  resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+  await carregarTelegramConfig();
+}
+async function desativarWebhookTelegram(){
+  const resEl = document.getElementById('tg-webhook-result');
+  resEl.textContent = 'Desativando...'; resEl.style.color = 'var(--text-s)';
+  const res = await fetchPost('/api/master/xsense/telegram/webhook',{ativar:false});
+  const d = await res.json();
+  resEl.textContent = (d.ok?'✓ ':'✗ ') + (d.msg||d.error||'');
+  resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+  await carregarTelegramConfig();
+}
+async function salvarSiteUrlTelegram(){
+  const url = document.getElementById('tg-webhook-url').value.trim();
+  const resEl = document.getElementById('tg-siteurl-result');
+  resEl.textContent = 'Salvando...'; resEl.style.color = 'var(--text-s)';
+  const res = await fetchPost('/api/master/xsense/telegram/site_url',{url});
+  const d = await res.json();
+  resEl.textContent = (d.ok?'✓ salvo':'✗ '+(d.error||''));
+  resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+}
+
+// ── CAPTCHA (Cloudflare Turnstile) ──────────────────────────
+async function carregarCaptchaConfig(){
+  const res = await fetch('/api/master/captcha');
+  const cfg = await res.json();
+  document.getElementById('cap-site-key').value = cfg.site_key || '';
+  document.getElementById('cap-secret-key').value = '';
+  document.getElementById('cap-secret-key').placeholder = cfg.has_secret
+    ? 'Secret key configurada — deixe vazio p/ manter' : 'Secret key (deixe vazio p/ manter)';
+  // "ativo_apos" no banco é quantas tentativas já FALHARAM quando passa a
+  // exigir — na tela mostramos como "a partir de qual tentativa" (mais
+  // natural: "a partir da 3ª" em vez de "depois de 2 falhas").
+  document.getElementById('cap-ativo-apos').value = (cfg.ativo_apos || 2) + 1;
+  const info = document.getElementById('cap-status-info');
+  info.textContent = cfg.has_secret
+    ? (cfg.site_key ? '✓ Configurado e ativo.' : '⚠️ Falta a site key.')
+    : 'Ainda não configurado — só o limite de tentativas por IP está valendo.';
+}
+async function salvarCaptcha(){
+  const resEl = document.getElementById('cap-result');
+  resEl.textContent = 'Salvando...'; resEl.style.color = 'var(--text-s)';
+  const ativoApos = Math.max(1, parseInt(document.getElementById('cap-ativo-apos').value || '3', 10) - 1);
+  const res = await fetchPost('/api/master/captcha', {
+    site_key: document.getElementById('cap-site-key').value.trim(),
+    secret_key: document.getElementById('cap-secret-key').value,
+    ativo_apos: ativoApos,
+  });
+  const d = await res.json();
+  resEl.textContent = d.ok ? '✓ Salvo' : '✗ ' + (d.error || '');
+  resEl.style.color = d.ok ? '#15803d' : '#b91c1c';
+  if(d.ok) await carregarCaptchaConfig();
+}
+
+// ── INIT ──────────────────────────────────────────────────
+(async()=>{
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({user:null}));
+  if(!me.user){ window.location.href='/login'; return; }
+  _csrf = me.csrf_token || '';
+  montarSidebar(me.modulos_permitidos, '');
+  montarConfigSidebar(me.perfil, me.is_master);
+  const cdNome = me.cd_nome_exibicao || 'CDA';
+  document.title = 'Configurações — ' + cdNome;
+  const sbTitle = document.querySelector('.sidebar-title');
+  if(sbTitle) sbTitle.textContent = cdNome;
+  document.getElementById('sidebar-config-sub').classList.remove('hidden');
+  document.getElementById('sidebar-config-toggle').classList.add('open');
+
+  // admin e master unificados (29/08/2026) — essas 5 seções eram
+  // master-only (achado ao vivo: conta virou "admin" e as seções de
+  // Localizações/OpenTech/Ravex/Xsense/Telegram sumiram, mesmo o link
+  // aparecendo no menu) — agora tudo sob o mesmo "admin".
+  const admin = me.perfil==='admin' || me.perfil==='master' || me.is_master;
+  document.querySelectorAll('.cfg-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+
+  if(admin){
+    await carregarLocalizacoes();
+    await carregarOpentechConfig();
+    await carregarRavexConfig();
+    await carregarXsenseConfig();
+    await carregarTelegramConfig();
+    await carregarBotCarretas();
+    await carregarIaExpedito();
+    await carregarCaptchaConfig();
+  }
+
+  const alvoId = new URLSearchParams(location.search).get('config');
+  if(alvoId){
+    const alvo = document.getElementById('cfg-section-'+alvoId);
+    if(alvo && !alvo.classList.contains('hidden')){
+      setTimeout(()=>{
+        alvo.scrollIntoView({behavior:'smooth', block:'start'});
+        const origShadow = alvo.style.boxShadow;
+        alvo.style.boxShadow = '0 0 0 2px var(--accent), var(--shadow)';
+        setTimeout(()=>{ alvo.style.boxShadow = origShadow; }, 1400);
+      }, 150);
+    }
+  }
+})();
+</script>
+</body>
+</html>

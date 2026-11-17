@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Produtividade de Separação — Memória de Cálculo</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10.2pt; color: #1f2937; line-height: 1.45; }
+  h1 { font-size: 18pt; color: #0b4f9c; margin: 0 0 2px; }
+  .sub { color: #64748b; font-size: 9.5pt; margin-bottom: 14px; }
+  h2 { font-size: 12.5pt; color: #0b4f9c; border-bottom: 1.5px solid #0b4f9c; padding-bottom: 3px; margin: 18px 0 8px; page-break-after: avoid; }
+  h3 { font-size: 10.5pt; margin: 12px 0 4px; page-break-after: avoid; }
+  p { margin: 4px 0 6px; }
+  ul { margin: 4px 0 6px 18px; padding: 0; }
+  li { margin: 2px 0; }
+  .f { background: #eef4fc; border-left: 3px solid #0b4f9c; padding: 6px 10px; margin: 6px 0 8px; font-family: Consolas, "Courier New", monospace; font-size: 9.6pt; page-break-inside: avoid; }
+  .ex { background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 10px; margin: 6px 0 8px; font-size: 9.6pt; page-break-inside: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 10px; font-size: 9.4pt; page-break-inside: avoid; }
+  th { background: #0b4f9c; color: #fff; text-align: left; padding: 4px 6px; font-weight: 600; }
+  td { border-bottom: 1px solid #e2e8f0; padding: 4px 6px; vertical-align: top; }
+  td.n { text-align: right; white-space: nowrap; }
+  .nota { color: #64748b; font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<h1>Produtividade de Separação e Embarque</h1>
+<div class="sub">Memória de cálculo · Monitoramento CD Demo · versão de 16/09/2026 · valores de exemplo: CDA, turno noturno, 01 a 15/09/2026</div>
+
+<h2>1. Fontes de dados</h2>
+<ul>
+  <li><b>Painel de produtividade</b> (um arquivo por dia): separador, conferente, peso e caixas separados, peso embarcado, doca e horários de separação e embarque.</li>
+  <li><b>Resumo do painel</b> (pode vir consolidado): horário de liberação da instrução, entregas, cidade e KM.</li>
+  <li>Os dois arquivos são unidos pela <b>instrução</b> (uma instrução = um caminhão). Cada arquivo atualiza apenas as suas colunas; o reenvio de um não apaga o outro.</li>
+  <li>A instrução recebida apenas pelo Resumo fica <b>fora dos indicadores</b> até a importação do Painel do dia.</li>
+  <li>Todos os pesos são <b>peso líquido</b>. O CD corresponde à empresa consolidada (ex.: CDA + CDB).</li>
+</ul>
+
+<h2>2. Filtros e instruções desconsideradas</h2>
+<ul>
+  <li><b>Turno</b>: definido pelo horário de início da separação (ou início do embarque, quando não há separação). Noturno: das 18h às 06h. Padrão da tela: noturno.</li>
+  <li><b>Desconsideradas automaticamente</b>: prioridade 999, frete FOB, veículo sem placa e placa FIC0000.</li>
+  <li><b>Desconsideradas manualmente</b>: marcação na aba Instruções (gerentes e administradores), com motivo opcional. A marcação permanece após nova importação.</li>
+  <li>Instruções desconsideradas não entram em nenhum indicador nem na projeção.</li>
+</ul>
+
+<h2>3. Horas líquidas</h2>
+<p>Descontam a refeição e a pausa térmica (CLT art. 253: 20 min a cada 1h40 de trabalho em câmara fria — tempo remunerado, porém não produtivo).</p>
+<div class="f">
+refeição descontada = mínimo(refeição ; máximo(janela − 4 h ; 0))<br>
+fração produtiva = trabalho contínuo ÷ (trabalho contínuo + pausa térmica) = 100 ÷ 120 = 0,833<br>
+horas líquidas = (janela − refeição descontada) × fração produtiva
+</div>
+<div class="ex">
+<b>Turno de 9 h:</b> (9 − 1) × 0,833 = <b>6,67 h líquidas</b>.<br>
+Janela de 3 h: sem refeição → 3 × 0,833 = 2,50 h. Janela de 4 h 30: desconta 30 min → 4 × 0,833 = 3,33 h.
+<span class="nota">(O desconto é gradual entre 4 h e 5 h para que uma janela maior nunca resulte em menos horas líquidas.)</span>
+</div>
+
+<h2>4. Janela de separação (por pessoa, por dia)</h2>
+<div class="f">janela = último fim de separação − primeiro início de separação da pessoa no dia<br>
+janela considerada = mínimo(janela ; duração do turno)</div>
+<ul>
+  <li>O limite evita que uma separação aberta antes de um feriado e encerrada depois (ex.: 26 h em 08/09) seja contada como trabalho.</li>
+  <li>Pessoa sem horário de início ou de fim: as toneladas são atribuídas a ela, mas não entram no ritmo nem no aproveitamento.</li>
+  <li><b>Redespacho nunca é atribuído a separador.</b></li>
+</ul>
+
+<h2>5. Indicadores</h2>
+<table>
+  <tr><th style="width:24%">Indicador</th><th>Fórmula</th><th style="width:15%">Exemplo</th></tr>
+  <tr><td><b>Redespacho</b></td><td>embarcado − separado (por instrução; nunca negativo)</td><td class="n">172,7 t (33,5%)</td></tr>
+  <tr><td><b>Ritmo (t/h)</b></td><td>toneladas separadas pela pessoa no dia ÷ horas líquidas da janela. No período: mediana das pessoas-dia</td><td class="n">0,68 t/h</td></tr>
+  <tr><td><b>Ritmo (cx/h)</b></td><td>caixas separadas ÷ horas líquidas da janela (mede melhor o esforço; o t/h acompanha o peso da carga)</td><td class="n">43 cx/h</td></tr>
+  <tr><td><b>Aproveitamento</b></td><td>horas líquidas da janela ÷ horas líquidas do turno (6,67 h). No período: mediana das pessoas-dia</td><td class="n">60,6%</td></tr>
+  <tr><td><b>Demanda por separador</b></td><td>toneladas atribuídas no dia ÷ separadores do dia. No período: mediana dos dias</td><td class="n">3,40 t</td></tr>
+  <tr><td><b>Ritmo da equipe (dia)</b></td><td>soma das toneladas ÷ soma das horas líquidas dos separadores do dia (ponderado, não média de razões)</td><td class="n">mediana 0,77 t/h</td></tr>
+  <tr><td><b>Instrução complexa</b></td><td>SKU igual ou maior que 30</td><td class="n">28 instruções</td></tr>
+  <tr><td><b>Registro de conferente</b></td><td>instruções com conferente preenchido ÷ instruções. Abaixo de 80% é sinalizado como desvio de processo</td><td class="n">2,4%</td></tr>
+  <tr><td><b>Conferente sem redespacho</b></td><td>embarcado − redespacho das instruções do conferente</td><td class="n">—</td></tr>
+  <tr><td><b>Variação vs. período anterior</b></td><td>mesmo número de dias imediatamente antes. Percentuais comparados em pontos percentuais (p.p.)</td><td class="n">—</td></tr>
+</table>
+<p><b>Ranking de separadores:</b> ordenado pela mediana do t/h (ou cx/h) das pessoas-dia; a coluna “vs. mediana” compara com a mediana dos separadores do período.</p>
+
+<h2>6. Ondas de liberação</h2>
+<ul>
+  <li>Liberações com <b>até 10 min</b> de intervalo em relação à anterior formam a mesma onda (horários comparados em minutos cheios). Ex.: 20:32 e 20:41 = 1 onda; 19:23 e 19:39 = 2 ondas.</li>
+  <li>Por onda: caminhões, instruções, complexas, toneladas separadas, redespacho, embarcado e fim do último embarque.</li>
+  <li><b>Início da separação após</b> = primeiro início de separação da onda − máximo(liberação ; início do turno). Liberação feita antes do turno (ex.: sexta-feira para a operação de segunda) é marcada como <i>antecipada</i> e contada a partir do início do turno.</li>
+</ul>
+
+<h2>7. Equipe necessária (Visão geral)</h2>
+<div class="f">separadores necessários = arredondar para cima( toneladas atribuídas no dia ÷ (ritmo da equipe mediano × 6,67 h) )</div>
+<p>Comparado com os separadores escalados no dia. Em dias de volume menor a equipe escalada tende a ser maior que a necessária (equipe fixa).</p>
+
+<h2>8. Projeção de equipe</h2>
+<p>Entradas: toneladas a separar (obrigatória), redespacho previsto e número de caminhões (opcionais). As referências são calculadas do período e turno selecionados.</p>
+
+<h3>8.1 Fórmulas</h3>
+<table>
+  <tr><th style="width:20%">Item</th><th>Fórmula</th></tr>
+  <tr><td><b>Separadores</b></td><td>arredondar para cima( t ÷ (ritmo × 6,67 h) )<br>
+    Base: ritmo da equipe mediano dos dias · Conservador: 1º quartil (P25) dos dias</td></tr>
+  <tr><td><b>Redespacho</b></td><td>informado; em branco = t × % redespacho ÷ (100% − % redespacho), proporção do período</td></tr>
+  <tr><td><b>Caminhões</b></td><td>informado; em branco = arredondar para cima( (t + redespacho) ÷ carga embarcada mediana por caminhão )</td></tr>
+  <tr><td><b>Capacidade</b></td><td>docas disponíveis × caminhões por doca no turno</td></tr>
+  <tr><td><b>Docas</b></td><td>arredondar para cima( caminhões ÷ caminhões por doca ), limitado às docas disponíveis</td></tr>
+  <tr><td><b>Conferentes</b></td><td>arredondar para cima( caminhões dentro da capacidade ÷ caminhões por conferente ), limitado às docas em operação</td></tr>
+  <tr><td><b>Plano dentro da capacidade</b></td><td>quando caminhões &gt; capacidade: t possível = t × capacidade ÷ caminhões; excedente = t − t possível</td></tr>
+</table>
+
+<h3>8.2 Exemplo — 60 t a separar (sem outros dados)</h3>
+<div class="ex">
+Separadores base = 60 ÷ (0,77 × 6,67) = 11,8 → <b>12</b> · conservador = 60 ÷ (0,67 × 6,67) = 13,4 → <b>14</b><br>
+Redespacho = 60 × 33,5% ÷ 66,5% = <b>30,2 t</b><br>
+Caminhões = (60 + 30,2) ÷ 4,15 = 21,7 → <b>22</b><br>
+Capacidade = 9 docas × 3 = 27 caminhões · Docas = 22 ÷ 3 = 7,3 → <b>8 de 9</b> (ocupação de 81%)<br>
+Conferentes = 22 ÷ 6 = 3,7 → <b>4</b>
+</div>
+<div class="ex">
+<b>150 t:</b> 55 caminhões &gt; capacidade de 27 → plano dentro da capacidade: 150 × 27 ÷ 55 = <b>73,6 t</b>, 27 caminhões,
+15 separadores (base), 9 docas, 5 conferentes; excedente de <b>76,4 t</b> em 28 caminhões.
+</div>
+
+<h3>8.3 Alertas</h3>
+<ul>
+  <li><b>Capacidade excedida</b>: caminhões acima de docas × caminhões por doca.</li>
+  <li><b>Margem reduzida</b>: ocupação da capacidade de 80% ou mais.</li>
+  <li><b>Docas acima do habitual</b>: docas necessárias acima da mediana de docas em operação por dia no período.</li>
+  <li><b>Equipe</b>: cenário conservador acima da maior equipe escalada no período.</li>
+  <li><b>Base curta</b>: menos de 5 dias de operação; <b>volume fora da faixa</b>: mais de 50% acima do dia de maior volume.</li>
+  <li><b>Docas não cadastradas</b>: a capacidade usa o maior número de docas em operação observado no período.</li>
+</ul>
+
+<h3>8.4 Aderência do modelo</h3>
+<p>O modelo é aplicado às toneladas separadas e ao redespacho reais de cada dia e comparado ao que a operação utilizou (separadores, caminhões e docas).
+No teste com 01 a 15/09, nos dias de maior volume, os separadores projetados ficaram próximos da equipe efetivamente trabalhada e as docas com erro médio abaixo de 1.
+Ex.: 09/09 — real 13 separadores, 22 caminhões e 9 docas; projetado 12, 24 e 8.</p>
+
+<h2>9. Parâmetros (por CD, em ⚙ Parâmetros)</h2>
+<table>
+  <tr><th>Parâmetro</th><th class="n" style="text-align:right">Padrão</th><th>Observação</th></tr>
+  <tr><td>Início / término do turno noturno</td><td class="n">18h / 06h</td><td>Classificação do turno pelo início da separação</td></tr>
+  <tr><td>Duração do turno</td><td class="n">9 h</td><td>Também é o limite da janela de separação</td></tr>
+  <tr><td>Intervalo de refeição</td><td class="n">60 min</td><td>Descontado em janelas acima de 4 h</td></tr>
+  <tr><td>Trabalho contínuo / pausa térmica</td><td class="n">100 / 20 min</td><td>CLT art. 253</td></tr>
+  <tr><td>Instrução complexa a partir de</td><td class="n">30 SKUs</td><td>Percentil 80 dos dados de 01–15/09</td></tr>
+  <tr><td>Intervalo máximo dentro da onda</td><td class="n">10 min</td><td>Entre liberações consecutivas</td></tr>
+  <tr><td>Docas disponíveis</td><td class="n">0</td><td>0 = maior uso observado no período (CDA: 9). Recomenda-se cadastrar o número físico</td></tr>
+  <tr><td>Caminhões por doca no turno</td><td class="n">3</td><td>Máximo observado (15/09: 18 caminhões em 6 docas)</td></tr>
+  <tr><td>Caminhões por conferente</td><td class="n">6</td><td>15/09: 3 conferentes para 18 caminhões. Hipótese até o registro de conferente ser regularizado</td></tr>
+</table>
+
+<h2>10. Referências do período de exemplo (CDA, noturno, 01–15/09/2026)</h2>
+<table>
+  <tr><th>Item</th><th class="n" style="text-align:right">Valor</th><th>Item</th><th class="n" style="text-align:right">Valor</th></tr>
+  <tr><td>Instruções consideradas</td><td class="n">124</td><td>Dias com operação</td><td class="n">10</td></tr>
+  <tr><td>Separado / embarcado</td><td class="n">343,1 t / 515,8 t</td><td>Redespacho</td><td class="n">33,5%</td></tr>
+  <tr><td>Ritmo da equipe (mediana / P25)</td><td class="n">0,77 / 0,67 t/h</td><td>Carga embarcada mediana</td><td class="n">4,15 t/caminhão</td></tr>
+  <tr><td>Docas por dia (mediana / máximo)</td><td class="n">6 / 9</td><td>Maior equipe escalada</td><td class="n">14</td></tr>
+</table>
+<p class="nota">Os valores mudam conforme o período, o turno e os parâmetros selecionados na tela; a memória de cálculo da aba Projeção mostra a conta com os números vigentes.</p>
+
+</body>
+</html>

@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel do Armazém — CD Demo</title>
+<style>
+:root{
+  --glass:rgba(255,255,255,0.62); --glass-b:rgba(255,255,255,0.28);
+  --text:#1a1a2e; --text-s:rgba(26,26,46,0.58);
+  --accent:#007AFF; --accent-l:rgba(0,122,255,0.10);
+  --ok:#28a745; --warn:#ff9500; --danger:#ff3b30;
+  --radius:16px; --rsm:10px; --shadow:0 4px 24px rgba(0,0,0,0.12);
+  /* --glass-b é branco translúcido (feito pra contornar cards contra o
+     fundo colorido) — usado como borda DENTRO de uma tabela/lista fica
+     quase invisível. --border-vis é um cinza de verdade, pra separação
+     clara entre linhas/colunas (pedido do usuário 22/08/2026). */
+  --border-vis: rgba(0,0,0,0.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Inter,sans-serif;
+  font-size:13px;color:var(--text);
+  background:linear-gradient(135deg,#eef2f7 0%,#e6ecf5 60%,#eaf0f8 100%)}
+.wrap{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 18px;height:52px;flex-shrink:0;
+  background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);border-bottom:1px solid var(--glass-b)}
+.topbar a.back{text-decoration:none;color:var(--accent);font-weight:600;font-size:13px}
+.topbar-logo{font-size:22px}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.topbar-sub{font-size:12px;color:var(--text-s)}
+.spacer{flex:1}
+.btn{border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-family:inherit;
+  cursor:pointer;font-weight:600;background:var(--accent);color:#fff;transition:.15s}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:rgba(0,0,0,.05);color:var(--text)}
+.btn.ok{background:var(--ok)} .btn.sm{padding:5px 10px;font-size:12px}
+.btn.danger{background:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* ── SIDEBAR DE MÓDULOS (padrão idêntico aos outros módulos) ── */
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);
+  z-index:998;opacity:0;pointer-events:none;transition:opacity .2s}
+.sidebar-overlay.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:999;
+  background:var(--glass);backdrop-filter:blur(20px) saturate(1.6);
+  border-right:1px solid var(--glass-b);box-shadow:4px 0 24px rgba(0,0,0,.15);
+  transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;padding:14px 0}
+.sidebar.show{transform:translateX(0)}
+.sidebar-header{display:flex;align-items:center;gap:8px;padding:0 16px 14px;
+  border-bottom:1px solid var(--glass-b);margin-bottom:8px}
+.sidebar-header .sidebar-logo{font-size:20px}
+.sidebar-header .sidebar-title{font-size:14px;font-weight:700;flex:1}
+.sidebar-close{background:none;border:none;font-size:16px;color:var(--text-s);cursor:pointer;padding:4px;line-height:1}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  text-decoration:none;color:var(--text);font-size:13px;font-weight:500;transition:.15s}
+.sidebar-link:hover{background:rgba(0,122,255,.08)}
+.sidebar-link.active{background:var(--accent-l);color:var(--accent);font-weight:700}
+.sidebar-spacer{flex:1}
+.sidebar-config{border-top:1px solid var(--glass-b);padding:8px 10px 4px}
+.sidebar-config-toggle{width:100%;background:none;border:none;text-align:left;padding:10px 12px;
+  border-radius:10px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;gap:10px;font-family:inherit}
+.sidebar-config-toggle:hover{background:rgba(0,122,255,.08)}
+.sidebar-config-toggle .arrow{margin-left:auto;font-size:11px;color:var(--text-s);transition:transform .15s}
+.sidebar-config-toggle.open .arrow{transform:rotate(90deg)}
+.sidebar-config-sub{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px 10px}
+.sidebar-sublink{display:block;padding:8px 12px;border-radius:8px;text-decoration:none;
+  color:var(--text-s);font-size:12.5px}
+.sidebar-sublink:hover{background:rgba(0,122,255,.08);color:var(--text)}
+
+.body{flex:1;overflow:auto;padding:16px 18px 40px}
+.card{background:var(--glass);backdrop-filter:blur(14px) saturate(1.5);
+  border:1px solid var(--glass-b);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px 16px;margin-bottom:14px}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:.4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.file-drop{border:1.5px dashed rgba(0,122,255,.4);border-radius:var(--rsm);padding:10px 14px;
+  color:var(--text-s);cursor:pointer;background:var(--accent-l)}
+.file-drop b{color:var(--accent)}
+/* Indeterminada (não dá pra saber % real — o tempo é parsing no servidor,
+   não upload de rede) — pedido do usuário 29/08/2026, barra visual
+   enquanto processa o(s) TXT(s). */
+.progress-bar-wrap{flex:1;max-width:220px;height:6px;background:rgba(0,0,0,.08);
+  border-radius:99px;overflow:hidden;position:relative}
+.progress-bar-fill{position:absolute;top:0;bottom:0;width:40%;background:var(--accent);
+  border-radius:99px;animation:progress-slide 1.1s ease-in-out infinite}
+@keyframes progress-slide{0%{left:-40%}100%{left:100%}}
+.hidden{display:none}
+.muted{color:var(--text-s)}
+input,select{border:1px solid var(--glass-b);background:rgba(255,255,255,.75);border-radius:8px;
+  padding:6px 9px;font-size:12px;font-family:inherit;color:var(--text)}
+input:focus,select:focus{outline:1.5px solid var(--accent)}
+
+.banner{display:none;border-radius:var(--rsm);padding:10px 14px;margin-bottom:14px;align-items:center;gap:10px}
+.banner.show{display:flex}
+.banner.warn{background:rgba(255,149,0,.12);border:1px solid rgba(255,149,0,.4);color:#8a5200}
+
+.kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.kpi{flex:1;min-width:130px;background:rgba(255,255,255,.6);border:1px solid var(--glass-b);
+  border-radius:var(--rsm);padding:10px 12px;text-align:center}
+.kpi .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.kpi .l{font-size:11px;color:var(--text-s);margin-top:2px}
+
+/* Dashboard "bater o olho" — grid de miniaturas sempre visíveis, sem clique
+   (pedido do usuário 08/08/2026: substitui as antigas abas por temperatura) */
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-bottom:14px}
+.dash-grid.cols-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mini-grid .card{margin-bottom:0}
+.mini-card{border:1.5px solid var(--border-vis);border-radius:12px;padding:6px 3px 4px;
+  background:rgba(255,255,255,.55);box-shadow:0 1px 5px rgba(0,0,0,.06);overflow:hidden}
+.mini-title{font-size:11px;font-weight:700;color:var(--text-s);text-align:center;margin-bottom:4px}
+
+/* Barras simples (sem lib externa, mesmo padrão do resto do sistema) */
+.barchart{display:flex;align-items:flex-end;gap:14px;height:150px;padding:6px 4px 0}
+.barchart.mini{height:110px;gap:3px;padding:6px 0 0}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0}
+.bar-val{font-size:11px;font-weight:700;margin-bottom:3px;white-space:nowrap}
+.barchart.mini .bar-val{font-size:8px;margin-bottom:2px}
+.bar-fill{width:100%;border-radius:6px 6px 0 0;background:var(--accent);min-height:2px;transition:height .3s}
+.bar-label{font-size:10.5px;color:var(--text-s);margin-top:5px;text-align:center}
+.barchart.mini .bar-label{font-size:8px;white-space:nowrap}
+.bar-fill.c-resfriado, .stack-seg.c-resfriado{background:#38BDF8}
+.bar-fill.c-congelado, .stack-seg.c-congelado{background:#0369a1}
+.bar-fill.c-importados, .stack-seg.c-importados{background:#1a7a36}
+/* Número que abre a lista de produtos por trás dele (23/09/2026) */
+.num-link{cursor:pointer;border-bottom:1px dashed var(--accent);color:var(--accent);font-weight:600}
+.num-link:hover{background:rgba(0,122,255,.08)}
+.bar-col.clicavel{cursor:pointer}
+.bar-col.clicavel:hover .bar-fill{filter:brightness(1.15)}
+.det-tab{width:100%;border-collapse:collapse;font-size:11.5px}
+.det-tab th{position:sticky;top:0;background:#f3f6fb;text-align:left;padding:6px 8px;white-space:nowrap;
+  border-bottom:2px solid var(--glass-b)}
+.det-tab td{padding:5px 8px;border-bottom:1px solid rgba(0,0,0,.05);white-space:nowrap}
+.det-tab tr:hover td{background:rgba(0,122,255,.04)}
+.det-vence{font-weight:700}
+.det-vence.critico{color:#b91c1c}
+.legenda{display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:center;margin-top:8px;
+  font-size:11px;color:var(--text-s)}
+.legenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.bar-fill.c-ambiente, .stack-seg.c-ambiente{background:#F59E0B}
+.bar-fill.c-total, .stack-seg.c-total{background:#17324d}
+.bar-fill.c-1-3{background:#38BDF8}
+.bar-fill.c-2-3{background:#FB923C}
+.bar-fill.c-3-3{background:#F87171}
+.bar-fill.c-vencido{background:#7C1D2F}
+.bar-fill.c-venc-bucket{background:#DC2626}
+
+/* Barra empilhada — segmento base + segmento(s) por cima, mesma barra
+   (generalizado: qualquer temperatura pode ter um segmento "Importados"
+   empilhado em cima, não só Congelado) */
+.stack-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+.stack-bar{width:100%;display:flex;flex-direction:column-reverse;border-radius:6px 6px 0 0;overflow:hidden}
+.stack-seg{width:100%;min-height:2px}
+.stack-seg-val{font-size:10px;font-weight:700;color:#fff;text-align:center;line-height:1.5}
+.stack-total-val{font-size:11px;font-weight:700;margin-bottom:3px}
+
+/* Pizza — conic-gradient, sem lib externa. Legenda à esquerda, pizza à
+   direita (pedido do usuário 22/08/2026, com imagem de referência) — a
+   ordem no HTML (renderPieChart) já vem legenda-primeiro pra bater com
+   essa disposição em row. */
+.pie-wrap{display:flex;flex-direction:row;align-items:center;gap:14px;justify-content:center;flex-wrap:wrap}
+.pie{width:120px;height:120px;border-radius:50%;position:relative;flex-shrink:0}
+.pie-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.pie-legend{display:flex;flex-direction:column;gap:6px;font-size:11px;min-width:100px}
+.pie-legend-item{display:flex;align-items:center;gap:6px}
+.pie-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.pie-legend-val{margin-left:auto;font-weight:700}
+.peso-medio-col{display:flex;flex-direction:column;gap:8px}
+.peso-medio-box{background:rgba(255,255,255,.55);border:1.5px solid var(--border-vis);border-radius:10px;
+  padding:7px 12px;min-width:150px;text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.06)}
+.peso-medio-box .v{font-size:15px;font-weight:800}
+.peso-medio-box .l{font-size:9.5px;color:var(--text-s);margin-top:2px;text-transform:uppercase;letter-spacing:.3px}
+
+.ocup-wrap{padding:6px 4px}
+.ocup-bar-bg{background:rgba(0,0,0,.06);border-radius:10px;height:26px;overflow:hidden;position:relative}
+.ocup-bar-fill{height:100%;background:var(--accent);border-radius:10px 0 0 10px;transition:width .3s}
+.ocup-bar-fill.alta{background:var(--danger);animation:ocup-blink 1.6s ease-in-out infinite}
+/* pisca suave só quando >90% (pedido do usuário 22/08/2026) — mais lento e
+   com opacidade mínima mais alta que o pisca-pisca de alerta da Xsense
+   (1s, .45), pra não competir visualmente com um alerta de verdade */
+@keyframes ocup-blink{0%,100%{opacity:1}50%{opacity:.65}}
+.ocup-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:var(--text)}
+
+.pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pill{background:rgba(0,0,0,.05);border-radius:20px;padding:5px 12px;font-size:11.5px;font-weight:600}
+.pill.ok{background:rgba(34,197,94,.15);color:#15803d}
+.pill.warn{background:rgba(220,38,38,.12);color:#b91c1c}
+
+/* Calendário (mesmo padrão de adensamento.html) */
+.hist-layout{display:flex;gap:18px}
+.hist-cal{width:230px;flex-shrink:0}
+.hist-cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.hist-cal-dow{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:10px;
+  color:var(--text-s);margin-bottom:2px}
+.hist-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.hist-cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:8px;font-size:11px;cursor:default;position:relative;color:var(--text-s)}
+.hist-cal-cell.tem-dado{cursor:pointer;color:var(--text);font-weight:600}
+.hist-cal-cell.tem-dado:hover{background:var(--accent-l)}
+.hist-cal-cell.selecionado{background:var(--accent);color:#fff}
+.hist-cal-cell.hoje:not(.selecionado){box-shadow:inset 0 0 0 1.5px var(--accent)}
+.hist-cal-dot{width:4px;height:4px;border-radius:50%;background:var(--accent);margin-top:1px}
+.hist-cal-cell.selecionado .hist-cal-dot{background:#fff}
+.hist-cal-legenda{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text-s);margin-top:8px}
+.hist-cal-legenda .hist-cal-dot{margin:0}
+.hist-itens{flex:1;min-width:0}
+
+textarea{border:1px solid var(--glass-b);background:rgba(255,255,255,.75);border-radius:8px;
+  padding:8px 10px;font-size:11.5px;font-family:'SF Mono',ui-monospace,Menlo,monospace;color:var(--text);
+  width:100%;resize:vertical}
+textarea:focus{outline:1.5px solid var(--accent)}
+.qlik-msg{font-size:11.5px;margin-top:8px;padding:8px 10px;border-radius:8px}
+.qlik-msg.ok{background:rgba(34,197,94,.12);color:#15803d}
+.qlik-msg.err{background:rgba(220,38,38,.1);color:#b91c1c}
+.evol-table{width:100%;border-collapse:collapse;font-size:11px}
+.evol-table th{text-align:left;padding:5px 8px;border-bottom:2px solid var(--glass-b);white-space:nowrap}
+.evol-table td{padding:5px 8px;border-bottom:1px solid rgba(0,0,0,.05);white-space:nowrap}
+.tag-origem{font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:700}
+.tag-origem.txt{background:rgba(34,197,94,.15);color:#15803d}
+.tag-origem.qlikview{background:rgba(0,122,255,.12);color:var(--accent)}
+
+/* Evolução Mensal (QlikView) — um bloco (gráfico principal + mini de
+   Importados + tabela larga) por temperatura, sempre visíveis (sem aba de
+   seleção) — pedido do usuário 19/08/2026, fiel ao layout da planilha
+   original (gráficos separados por guia, dias na horizontal) */
+.evol-block{margin-bottom:18px;padding:16px;border-radius:var(--radius);
+  background:rgba(255,255,255,.42);border:1.5px solid var(--border-vis);box-shadow:0 2px 10px rgba(0,0,0,.06)}
+.evol-block:last-child{margin-bottom:0}
+.evol-block-title{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;flex-wrap:wrap;gap:6px}
+.evol-block-title b{font-size:13px}
+.evol-cap-label{font-size:12px;font-weight:700;color:#65A30D}
+.evol-mini-title{font-size:11px;font-weight:700;color:var(--text-s);text-align:center;margin:14px 0 2px}
+/* legenda SEMPRE abaixo do gráfico, com respiro e uma linha separadora —
+   nunca sobre a área de plotagem (pedido do usuário 22/08/2026) */
+.evol-legend{display:flex;gap:14px;margin:8px 0 2px;padding-top:8px;border-top:1px solid var(--border-vis);
+  flex-wrap:wrap;font-size:11px;color:var(--text-s)}
+.evol-legend .dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.evol-wide-table{width:100%;border-collapse:collapse;font-size:10.5px;margin-top:10px}
+.evol-wide-table th,.evol-wide-table td{padding:4px 6px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--border-vis)}
+.evol-wide-table th:first-child,.evol-wide-table td:first-child{text-align:left;position:sticky;left:0;
+  background:var(--glass);font-weight:600;border-right:1px solid var(--border-vis)}
+.evol-wide-table thead th{font-weight:700;color:var(--text-s);font-size:10px}
+.evol-wide-table tbody tr:last-child td{font-weight:700}
+/* Pisca do pico de peso da quinzena/mês — só no CONTORNO (stroke-width/
+   opacity), preenchimento e tamanho ficam sempre estáticos. Primeira
+   versão usava opacity no elemento inteiro: quando o rótulo laranja
+   ficava translúcido, dava pra ver o rótulo do Atacado (azul-marinho) por
+   baixo quando os dois ficavam próximos, parecendo "o número trocou de
+   cor e perdeu a casa decimal". Segunda versão usava transform:scale, que
+   o usuário achou "com efeito de zoom" — pediu só o contorno piscando
+   (achado/pedido 22/08/2026). */
+.evol-peak-blink{stroke:#1a1a2e;animation:evol-peak-outline 1.3s ease-in-out infinite}
+@keyframes evol-peak-outline{0%,100%{stroke-width:1px;stroke-opacity:.35}50%{stroke-width:3px;stroke-opacity:1}}
+
+/* Modal (mesmo padrão de adensamento.html) */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:50}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius);box-shadow:0 10px 50px rgba(0,0,0,.3);
+  width:min(680px,94vw);max-height:88vh;display:flex;flex-direction:column}
+.modal h2{margin:0;padding:16px 20px;border-bottom:1px solid #eee;font-size:16px;display:flex;align-items:center;gap:10px}
+.modal .mbody{padding:16px 20px;overflow:auto}
+.modal .mfoot{padding:12px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
+.local-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--glass-b);margin-bottom:6px}
+.local-item .nome{flex:1;font-weight:600;font-size:12.5px}
+.local-item select{min-width:150px}
+.local-item.pendente{background:rgba(255,149,0,.08);border-color:rgba(255,149,0,.35)}
+.cap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.cap-field label{display:block;font-size:11px;color:var(--text-s);margin-bottom:3px}
+.cap-field input{width:100%}
+.cap-temp-block{border:1px solid var(--glass-b);border-radius:var(--rsm);padding:10px 12px;margin-bottom:10px}
+.cap-temp-block h4{margin:0 0 8px;font-size:12px}
+.rotulo-tag{background:rgba(0,122,255,.1);color:var(--accent);border-radius:20px;padding:4px 12px;font-size:11.5px;font-weight:700}
+.rotulo-tag-clicavel{cursor:pointer;transition:.15s}
+.rotulo-tag-clicavel:hover{background:rgba(0,122,255,.2)}
+.rotulo-tag-clicavel::after{content:' ▾';font-size:9px}
+.fin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+.fin-item{background:rgba(255,255,255,.55);border:1.5px solid var(--border-vis);border-radius:var(--rsm);
+  padding:9px 11px;text-align:center;box-shadow:0 1px 5px rgba(0,0,0,.06)}
+.fin-item .v{font-size:16px;font-weight:800}
+.fin-item .l{font-size:10.5px;color:var(--text-s);margin-top:2px}
+.exportado-lista{display:flex;flex-direction:column;gap:10px}
+/* Uma coluna por visão (consolidada, CDA, CDB) — o usuário copia uma de
+   cada vez, porque manda um e-mail para cada (23/09/2026). */
+.exportado-colunas{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.exportado-col{border:1.5px solid var(--border-vis);border-radius:12px;padding:10px 12px;
+  background:rgba(255,255,255,.45);min-width:0}
+.exportado-col > h4{margin:0 0 8px;font-size:13px;display:flex;align-items:center;gap:8px}
+.exportado-col .vazio{font-size:11.5px;color:var(--text-s);text-align:center;padding:14px 6px}
+.exportado-col .exportado-item{flex-direction:column;align-items:stretch}
+.exportado-col .exportado-item img{width:100%;height:120px}
+.exportado-item{display:flex;align-items:center;gap:12px;border:1.5px solid var(--border-vis);
+  border-radius:var(--rsm);padding:8px 10px}
+.exportado-item img{width:90px;height:90px;object-fit:cover;object-position:top;border-radius:8px;
+  border:1px solid var(--border-vis);flex-shrink:0;background:#f4f6f9}
+.exportado-item-info{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.exportado-item-info b{font-size:13px}
+.exportado-item-acoes{display:flex;gap:8px}
+.espelho-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--rsm);
+  border:1px solid var(--glass-b)}
+.espelho-avatar{width:32px;height:32px;border-radius:50%;background:rgba(0,122,255,.12);
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.espelho-info{flex:1;min-width:0}
+.espelho-nome{font-size:13px;font-weight:600}
+.espelho-ts{font-size:10px;color:var(--text-s);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR DE MÓDULOS -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Xsense</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm icon" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/">‹ Painel</a>
+    <span class="topbar-logo">🏭</span>
+    <span class="topbar-title">Painel do Armazém</span>
+    <span class="topbar-sub">Ocupação, tempo de vida e endereçamento — Produto Paletizado</span>
+    <span id="rotulo-tag" class="rotulo-tag hidden"></span>
+    <span class="spacer"></span>
+    <button class="btn ghost sm" id="btn-exportar" onclick="exportarImagem()" style="display:none">🖼 Exportar Imagem</button>
+    <button class="btn ghost sm" onclick="abrirCalendario()">📅 Calendário</button>
+    <button class="btn ghost sm" id="btn-qlikview" onclick="abrirQlikview()">📋 Colar QlikView</button>
+    <button class="btn ghost sm" id="btn-locais" onclick="abrirLocais()">📍 Locais de Estoque</button>
+    <button class="btn ghost sm" id="btn-config" onclick="abrirConfig()">⚙️ Capacidade e Contrato</button>
+    <button class="btn ghost sm" id="btn-espelhar" onclick="abrirEspelho()" style="display:none">👁 Espelhar</button>
+    <button class="btn sm danger" id="btn-sair-espelho" onclick="sairEspelho()" style="display:none">✕ Sair do espelho</button>
+    <span id="badge-espelhado" style="display:none;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;background:rgba(255,149,0,.18);color:#7c4700" title="Seu painel está sendo visualizado">👁 Sendo espelhado</span>
+  </div>
+
+  <div class="body">
+    <div class="banner" id="banner-espelho" style="background:rgba(0,122,255,.1);border:1px solid rgba(0,122,255,.3);color:#0055cc">
+      👁 Você está no painel de <strong id="banner-espelho-nome"></strong> <span id="banner-espelho-modo">— somente leitura</span>
+      <button class="btn sm danger" onclick="sairEspelho()">✕ Sair do espelho</button>
+    </div>
+
+    <!-- Upload — 1 slot por empresa deste Local (só 1 empresa = igual a antes, sem rótulo) -->
+    <div class="card" id="card-upload">
+      <div id="empresa-view-row" class="row hidden" style="margin-bottom:10px">
+        <label class="muted" style="margin-right:6px">Visualizando:</label>
+        <select id="empresa-view-select" onchange="mudarEmpresaVisualizada(this.value)"></select>
+      </div>
+      <div id="upload-slots"></div>
+      <span id="msg" class="muted"></span>
+    </div>
+
+    <div class="banner warn" id="pendBanner">
+      ⚠️ <span id="pendTxt"></span>
+      <button class="btn sm" onclick="abrirLocais()">Classificar agora</button>
+    </div>
+
+    <!-- Visão "Todas" sem uma das empresas: antes a soma saía com cara de
+         consolidada mostrando uma empresa só (01/10/2026). -->
+    <div class="banner warn" id="foraBanner">
+      ⚠️ <span id="foraTxt"></span>
+      <button class="btn sm hidden" id="foraBtn" onclick="abrirLocais()">Classificar agora</button>
+    </div>
+
+    <div class="banner" id="diaHistBanner" style="background:rgba(0,122,255,.1);border:1px solid rgba(0,122,255,.3);color:#0055cc">
+      📅 <span id="diaHistTxt"></span>
+      <button class="btn sm ghost" onclick="voltarParaHoje()">Voltar pro painel atual</button>
+    </div>
+
+    <div id="conteudo" class="hidden">
+      <div class="kpis">
+        <div class="kpi"><div class="v" id="k_total">–</div><div class="l">Estoque Total (ton)</div></div>
+        <div class="kpi"><div class="v" id="k_paletes">–</div><div class="l">Paletes</div></div>
+        <div class="kpi"><div class="v" id="k_importados">–</div><div class="l">Terceiros (ton)</div></div>
+        <div class="kpi"><div class="v" id="k_peso_medio">–</div><div class="l">Peso médio/pallet</div></div>
+      </div>
+
+      <div id="painel-exportar">
+        <div class="dash-grid">
+          <div class="card">
+            <h3>Estoque Total (ton)</h3>
+            <div class="barchart" id="chart-estoque-total"></div>
+          </div>
+          <div class="card">
+            <h3>Ocupação Câmaras</h3>
+            <div class="muted" id="ocupacao-sub" style="font-size:11px;margin:-2px 0 8px"></div>
+            <div id="ocupacao-camaras"></div>
+          </div>
+          <div class="card">
+            <h3>Financeiro</h3>
+            <div id="financeiro-geral"></div>
+          </div>
+        </div>
+
+        <div class="dash-grid cols-2">
+          <div class="card">
+            <h3>% Endereçado</h3>
+            <div class="row" style="align-items:center;gap:14px;flex-wrap:wrap">
+              <div id="pie-enderecado"></div>
+              <div id="peso-medio-pallet"></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Reserva / Bloqueio</h3>
+            <div id="pie-reserva"></div>
+          </div>
+        </div>
+
+        <div class="dash-grid cols-2">
+          <div class="card">
+            <h3>Tempo de Vida</h3>
+            <div class="mini-grid" id="mini-vida"></div>
+          </div>
+
+          <div class="card">
+            <h3>Estoque Por Vencimento</h3>
+            <div class="mini-grid" id="mini-vencimento"></div>
+          </div>
+        </div>
+
+        <div class="card" style="overflow-x:auto">
+          <h3>Resumo por Temperatura</h3>
+          <div id="tabela-resumo"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fora do #conteudo de propósito: vem do QlikView, independe de ter
+    TXT carregado hoje (pode ter dado colado mesmo sem upload do dia). -->
+    <div class="card" style="overflow-x:auto">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">Evolução Mensal (QlikView)</h3>
+        <input type="month" id="evol-mes-sel" onchange="mudarEvolMes()">
+      </div>
+      <div id="evol-conteudo"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CALENDÁRIO -->
+<div class="modal-bg" id="modal-calendario">
+  <div class="modal" style="width:min(760px,96vw)">
+    <h2>📅 Calendário <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-calendario')">✕</button></h2>
+    <div class="mbody">
+      <div class="hist-layout">
+        <div class="hist-cal">
+          <div class="hist-cal-head">
+            <button class="btn ghost sm" onclick="calMudarMes(-1)">‹</button>
+            <span id="calMesAno" style="font-weight:700;font-size:12px"></span>
+            <button class="btn ghost sm" onclick="calMudarMes(1)">›</button>
+          </div>
+          <div class="hist-cal-dow">
+            <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+          </div>
+          <div class="hist-cal-grid" id="calGrid"></div>
+          <div class="hist-cal-legenda"><span class="hist-cal-dot"></span> dia com Produto Paletizado processado</div>
+        </div>
+        <div class="hist-itens">
+          <div class="muted" id="histItensLabel">Selecione um dia com marcação no calendário.</div>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-calendario')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL: COLAR QLIKVIEW -->
+<div class="modal-bg" id="modal-detalhe">
+  <div class="modal" style="width:min(1000px,96vw)">
+    <h2><span id="det-titulo">Detalhe</span> <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-detalhe')">✕</button></h2>
+    <div class="mbody">
+      <div class="muted" id="det-resumo" style="margin-bottom:8px"></div>
+      <div style="max-height:60vh;overflow:auto"><table class="det-tab" id="det-tabela"></table></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="baixarDetalheCsv()">⬇️ Baixar lista (CSV)</button>
+      <button class="btn ghost" onclick="fecharModal('modal-detalhe')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-qlikview">
+  <div class="modal" style="width:min(760px,96vw)">
+    <h2>📋 Dados do QlikView <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-qlikview')">✕</button></h2>
+    <div class="mbody">
+      <div class="cap-grid" style="margin-bottom:10px">
+        <div class="cap-field"><label>Mês</label>
+          <input type="month" id="qlik-mes" onchange="qlikMudouMes()">
+        </div>
+        <div class="cap-field hidden" id="qlik-empresa-campo"><label>Empresa</label>
+          <select id="qlik-empresa"></select>
+        </div>
+      </div>
+      <div class="muted hidden" id="qlik-empresa-dica" style="margin:-4px 0 10px">
+        Cada empresa tem o seu QlikView. A visão consolidada soma o que estiver colado em cada uma.
+      </div>
+
+      <p class="muted" style="margin-top:0">
+        <b>1.</b> Baixe o modelo do mês (vem pré-preenchido se esse mês já tiver dado salvo),
+        complete no Excel com Atacado/Varejo/Terceiros/Devolução/Paletes de cada temperatura, e
+        suba de volta. Bem mais fácil de preencher que colar célula por célula.
+      </p>
+      <div class="row" style="gap:8px;margin-bottom:14px">
+        <button class="btn ghost sm" onclick="baixarModeloQlikview()">📥 Baixar modelo do mês</button>
+        <input type="file" id="qlik-arquivo" accept=".xlsx" style="max-width:220px">
+        <button class="btn ok sm" onclick="enviarPlanilhaQlikview()">📤 Enviar planilha preenchida</button>
+      </div>
+      <div id="qlik-upload-msg"></div>
+
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+      <p class="muted">
+        <b>Ou</b> cole a tabela do QlikView pra UMA temperatura direto (a planilha original tem
+        uma aba por temperatura). Colar de novo pro mesmo mês/temperatura substitui os dias que
+        baterem, sem apagar os outros dias já salvos.
+      </p>
+      <div class="cap-grid" style="margin-bottom:10px">
+        <div class="cap-field"><label>Temperatura</label>
+          <select id="qlik-temperatura">
+            <option value="RESFRIADO">Resfriado</option>
+            <option value="CONGELADO">Congelado</option>
+            <option value="AMBIENTE">Ambiente</option>
+          </select>
+        </div>
+      </div>
+      <textarea id="qlik-texto" rows="6" placeholder="Cole aqui (Ctrl+V)..."></textarea>
+      <div id="qlik-msg"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="fecharModal('modal-qlikview')">Fechar</button>
+      <button class="btn ok" onclick="colarQlikview()">Salvar texto colado</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: LOCAIS DE ESTOQUE -->
+<div class="modal-bg" id="modal-locais">
+  <div class="modal">
+    <h2>📍 Locais de Estoque <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-locais')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin-top:0">
+        Classifique cada local como Varejo, Atacado ou Devolução. Locais que não devem entrar
+        nas contagens (ex.: local de falta na compra) marque como Desconsiderar.
+        <strong>Enquanto houver local pendente, os gráficos ficam zerados.</strong>
+      </p>
+      <div id="lista-locais"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="fecharModal('modal-locais')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CAPACIDADE E CONTRATO -->
+<div class="modal-bg" id="modal-config">
+  <div class="modal">
+    <h2>⚙️ Capacidade e Contrato <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-config')">✕</button></h2>
+    <div class="mbody">
+      <div class="cap-field" style="margin-bottom:14px">
+        <label>Identificação (aparece nos gráficos — ex.: CD, nome do contrato)</label>
+        <input type="text" id="cfg-rotulo" placeholder="ex.: CD Demo - Contrato 2026" style="width:100%">
+      </div>
+
+      <div class="cap-field" style="margin-bottom:16px">
+        <label>Capacidade do Ambiente</label>
+        <select id="cfg-ambiente-modo" style="width:100%">
+          <option value="consome_resfriado">Não tem câmara própria — consome a capacidade do Resfriado</option>
+          <option value="capacidade_propria">Tem câmara/contrato próprio — capacidade separada</option>
+        </select>
+        <p class="muted" style="margin:4px 0 0">
+          Alguns CDs guardam o Ambiente dentro da câmara de Resfriado (o estoque de Ambiente soma na
+          ocupação do Resfriado); outros têm contrato próprio pra ele. Escolha o que vale pra este CD.
+        </p>
+      </div>
+
+      <div class="cap-field" style="margin-bottom:16px">
+        <label>Modelo de pagamento</label>
+        <select id="cfg-modelo-pagamento" style="width:100%">
+          <option value="mensal">Mensal</option>
+          <option value="quinzenal">Quinzenal (2x no mês)</option>
+        </select>
+        <p class="muted" style="margin:4px 0 0">
+          Define como a Evolução Mensal destaca o pico de peso armazenado: quinzenal marca 1 pico em
+          cada metade do mês (dias 1–15 e 16–fim), mensal marca só 1 pico no mês inteiro.
+        </p>
+      </div>
+
+      <p class="muted" style="margin:0 0 8px">
+        Capacidade por câmara e valor do contrato (R$/ton) — cada CD/usuário tem o seu.
+        Ao salvar, o valor vale <strong>a partir da data de vigência</strong> escolhida (sem
+        apagar os valores anteriores, que continuam valendo pros dias já passados).
+      </p>
+      <div class="cap-field" style="margin-bottom:12px">
+        <label>Vigente a partir de</label>
+        <input type="date" id="cfg-vigencia">
+      </div>
+
+      <div class="cap-temp-block">
+        <h4>Capacidade por câmara (ton)</h4>
+        <div class="cap-grid" id="cap-blocos"></div>
+      </div>
+
+      <div class="cap-temp-block">
+        <h4>Valor do contrato (R$/ton) — compartilhado entre as empresas deste CD</h4>
+        <input type="number" step="0.01" id="cfg-valor-contrato" style="width:100%">
+        <p class="muted" style="margin:6px 0 0">
+          Uma taxa só, igual pra todas as empresas deste Local. O que muda por empresa é a
+          capacidade CONTRATADA abaixo — não a taxa.
+        </p>
+      </div>
+
+      <div id="cfg-empresas-bloco"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="verHistoricoCapacidade()">📜 Ver histórico</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" onclick="fecharModal('modal-config')">Cancelar</button>
+      <button class="btn ok" onclick="salvarCapacidade()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: HISTÓRICO DE CAPACIDADE -->
+<div class="modal-bg" id="modal-hist-capacidade">
+  <div class="modal">
+    <h2>📜 Histórico de Capacidade/Contrato <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-hist-capacidade')">✕</button></h2>
+    <div class="mbody" id="hist-capacidade-body"></div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-hist-capacidade')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL: NAVEGAR ENTRE CONTRATOS (Gerente) -->
+<div class="modal-bg" id="modal-contratos">
+  <div class="modal" style="width:min(480px,94vw)">
+    <h2>📑 Navegar entre contratos <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-contratos')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin:0 0 12px">Escolha um contrato pra ver o painel dele em modo somente leitura (mesmo mecanismo do Espelhar).</p>
+      <div id="lista-contratos" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-contratos')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL: ESPELHAR -->
+<div class="modal-bg" id="modal-espelho">
+  <div class="modal" style="width:min(480px,94vw)">
+    <h2>👁 Espelhar painel de... <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-espelho')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin:0 0 12px">Selecione um usuário para ver o painel dele em modo somente leitura. O usuário será notificado que você está visualizando.</p>
+      <div id="lista-espelho" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-espelho')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL: IMAGENS EXPORTADAS -->
+<div class="modal-bg" id="modal-exportado">
+  <div class="modal" style="width:min(520px,96vw)">
+    <h2>🖼 Imagens Exportadas <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-exportado')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin:0 0 10px">Todas na mesma largura — cole no e-mail sem precisar redimensionar. Clique numa miniatura pra copiar ou baixar.</p>
+      <div id="exportado-lista" class="exportado-lista"></div>
+    </div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-exportado')">Fechar</button></div>
+  </div>
+</div>
+
+<script>
+// ── SIDEBAR DE MÓDULOS ─────────────────────────────────
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Xsense (Câmaras)', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebar-overlay').classList.add('show');}
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebar-overlay').classList.remove('show');}
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  // módulo com telas (SLAs, 27/10/2026): o nome abre a lista das telas
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+function montarConfigSidebar(perfil, isMaster){
+  // admin e master unificados (29/08/2026) — mesmo nível de acesso, sem
+  // distinção de sublinks nenhuma mais (isMaster/'master' mantidos só
+  // como fallback pra sessão antiga em cache até relogar).
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ fecharSidebar(); fecharModal('modal-locais'); fecharModal('modal-config'); fecharModal('modal-hist-capacidade'); fecharModal('modal-calendario'); fecharModal('modal-qlikview'); fecharModal('modal-detalhe'); fecharModal('modal-exportado'); fecharModal('modal-espelho'); fecharModal('modal-contratos'); } });
+
+let _csrf='';
+const _post=(url,body,isForm)=>fetch(url,{method:'POST',
+  headers:isForm?{'X-CSRF-Token':_csrf}:{'Content-Type':'application/json','X-CSRF-Token':_csrf},
+  body:isForm?body:JSON.stringify(body)});
+
+function abrirModal(id){document.getElementById(id).classList.add('show');}
+function fecharModal(id){document.getElementById(id).classList.remove('show');}
+
+const TEMP_LABEL = {RESFRIADO:'Resfriado', CONGELADO:'Congelado', AMBIENTE:'Ambiente'};
+const CLASS_LABEL = {pendente:'⚠️ Pendente', varejo:'Varejo', atacado:'Atacado',
+                     devolucao:'Devolução', desconsiderar:'Desconsiderar'};
+const MESES_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
+                'Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+let _diaVisualizando = null; // null = painel ao vivo; 'YYYY-MM-DD' = vendo um dia do calendário
+
+let _armazemModeloPagamento = 'mensal';
+let _armazemAmbienteModo = 'consome_resfriado';
+
+async function init(){
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  _csrf = me.csrf_token || '';
+  montarSidebar(me.modulos_permitidos, 'armazem');
+  montarConfigSidebar(me.perfil, me.is_master);
+  _atualizarBadgeEspelhado(me.observadores || []);
+  const cdNome = me.cd_nome_exibicao || 'CDA';
+  document.title = 'Painel do Armazém — ' + cdNome;
+  const sbTitle = document.querySelector('.sidebar-title');
+  if(sbTitle) sbTitle.textContent = cdNome;
+  if(me.perfil==='admin' || me.perfil==='master' || (me.unidades_extras_espelho&&me.unidades_extras_espelho.length)){
+    document.getElementById('btn-espelhar').style.display = '';
+  }
+  // Etiqueta do contrato vira clicável só pra Gerente (admin/master) —
+  // navega entre os contratos existentes pelo nome (rótulo), reaproveita
+  // o mesmo Espelhamento por baixo (somente leitura, pedido explícito do
+  // usuário 29/08/2026: "só visualizar", sem editar o contrato errado por
+  // engano).
+  _isGerente = me.perfil==='admin' || me.perfil==='master';
+  if(_isGerente){
+    const tag = document.getElementById('rotulo-tag');
+    tag.classList.add('rotulo-tag-clicavel');
+    tag.title = 'Clique pra navegar entre os contratos';
+    tag.onclick = abrirContratos;
+  }
+  // Restaura estado de espelhamento após reload (F5) — a sessão do servidor
+  // mantém "espelhando" entre recarregamentos, mas o front perdia esse
+  // contexto (banner sumia, heartbeat não era retomado) — mesmo padrão do
+  // painel principal (pedido do usuário 24/08/2026: trazer espelho pro
+  // Armazém, igual já existe lá).
+  if(me.espelhando){
+    _entrarModoEspelho(me.espelhando, me.espelho_grava);
+    iniciarHeartbeatEspelho();
+  }
+  iniciarPollingEspelhado();
+  const cfg = await fetch('/api/armazem/config').then(r=>r.json()).catch(()=>({}));
+  _armazemModeloPagamento = cfg.modelo_pagamento || 'mensal';
+  _armazemAmbienteModo = cfg.ambiente_modo || 'consome_resfriado';
+  await carregarDados();
+  await carregarEvolucaoMensal();
+}
+init();
+
+// ── ESPELHAMENTO (ver painel de outro usuário, somente leitura) ────────
+// Backend já bloqueia escrita durante espelho em todas as rotas (upload,
+// qlikview, locais, config — ver session.get("espelhando") em web/armazem.py);
+// aqui só falta a UI pra entrar/sair, igual ao painel principal (index.html).
+// Gerente/Desenvolvedor ATUA no CD espelhado desde 01/10/2026 (pedido do
+// usuário: ele alimenta à mão o CD de CD CDD e precisava deslogar para
+// isso). Para os demais perfis o espelho segue em leitura, e os controles
+// de escrita continuam escondidos. Quem decide é o servidor, em
+// /api/me.espelho_grava — a tela obedece, nunca adivinha.
+function _entrarModoEspelho(usuario, podeGravar){
+  window._espelhando = true;
+  window._espelhoGrava = !!podeGravar;
+  document.getElementById('banner-espelho-nome').textContent = usuario;
+  const modo = document.getElementById('banner-espelho-modo');
+  if(modo) modo.textContent = podeGravar
+    ? '— o que você alterar aqui é gravado no CD dele'
+    : '— somente leitura';
+  document.getElementById('banner-espelho').classList.toggle('espelho-grava', !!podeGravar);
+  document.getElementById('banner-espelho').classList.add('show');
+  document.getElementById('btn-sair-espelho').style.display = '';
+  document.getElementById('btn-espelhar').style.display = 'none';
+  const escrita = podeGravar ? '' : 'none';
+  document.getElementById('card-upload').style.display = escrita;
+  document.getElementById('btn-qlikview').style.display = escrita;
+  document.getElementById('btn-locais').style.display = escrita;
+  document.getElementById('btn-config').style.display = escrita;
+}
+function _sairModoEspelho(){
+  window._espelhando = false;
+  window._espelhoGrava = false;
+  const modo = document.getElementById('banner-espelho-modo');
+  if(modo) modo.textContent = '— somente leitura';
+  document.getElementById('banner-espelho').classList.remove('espelho-grava');
+  document.getElementById('banner-espelho').classList.remove('show');
+  document.getElementById('btn-sair-espelho').style.display = 'none';
+  document.getElementById('btn-espelhar').style.display = '';
+  document.getElementById('card-upload').style.display = '';
+  document.getElementById('btn-qlikview').style.display = '';
+  document.getElementById('btn-locais').style.display = '';
+  document.getElementById('btn-config').style.display = '';
+}
+
+async function abrirContratos(){
+  const res = await fetch('/api/armazem/contratos');
+  const data = await res.json();
+  const lista = document.getElementById('lista-contratos');
+  const contratos = data.contratos || [];
+  if(!contratos.length){
+    lista.innerHTML = '<div class="muted" style="font-size:12px">Nenhum outro contrato com dados disponíveis.</div>';
+  } else {
+    lista.innerHTML = '';
+    contratos.forEach(c=>{
+      const ts = c.atualizado ? new Date(c.atualizado).toLocaleString('pt-BR') : '';
+      const nomeExibicao = c.rotulo || c.usuario;
+      const card = document.createElement('div');
+      card.className = 'espelho-card';
+      card.innerHTML = `
+        <div class="espelho-avatar">📑</div>
+        <div class="espelho-info">
+          <div class="espelho-nome">${escHtml(nomeExibicao)}</div>
+          <div class="espelho-ts">${ts ? 'Atualizado: '+escHtml(ts) : ''}</div>
+        </div>
+        <button class="btn sm">👁 Ver</button>`;
+      card.querySelector('button').onclick = () => { fecharModal('modal-contratos'); iniciarEspelho(c.usuario); };
+      lista.appendChild(card);
+    });
+  }
+  abrirModal('modal-contratos');
+}
+
+async function abrirEspelho(){
+  const res = await fetch('/api/espelho/usuarios');
+  const data = await res.json();
+  const lista = document.getElementById('lista-espelho');
+  const usuarios = data.usuarios || [];
+  if(!usuarios.length){
+    lista.innerHTML = '<div class="muted" style="font-size:12px">Nenhum usuário com dados disponíveis.</div>';
+  } else {
+    lista.innerHTML = '';
+    usuarios.forEach(u=>{
+      const ts = u.atualizado ? new Date(u.atualizado).toLocaleString('pt-BR') : '';
+      const card = document.createElement('div');
+      card.className = 'espelho-card';
+      card.innerHTML = `
+        <div class="espelho-avatar">👤</div>
+        <div class="espelho-info">
+          <div class="espelho-nome">${escHtml(u.usuario)}</div>
+          <div class="espelho-ts">${ts ? 'Atualizado: '+escHtml(ts) : ''}</div>
+        </div>
+        <button class="btn sm">👁 Espelhar</button>`;
+      card.querySelector('button').onclick = () => iniciarEspelho(u.usuario);
+      lista.appendChild(card);
+    });
+  }
+  abrirModal('modal-espelho');
+}
+
+let _espelhoHeartbeatTimer = null;
+function iniciarHeartbeatEspelho(){
+  if(_espelhoHeartbeatTimer) clearInterval(_espelhoHeartbeatTimer);
+  _espelhoHeartbeatTimer = setInterval(()=>{ _post('/api/espelho/heartbeat', {}).catch(()=>{}); }, 20000);
+}
+function pararHeartbeatEspelho(){
+  if(_espelhoHeartbeatTimer){ clearInterval(_espelhoHeartbeatTimer); _espelhoHeartbeatTimer = null; }
+}
+
+async function iniciarEspelho(usuario){
+  const res = await _post('/api/espelho/iniciar', {usuario});
+  const d = await res.json();
+  if(!d.ok){ toast(d.error || 'Erro'); return; }
+  fecharModal('modal-espelho');
+  // quem decide se este espelho grava é o servidor — a tela pergunta
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  _entrarModoEspelho(usuario, me.espelho_grava);
+  iniciarHeartbeatEspelho();
+  _diaVisualizando = null;  // não continua vendo um dia histórico do usuário anterior
+  document.getElementById('diaHistBanner').classList.remove('show');
+  await carregarDados();
+  await carregarEvolucaoMensal();
+}
+
+async function sairEspelho(){
+  await _post('/api/espelho/sair', {});
+  pararHeartbeatEspelho();
+  _sairModoEspelho();
+  _diaVisualizando = null;
+  document.getElementById('diaHistBanner').classList.remove('show');
+  await carregarDados();
+  await carregarEvolucaoMensal();
+}
+
+function _atualizarBadgeEspelhado(observadores){
+  const el = document.getElementById('badge-espelhado');
+  if(!el) return;
+  if(observadores && observadores.length){
+    el.style.display = '';
+    const nomes = observadores.join(', ');
+    el.title = 'Sendo visualizado por: ' + nomes;
+    el.textContent = '👁 Sendo espelhado por ' + (observadores.length > 1 ? observadores.length + ' usuários' : nomes);
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+let _espelhadoPollTimer = null;
+function iniciarPollingEspelhado(){
+  if(_espelhadoPollTimer) clearInterval(_espelhadoPollTimer);
+  _espelhadoPollTimer = setInterval(async ()=>{
+    try{
+      const d = await fetch('/api/me').then(r=>r.json());
+      _atualizarBadgeEspelhado(d.observadores || []);
+    }catch(e){}
+  }, 15000);
+}
+
+async function exportarImagem(){
+  const btn = document.getElementById('btn-exportar');
+  const original = btn.textContent;
+  btn.textContent = 'Gerando…'; btn.disabled = true;
+  try{
+    // _diaVisualizando != null = vendo um snapshot retroativo do calendário
+    // — exporta ESSE dia, não o painel ao vivo (pedido do usuário 22/08/2026).
+    // ?mes= leva o mês que o seletor da Evolução Mensal está mostrando, pra
+    // a imagem trazer o gráfico do QlikView igual ao que está na tela.
+    const params = new URLSearchParams();
+    if(_diaVisualizando) params.set('data', _diaVisualizando);
+    const mesSel = document.getElementById('evol-mes-sel');
+    if(mesSel && mesSel.value) params.set('mes', mesSel.value);
+    if(_empresaAtual) params.set('empresa', _empresaAtual);
+    const url = '/api/armazem/exportar?'+params.toString();
+    const r = await fetch(url).then(r=>r.json());
+    if(r.error){ toast(r.error); return; }
+    mostrarGruposExportados(r);
+  }catch(e){ toast('Erro ao exportar: '+e); }
+  finally{ btn.textContent = original; btn.disabled = false; }
+}
+
+// Imagens exportadas em blocos separados (painel + um por temperatura da
+// Evolução QlikView) — todas geradas na MESMA largura/resolução, então ao
+// colar num e-mail elas aparecem no mesmo tamanho, sem precisar ajustar
+// cada uma (pedido do usuário 24/08/2026). "Copiar" usa a Clipboard API
+// pra ir direto pro e-mail sem passar por download+anexar.
+function _itemExportadoHtml(img){
+  return `<div class="exportado-item">
+      <img src="${img.url}" alt="${escAttr(img.label)}">
+      <div class="exportado-item-info">
+        <b>${escHtml(img.label)}</b>
+        <div class="exportado-item-acoes">
+          <button class="btn ghost sm" onclick="copiarImagemExportada('${img.url}', this)">📋 Copiar</button>
+          <a class="btn ghost sm" href="${img.url}" download>⬇️ Baixar</a>
+        </div>
+      </div>
+    </div>`;
+}
+
+function _larguraModalExportado(largo){
+  const m = document.querySelector('#modal-exportado .modal');
+  if(m) m.style.width = largo ? 'min(1180px,96vw)' : 'min(760px,96vw)';
+}
+
+function mostrarImagensExportadas(imagens){
+  _larguraModalExportado(false);
+  document.getElementById('exportado-lista').innerHTML = imagens.map(_itemExportadoHtml).join('');
+  abrirModal('modal-exportado');
+}
+
+// Com 2+ empresas no Local há uma coluna por visão (consolidada, CDA, CDB).
+// São 5 imagens por visão, então cada coluna é gerada quando pedida — a
+// visão que estava na tela já vem pronta (23/09/2026).
+let _visoesExport = [];
+
+function mostrarGruposExportados(r){
+  const grupos = r.grupos || [];
+  _visoesExport = r.visoes || [];
+  if(!_visoesExport.length){
+    mostrarImagensExportadas(grupos.length ? grupos[0].imagens : []);
+    return;
+  }
+  _larguraModalExportado(true);
+  document.getElementById('exportado-lista').innerHTML =
+    `<div class="exportado-colunas">` + _visoesExport.map(v => `
+      <div class="exportado-col" id="col-${escAttr(v.empresa)}">
+        <h4>${escHtml(v.titulo)}</h4>
+        <div class="col-conteudo"></div>
+      </div>`).join('') + `</div>`;
+  abrirModal('modal-exportado');
+  _visoesExport.forEach(v => {
+    const pronta = grupos.find(g => g.chave === (v.empresa === 'TODAS' ? 'consolidada' : v.empresa.toLowerCase()));
+    _preencherColuna(v.empresa, pronta ? pronta.imagens : null);
+  });
+}
+
+function _preencherColuna(empresa, imagens){
+  const col = document.getElementById('col-' + empresa);
+  if(!col) return;
+  const alvo = col.querySelector('.col-conteudo');
+  if(imagens && imagens.length){
+    alvo.innerHTML = imagens.map(_itemExportadoHtml).join('');
+  } else if(imagens){
+    alvo.innerHTML = '<div class="vazio">Sem dados processados para esta visão.</div>';
+  } else {
+    alvo.innerHTML = `<div class="vazio">5 imagens · leva cerca de um minuto
+      <div style="margin-top:8px"><button class="btn ok sm"
+        onclick="gerarVisaoExport('${escAttr(empresa)}', this)">🖼 Gerar imagens</button></div></div>`;
+  }
+}
+
+async function gerarVisaoExport(empresa, btn){
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando...';
+  const params = new URLSearchParams();
+  if(_diaVisualizando) params.set('data', _diaVisualizando);
+  const mesSel = document.getElementById('evol-mes-sel');
+  if(mesSel && mesSel.value) params.set('mes', mesSel.value);
+  params.set('empresa', empresa);
+  const r = await fetch('/api/armazem/exportar?'+params.toString()).then(r=>r.json()).catch(()=>null);
+  if(!r || r.error){
+    btn.disabled = false;
+    btn.textContent = '🖼 Gerar imagens';
+    toast((r && r.error) || 'Erro ao gerar as imagens.');
+    return;
+  }
+  _preencherColuna(empresa, (r.grupos && r.grupos[0]) ? r.grupos[0].imagens : []);
+}
+async function copiarImagemExportada(url, btn){
+  const original = btn.textContent;
+  try{
+    const blob = await fetch(url).then(r=>r.blob());
+    await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
+    btn.textContent = '✅ Copiado!';
+  }catch(e){
+    btn.textContent = '❌ Sem suporte — use Baixar';
+  }
+  setTimeout(()=>{ btn.textContent = original; }, 2000);
+}
+function toast(msg){ document.getElementById('msg').textContent = '❌ '+msg; }
+
+// Empresa que a tela está mostrando agora — pra CD de 1 empresa só, é
+// sempre essa (nunca aparece seletor); pra 2+ (ex.: CDA+CDB), começa na
+// 1ª e o usuário troca pelo seletor "Visualizando".
+let _empresaAtual = '', _empresasDisponiveis = [], _isGerente = false;
+
+function montarUploadSlots(empresas){
+  const multi = empresas.length > 1;
+  const wrap = document.getElementById('upload-slots');
+  if(!multi){
+    wrap.innerHTML = empresas.map(emp => `
+      <div class="row" style="margin-bottom:6px" data-empresa="${escAttr(emp)}">
+        <div class="file-drop" onclick="document.getElementById('txt-${escAttr(emp)}').click()">
+          <b id="fname-${escAttr(emp)}">Selecionar relatório</b> — Produto Paletizado (TXT ou Excel)
+        </div>
+        <input type="file" id="txt-${escAttr(emp)}" accept=".txt,.xlsx,.xlsm,.xls" class="hidden" onchange="fileSel('${escAttr(emp)}')">
+        <button class="btn" id="btnProc-${escAttr(emp)}" onclick="processar('${escAttr(emp)}')" disabled>Processar</button>
+      </div>
+    `).join('');
+  } else {
+    // 2+ empresas: slots lado a lado com um botão único (pedido do usuário
+    // 29/08/2026) — processa quem tiver arquivo selecionado (só CDA, só
+    // CDB, ou os dois); quem não tiver arquivo escolhido fica intocado,
+    // igual já era com os botões separados.
+    const slots = empresas.map(emp => `
+      <div class="upload-slot" data-empresa="${escAttr(emp)}" style="flex:1;min-width:220px">
+        <span class="muted" style="font-weight:600;display:block;margin-bottom:4px">${escHtml(emp)}</span>
+        <div class="file-drop" onclick="document.getElementById('txt-${escAttr(emp)}').click()">
+          <b id="fname-${escAttr(emp)}">Selecionar relatório</b> — Produto Paletizado (TXT ou Excel)
+        </div>
+        <input type="file" id="txt-${escAttr(emp)}" accept=".txt,.xlsx,.xlsm,.xls" class="hidden" onchange="fileSel('${escAttr(emp)}')">
+      </div>`).join('');
+    wrap.innerHTML = `
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px">${slots}</div>
+      <div class="row" style="align-items:center;gap:10px">
+        <button class="btn" id="btn-processar-todos" onclick="processarTodos()" disabled>Processar</button>
+        <div class="progress-bar-wrap hidden" id="progress-wrap"><div class="progress-bar-fill"></div></div>
+      </div>`;
+  }
+
+  const rowSel = document.getElementById('empresa-view-row');
+  const sel = document.getElementById('empresa-view-select');
+  if(multi){
+    rowSel.classList.remove('hidden');
+    const opts = [`<option value="TODAS" ${_empresaAtual==='TODAS'?'selected':''}>Todas (${empresas.join(' + ')})</option>`]
+      .concat(empresas.map(emp=>`<option value="${escAttr(emp)}" ${emp===_empresaAtual?'selected':''}>${escHtml(emp)}</option>`));
+    sel.innerHTML = opts.join('');
+  } else {
+    rowSel.classList.add('hidden');
+  }
+}
+
+function mudarEmpresaVisualizada(emp){
+  _empresaAtual = emp;
+  carregarDados();
+  const mesSel = document.getElementById('evol-mes-sel');
+  if(mesSel && mesSel.value) _carregarEvolucaoDoMes(mesSel.value);   // QlikView da empresa vista
+}
+
+function fileSel(empresa){
+  const f=document.getElementById('txt-'+empresa).files[0];
+  if(f) document.getElementById('fname-'+empresa).textContent=f.name;
+  const btnUnico = document.getElementById('btn-processar-todos');
+  if(btnUnico){
+    // 2+ empresas, botão único: habilita assim que QUALQUER slot tiver
+    // arquivo (não precisa dos dois — pode processar só CDA, só CDB, ou
+    // os dois juntos, pedido do usuário 29/08/2026).
+    const algum = _empresasDisponiveis.some(emp => (document.getElementById('txt-'+emp)||{}).files?.[0]);
+    btnUnico.disabled = !algum;
+  } else {
+    const btnProc = document.getElementById('btnProc-'+empresa);
+    if(btnProc) btnProc.disabled = !f;
+  }
+}
+
+function _mostrarProgresso(mostrar){
+  const el = document.getElementById('progress-wrap');
+  if(el) el.classList.toggle('hidden', !mostrar);
+}
+
+async function processar(empresa){
+  const f=document.getElementById('txt-'+empresa).files[0];
+  if(!f) return;
+  document.getElementById('msg').textContent = /\.xls[xm]?$/i.test(f.name) ? 'Processando o Excel… (leva mais tempo que o TXT)' : 'Processando…';
+  document.getElementById('btnProc-'+empresa).disabled=true;
+  _mostrarProgresso(true);
+  try{
+    const r = await _enviarArquivoEmpresa(empresa, f);
+    document.getElementById('msg').textContent = r.msg;
+    // upload de uma empresa só atualiza a tela se for a que está sendo vista
+    // — mas "Todas" é a soma de TODAS as empresas, então qualquer upload
+    // deve atualizar ela também (bug achado ao vivo 29/08/2026: processar
+    // o TXT do CDA enquanto via "Todas" não atualizava nada, só voltava a
+    // mostrar os números certos depois de recarregar a página manualmente).
+    if(r.ok && (empresa === _empresaAtual || _empresaAtual === 'TODAS')) await carregarDados();
+  }catch(e){ document.getElementById('msg').textContent='❌ '+e; }
+  finally{ _mostrarProgresso(false); document.getElementById('btnProc-'+empresa).disabled=false; }
+}
+
+// Faz o upload de UMA empresa e devolve {ok, msg} já formatado — extraído
+// de processar() pra ser reaproveitado por processarTodos() (botão único,
+// pedido do usuário 29/08/2026) sem duplicar a lógica de mensagem.
+async function _enviarArquivoEmpresa(empresa, arquivo){
+  const fd=new FormData(); fd.append('arquivo', arquivo); fd.append('empresa', empresa);
+  const r = await _post('/api/armazem/upload', fd, true).then(r=>r.json());
+  if(r.error) return {ok:false, msg:`❌ [${empresa}] ${r.error}`};
+  if(r.locais_novos && r.locais_novos.length){
+    return {ok:true, msg:`⚠️ [${empresa}] ${r.locais_novos.length} local(is) novo(s) — classifique pra liberar os gráficos.`};
+  }
+  return {ok:true, msg:`✅ [${empresa}] ${r.linhas} linhas processadas`};
+}
+
+async function processarTodos(){
+  const comArquivo = _empresasDisponiveis.filter(emp => (document.getElementById('txt-'+emp)||{}).files?.[0]);
+  if(!comArquivo.length) return;
+  const btn = document.getElementById('btn-processar-todos');
+  btn.disabled = true;
+  const temExcel = comArquivo.some(emp => /\.xls[xm]?$/i.test(document.getElementById('txt-'+emp).files[0].name));
+  document.getElementById('msg').textContent = temExcel ? 'Processando o Excel… (leva mais tempo que o TXT)' : 'Processando…';
+  _mostrarProgresso(true);
+  const linhas = [];
+  let algumOk = false;
+  try{
+    // sequencial, não Promise.all — evita disputa de escrita no mesmo
+    // banco SQLite quando as duas empresas são processadas juntas
+    for(const emp of comArquivo){
+      const f = document.getElementById('txt-'+emp).files[0];
+      const r = await _enviarArquivoEmpresa(emp, f);
+      linhas.push(r.msg);
+      if(r.ok) algumOk = true;
+    }
+  }catch(e){ linhas.push('❌ '+e); }
+  finally{ _mostrarProgresso(false); btn.disabled = false; }
+  document.getElementById('msg').innerHTML = linhas.map(escHtml).join('<br>');
+  if(algumOk && (comArquivo.includes(_empresaAtual) || _empresaAtual === 'TODAS')) await carregarDados();
+}
+
+async function carregarDados(){
+  _diaVisualizando = null;
+  document.getElementById('diaHistBanner').classList.remove('show');
+  const qs = _empresaAtual ? ('?empresa='+encodeURIComponent(_empresaAtual)) : '';
+  const d = await fetch('/api/armazem/dados'+qs).then(r=>r.json()).catch(()=>({tem_dados:false}));
+  if(d.empresas && d.empresas.length && (!_empresasDisponiveis.length || d.empresas.join(',')!==_empresasDisponiveis.join(','))){
+    _empresasDisponiveis = d.empresas;
+    // 1ª carga com 2+ empresas: começa em "Todas" (visão combinada) —
+    // antes só dava pra ver CDA OU CDB, nunca as duas juntas somadas
+    // (pedido do usuário 29/08/2026).
+    if(!_empresaAtual) _empresaAtual = d.empresas.length > 1 ? 'TODAS' : (d.empresa || d.empresas[0]);
+    montarUploadSlots(d.empresas);
+  }
+  // Etiqueta ANTES do "sem dados" abaixo de propósito: é justo quando o
+  // Gerente ainda não processou nada NESTE contrato que ele mais precisa
+  // do atalho pra navegar até um contrato que já tem dado (bug achado ao
+  // vivo 29/08/2026 — a etiqueta só atualizava depois do early-return de
+  // "sem dados", nunca aparecia nesse caso).
+  const tag = document.getElementById('rotulo-tag');
+  const rotulo = d.config && d.config.rotulo;
+  if(rotulo){
+    tag.textContent = rotulo;
+    tag.classList.remove('hidden');
+  } else if(_isGerente){
+    // pra Gerente a etiqueta fica sempre visível — é a entrada pra navegar
+    // entre contratos, mesmo quando ESTE contrato não tem rótulo definido
+    // (pedido do usuário 29/08/2026: "mantenha a etiqueta sempre lá")
+    tag.textContent = '📑 Selecionar contrato';
+    tag.classList.remove('hidden');
+  } else {
+    tag.classList.add('hidden');
+  }
+
+  const pendBanner = document.getElementById('pendBanner');
+  const conteudo = document.getElementById('conteudo');
+  const btnExportar = document.getElementById('btn-exportar');
+  if(!d.tem_dados){
+    conteudo.classList.add('hidden');
+    pendBanner.classList.remove('show');
+    btnExportar.style.display = 'none';
+    renderEmpresasFora(d);
+    return;
+  }
+  conteudo.classList.remove('hidden');
+  if(d.tem_pendencia){
+    document.getElementById('pendTxt').textContent =
+      `${d.locais_novos.length} local(is) de estoque sem classificação — os gráficos abaixo estão zerados até resolver.`;
+    pendBanner.classList.add('show');
+    btnExportar.style.display = 'none';
+  } else {
+    pendBanner.classList.remove('show');
+    btnExportar.style.display = '';
+  }
+  _capVisao = d.capacidade_visao || null;
+  renderEmpresasFora(d);
+  renderTudo(d.metricas);
+}
+
+const TEMP_COR = {RESFRIADO:'#38BDF8', CONGELADO:'#0369a1', AMBIENTE:'#F59E0B', IMPORTADOS:'#1a7a36'};
+
+function renderTudo(m){
+  document.getElementById('k_total').textContent = fmtN(m.total_ton)+' ton';
+  document.getElementById('k_paletes').textContent = fmtN(m.total_paletes);
+  document.getElementById('k_importados').textContent = fmtN(m.importados_ton)+' ton';
+  document.getElementById('k_peso_medio').textContent = _pesoMedioKg(m.total_bruto_ton, m.total_paletes);
+
+  // Barra empilhada: cada temperatura mostra o estoque nacional na base e,
+  // se houver Importados NAQUELA temperatura, empilha por cima — hoje só
+  // acontece em Congelado, mas funciona pra qualquer temperatura (pedido
+  // do usuário 08/08/2026).
+  const temps = ['RESFRIADO','CONGELADO','AMBIENTE'];
+  const itensEstoque = temps.map(temp=>{
+    const t = m.temperaturas[temp];
+    const segs = [{value:t.estoque_ton, cls:'c-'+temp.toLowerCase()}];
+    if(t.importados_ton>0) segs.push({value:t.importados_ton, cls:'c-importados', label:'Terceiros'});
+    return {label:TEMP_LABEL[temp], segments:segs, total:t.estoque_fisico_ton};
+  });
+  itensEstoque.push({label:'Total', segments:[{value:m.total_ton, cls:'c-total'}], total:m.total_ton});
+  renderStackedBarChart('chart-estoque-total', itensEstoque);
+
+  renderOcupacao(m);
+  renderFinanceiro(m.financeiro);
+  renderPieEnderecado(m);
+  renderPieReserva(m);
+  renderMiniCharts(m);
+  renderTabelaResumo(m);
+}
+
+// A legenda sai do que foi realmente desenhado: se amanhã aparecer outra
+// categoria de produto, ela entra aqui sem precisar de lista fixa
+// (pedido do usuário, 23/09/2026 — o verde de "Terceiros" não se explicava).
+function renderLegenda(el, itens){
+  if(!el) return;
+  // entra na legenda quem tem NOME DE SÉRIE (ex.: "Terceiros"); as barras
+  // por temperatura já se identificam pelo rótulo logo abaixo delas
+  const vistos = new Map();
+  itens.forEach(i => (i.segments||[]).forEach(s => {
+    if(s.label && !vistos.has(s.label)) vistos.set(s.label, s.cls);
+  }));
+  el.innerHTML = [...vistos].map(([nome, cls]) =>
+    `<span><i class="${cls}"></i>${nome}</span>`).join('');
+  el.style.display = vistos.size ? '' : 'none';
+}
+
+function renderStackedBarChart(containerId, itens){
+  const el = document.getElementById(containerId);
+  const max = Math.max(1, ...itens.map(i=>i.total||0));
+  el.innerHTML = itens.map(i=>{
+    // O rótulo de cada segmento só aparece quando HÁ empilhamento de verdade
+    // (mais de 1 segmento) — numa barra de segmento único o valor já está
+    // no rótulo de cima (stack-total-val); repetir dentro do segmento fica
+    // redundante e, em barras baixas, o texto vaza e parece duplicado.
+    const empilhado = i.segments.length > 1;
+    const segsHtml = i.segments.map(s=>{
+      const h = Math.max(2, Math.round((s.value||0)/max*120));
+      return `<div class="stack-seg ${s.cls}" style="height:${h}px" title="${s.label||''} ${fmtN(s.value)} ton">
+        ${(empilhado && h>16)?`<div class="stack-seg-val">${fmtN(s.value)}</div>`:''}</div>`;
+    }).join('');
+    return `<div class="stack-col">
+      <div class="stack-total-val">${fmtN(i.total)}</div>
+      <div class="stack-bar">${segsHtml}</div>
+      <div class="bar-label">${i.label}</div>
+    </div>`;
+  }).join('');
+  let leg = document.getElementById(containerId + '-legenda');
+  if(!leg){
+    leg = document.createElement('div');
+    leg.id = containerId + '-legenda';
+    leg.className = 'legenda';
+    el.parentElement.insertBefore(leg, el.nextSibling);
+  }
+  renderLegenda(leg, itens);
+}
+
+// Pizza com fatias de peso IGUAL, uma por temperatura, cada uma rotulada
+// com o % Endereçado daquela temperatura — mesmo estilo visual da planilha
+// original (3 fatias de 120°, não proporcionais por tonelagem).
+function renderPieEnderecado(m){
+  const temps = ['RESFRIADO','CONGELADO','AMBIENTE'];
+  const slices = temps.map(temp=>({
+    label: TEMP_LABEL[temp], color: TEMP_COR[temp],
+    peso: 1, texto: m.temperaturas[temp].pct_enderecado==null ? '—' : fmtN(m.temperaturas[temp].pct_enderecado)+'%',
+  }));
+  renderPieChart('pie-enderecado', slices);
+  renderPesoMedioPallet(m);
+}
+
+// Peso médio/pallet (kg) = Peso BRUTO(ton)*1000 / Paletes — Total + por
+// temperatura (só Resfriado/Congelado — Ambiente fica de fora, estoque
+// baixo demais pra essa média fazer sentido). Pedido do usuário 22/08/2026.
+// Passou de líquido pra BRUTO em 01/09/2026, a pedido do usuário: o que
+// pesa no pallet é a carga com embalagem. É o ÚNICO indicador do painel
+// que usa bruto — ocupação, vida, endereçamento e R$/ton seguem no
+// líquido, que é o que a planilha original usa.
+function _pesoMedioKg(ton, paletes){
+  return paletes && ton ? fmtN(ton*1000/paletes)+' kg' : '—';
+}
+function renderPesoMedioPallet(m){
+  const el = document.getElementById('peso-medio-pallet');
+  if(!el) return;
+  const r = m.temperaturas.RESFRIADO, c = m.temperaturas.CONGELADO;
+  el.innerHTML = `<div class="peso-medio-col">
+    <div class="peso-medio-box"><div class="v">${_pesoMedioKg(m.total_bruto_ton, m.total_paletes)}</div><div class="l">Peso médio/pallet Total</div></div>
+    <div class="peso-medio-box"><div class="v">${_pesoMedioKg(r.estoque_bruto_ton, r.paletes)}</div><div class="l">Peso médio/pallet Resfriado</div></div>
+    <div class="peso-medio-box"><div class="v">${_pesoMedioKg(c.estoque_bruto_ton, c.paletes)}</div><div class="l">Peso médio/pallet Congelado</div></div>
+  </div>`;
+}
+
+// Pizza proporcional de verdade: Bloqueio vs Reservado, somado entre as
+// temperaturas (a planilha original também mostra um valor só, não por temp).
+function renderPieReserva(m){
+  let bloqueio=0, reservado=0;
+  Object.values(m.temperaturas).forEach(t=>{ bloqueio+=t.bloqueio_ton; reservado+=t.reservado_ton; });
+  const total = bloqueio+reservado;
+  const slices = [
+    {label:'Bloqueio', color:'#DC2626', peso: total? bloqueio/total : 0.5, texto: fmtN(bloqueio)+' ton'},
+    {label:'Reservado', color:'#F97316', peso: total? reservado/total : 0.5, texto: fmtN(reservado)+' ton'},
+  ];
+  renderPieChart('pie-reserva', slices, total===0);
+}
+
+function renderPieChart(containerId, slices, vazio){
+  const el = document.getElementById(containerId);
+  const pesoTotal = slices.reduce((s,x)=>s+x.peso,0) || 1;
+  let acc = 0;
+  const stops = slices.map(s=>{
+    const de = acc/pesoTotal*360; acc += s.peso;
+    const ate = acc/pesoTotal*360;
+    return `${s.color} ${de}deg ${ate}deg`;
+  }).join(', ');
+  el.innerHTML = `<div class="pie-wrap">
+    <div class="pie-legend">${slices.map(s=>`
+      <div class="pie-legend-item"><span class="pie-dot" style="background:${s.color}"></span>
+        ${s.label}<span class="pie-legend-val">${s.texto}</span></div>
+    `).join('')}</div>
+    <div class="pie" style="background:${vazio?'rgba(0,0,0,.08)':'conic-gradient('+stops+')'}"></div>
+  </div>`;
+}
+
+function renderMiniCharts(m){
+  const temps = ['RESFRIADO','CONGELADO','AMBIENTE'];
+  // sub-card por temperatura dentro do card do grupo — separa visualmente
+  // Resfriado/Congelado/Ambiente (pedido do usuário 22/08/2026)
+  const vidaEl = document.getElementById('mini-vida');
+  vidaEl.innerHTML = temps.map(temp=>`
+    <div class="mini-card"><div class="mini-title">${TEMP_LABEL[temp]}</div><div class="barchart mini" id="vida-${temp}"></div></div>
+  `).join('');
+  const vencEl = document.getElementById('mini-vencimento');
+  vencEl.innerHTML = temps.map(temp=>`
+    <div class="mini-card"><div class="mini-title">${TEMP_LABEL[temp]}</div><div class="barchart mini" id="venc-${temp}"></div></div>
+  `).join('');
+  temps.forEach(temp=>{
+    const t = m.temperaturas[temp];
+    renderBarChart('vida-'+temp, [
+      {label:'1/3', val:t.vida['1/3'], cls:'c-1-3'},
+      {label:'2/3', val:t.vida['2/3'], cls:'c-2-3'},
+      {label:'3/3', val:t.vida['3/3'], cls:'c-3-3'},
+      {label:'Venc.', val:t.vida['Vencido'], cls:'c-vencido'},
+    ]);
+    renderBarChart('venc-'+temp, Object.entries(t.vencimento_buckets).map(([label,val])=>({
+      label, val, cls:'c-venc-bucket',
+      detalhe:`abrirDetalhe('faixa','${temp}','${label}')`})));
+  });
+}
+
+function fmtNz(n){ return n ? fmtN(n) : '—'; }
+
+function renderTabelaResumo(m){
+  const temps = ['RESFRIADO','CONGELADO','AMBIENTE'];
+  const cols = ['Temperatura','Estoque','Capacidade','Ocupação','Bloqueio','Reservado','1/3','2/3','3/3','Fifo','Vencido','Endereçado','Sem Endereço','% Endereçado'];
+  // número clicável: abre a lista de produtos que formam aquele total
+  const num = (valor, categoria, temp) => {
+    const txt = fmtNz(valor);
+    if(!valor) return txt;
+    return `<span class="num-link" onclick="abrirDetalhe('${categoria}'${temp?`,'${temp}'`:''})">${txt}</span>`;
+  };
+  const linhas = temps.map(temp=>{
+    const t = m.temperaturas[temp];
+    return [TEMP_LABEL[temp], fmtNz(t.estoque_fisico_ton), t.capacidade_ton?fmtN(t.capacidade_ton):'—',
+      t.ocupacao_pct==null?(t.compartilha_capacidade?'compartilha':'—'):fmtN(t.ocupacao_pct)+'%',
+      num(t.bloqueio_ton,'bloqueio',temp), num(t.reservado_ton,'reservado',temp),
+      fmtNz(t.vida['1/3']), fmtNz(t.vida['2/3']), fmtNz(t.vida['3/3']),
+      num(t.fifo_ton,'fifo',temp), num(t.vida['Vencido'],'vencido',temp),
+      num(t.endereçado_ton,'enderecado',temp), num(t.sem_endereco_ton,'sem_endereco',temp),
+      t.pct_enderecado==null?'—':fmtN(t.pct_enderecado)+'%'];
+  });
+  const soma = campo => temps.reduce((s,t)=>s+(campo(m.temperaturas[t])||0),0);
+  const totalRow = ['Total', fmtNz(m.total_ton), '—', '—',
+    num(soma(t=>t.bloqueio_ton),'bloqueio'),
+    num(soma(t=>t.reservado_ton),'reservado'),
+    fmtNz(temps.reduce((s,t)=>s+m.temperaturas[t].vida['1/3'],0)),
+    fmtNz(temps.reduce((s,t)=>s+m.temperaturas[t].vida['2/3'],0)),
+    fmtNz(temps.reduce((s,t)=>s+m.temperaturas[t].vida['3/3'],0)),
+    num(soma(t=>t.fifo_ton),'fifo'),
+    num(soma(t=>t.vida['Vencido']),'vencido'),
+    num(soma(t=>t.endereçado_ton),'enderecado'),
+    num(soma(t=>t.sem_endereco_ton),'sem_endereco'), '—'];
+  linhas.push(totalRow);
+  document.getElementById('tabela-resumo').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:11.5px;min-width:760px">
+      <thead><tr style="text-align:left;border-bottom:2px solid var(--glass-b)">
+        ${cols.map(c=>`<th style="padding:6px 8px;white-space:nowrap">${c}</th>`).join('')}
+      </tr></thead>
+      <tbody>${linhas.map((l,i)=>`<tr style="border-bottom:1px solid rgba(0,0,0,.05);${i===linhas.length-1?'font-weight:700':''}">
+        ${l.map(v=>`<td style="padding:6px 8px;white-space:nowrap">${v}</td>`).join('')}
+      </tr>`).join('')}</tbody>
+    </table>`;
+}
+
+function renderFinanceiro(f){
+  const el = document.getElementById('financeiro-geral');
+  if(!f || !f.valor_contrato_ton){
+    el.innerHTML = '<p class="muted" style="margin:0">Sem valor de contrato cadastrado — configure em "⚙️ Capacidade e Contrato".</p>';
+    return;
+  }
+  // Esta linha dizia "contratada" e mostrava a capacidade FÍSICA da câmara
+  // (287 + 300 = 587 ton no CD Demo) — dois números diferentes com o mesmo
+  // rótulo. Quem manda no R$ Previsto é a CONTRATADA, e é ela que aparece
+  // aqui agora, com a da câmara ao lado quando são diferentes (01/10/2026).
+  const contratada = f.capacidade_contratada_ton || 0;
+  const camara = f.capacidade_total_ton || 0;
+  const umaEmpresa = _capVisao && (_capVisao.empresas || []).length === 1 && _capVisao.origem === 'contratada';
+  const dono = umaEmpresa ? ` de ${escHtml(_capVisao.empresas[0])}` : '';
+  // "Câmara" só faz sentido na visão do Local inteiro: na visão de uma
+  // empresa o denominador já é a contratada dela, e repetir o número com
+  // outro rótulo confundiria.
+  const mostraCamara = !umaEmpresa && camara && Math.abs(camara - contratada) > 0.05;
+  const topo = contratada
+    ? `Capacidade contratada${dono}: <b>${fmtN(contratada)} ton</b> — valor único pro contrato, não por temperatura.`
+      + (mostraCamara ? ` Câmara: ${fmtN(camara)} ton.` : '')
+    : `Sem capacidade contratada cadastrada${umaEmpresa ? ' para ' + escHtml(_capVisao.empresas[0]) : ''}`
+      + ` — configure em "⚙️ Capacidade e Contrato" para o R$ Previsto sair.`;
+  el.innerHTML = `<p class="muted" style="margin:0 0 6px">${topo}</p>
+    <div class="fin-grid">
+      <div class="fin-item"><div class="v">${fmtMoeda(f.r_previsto)}</div><div class="l">R$ Previsto</div></div>
+      <div class="fin-item"><div class="v">${fmtMoeda(f.r_por_ton_previsto)}</div><div class="l">R$/Ton Contratado</div></div>
+      <div class="fin-item"><div class="v">${f.r_por_ton_realizado==null?'—':fmtMoeda(f.r_por_ton_realizado)}</div><div class="l">R$/Ton Realizado</div></div>
+    </div>`;
+}
+
+function fmtN(n){ return (n||0).toLocaleString('pt-BR', {maximumFractionDigits:1}); }
+function fmtN0(n){ return Math.round(n||0).toLocaleString('pt-BR'); }
+function fmtMoeda(n){ return (n||0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
+
+function renderBarChart(containerId, itens){
+  const el = document.getElementById(containerId);
+  const max = Math.max(1, ...itens.map(i=>i.val||0));
+  el.innerHTML = itens.map(i=>{
+    const h = Math.max(2, Math.round((i.val||0)/max*120));
+    const clique = i.detalhe && i.val ? ` clicavel" onclick="${i.detalhe}` : '';
+    return `<div class="bar-col${clique}">
+      <div class="bar-val">${fmtN(i.val)}</div>
+      <div class="bar-fill ${i.cls}" style="height:${h}px"></div>
+      <div class="bar-label">${i.label}</div>
+    </div>`;
+  }).join('');
+}
+
+// Empresa sem painel do dia, ou com local de estoque esperando
+// classificação, não entra na soma da visão "Todas". O número segue certo
+// pro que entrou — o que faltava era dizer o que ficou de fora.
+function renderEmpresasFora(d){
+  const banner = document.getElementById('foraBanner');
+  const btn = document.getElementById('foraBtn');
+  const fora = (d && d.empresas_fora) || [];
+  if(!fora.length || _empresaAtual !== 'TODAS'){
+    banner.classList.remove('show');
+    return;
+  }
+  const pend = fora.filter(f=>f.motivo === 'pendencia');
+  const partes = fora.map(f=>{
+    if(f.motivo === 'pendencia'){
+      const n = (f.locais_novos || []).length;
+      return `<b>${escHtml(f.empresa)}</b> — ${n ? n + ' local(is) de estoque sem classificação' : 'local de estoque sem classificação'}`;
+    }
+    return `<b>${escHtml(f.empresa)}</b> — sem painel importado neste dia`;
+  });
+  const dentro = (d.empresas_na_visao || []).join(' + ');
+  document.getElementById('foraTxt').innerHTML =
+    `A soma está trazendo ${dentro ? '<b>' + escHtml(dentro) + '</b>' : 'parte das empresas'}. ` +
+    `Fora da conta: ${partes.join(' · ')}.`;
+  btn.classList.toggle('hidden', !pend.length);
+  banner.classList.add('show');
+}
+
+// Qual capacidade está no denominador: a câmara (Local inteiro) ou o que
+// aquela empresa contratou. Sem isso o número de 287 ton parecia o mesmo
+// em qualquer visão (01/10/2026).
+let _capVisao = null;
+
+function renderOcupacao(m){
+  const el = document.getElementById('ocupacao-camaras');
+  const sub = document.getElementById('ocupacao-sub');
+  const cv = _capVisao;
+  if(sub){
+    const emps = (cv && cv.empresas) || [];
+    sub.textContent = !cv ? ''
+      : cv.origem === 'contratada'
+        ? (emps.length > 1
+            ? `Capacidade contratada — ${emps.join(' + ')} somadas`
+            : `Capacidade contratada por ${emps.join(' + ')}`)
+        : `Capacidade da câmara${emps.length > 1 ? ' — compartilhada entre ' + emps.join(' + ') : ''}`;
+  }
+  el.innerHTML = ['RESFRIADO','CONGELADO','AMBIENTE'].map(temp=>{
+    const t = m.temperaturas[temp];
+    if(t.compartilha_capacidade){
+      return `<div class="ocup-wrap"><div class="row" style="justify-content:space-between">
+        <b>${TEMP_LABEL[temp]}</b>
+        <span class="muted">${fmtN(t.estoque_fisico_ton)} ton — compartilha a câmara do Resfriado (somado acima)</span>
+      </div></div>`;
+    }
+    const cap = t.capacidade_ton;
+    const pct = t.ocupacao_pct;
+    if(!cap){
+      const falta = cv && cv.origem === 'contratada'
+        ? `Sem capacidade contratada cadastrada para ${(cv.empresas||[]).join(' + ')} — ${fmtN(t.estoque_fisico_ton)} ton em estoque`
+        : `Sem capacidade cadastrada — ${fmtN(t.estoque_fisico_ton)} ton em estoque`;
+      return `<div class="ocup-wrap"><div class="row" style="justify-content:space-between">
+        <b>${TEMP_LABEL[temp]}</b><span class="muted">${falta}</span>
+      </div></div>`;
+    }
+    const w = Math.min(100, pct||0);
+    // "pisca" suave (classe .alta, ver CSS) quando >90% de ocupação —
+    // pedido do usuário 22/08/2026
+    return `<div class="ocup-wrap">
+      <div class="row" style="justify-content:space-between;margin-bottom:4px">
+        <b>${TEMP_LABEL[temp]}</b><span class="muted">${fmtN(t.estoque_fisico_ton)} / ${fmtN(cap)} ton</span>
+      </div>
+      <div class="ocup-bar-bg"><div class="ocup-bar-fill ${pct>90?'alta':''}" style="width:${w}%"></div>
+        <div class="ocup-txt">${fmtN(pct)}% | ${fmtN(t.estoque_fisico_ton)} ton</div></div>
+    </div>`;
+  }).join('');
+}
+
+
+// ── Calendário ─────────────────────────────────────────────
+let _calAno, _calMes, _diasComDado = [], _diaSelecionadoCal = null;
+
+async function abrirCalendario(){
+  abrirModal('modal-calendario');
+  document.getElementById('histItensLabel').textContent = 'Carregando…';
+  const qsCal = _empresaAtual ? ('?empresa='+encodeURIComponent(_empresaAtual)) : '';
+  const r = await fetch('/api/armazem/calendario'+qsCal).then(r=>r.json()).catch(()=>({dias:[]}));
+  _diasComDado = r.dias || [];
+  const hoje = new Date();
+  if(_diasComDado.length){
+    const [ano,mes] = _diasComDado[0].split('-');
+    _calAno = parseInt(ano); _calMes = parseInt(mes)-1;
+  } else {
+    _calAno = hoje.getFullYear(); _calMes = hoje.getMonth();
+  }
+  _diaSelecionadoCal = _diaVisualizando;
+  renderCalendarioModal();
+  document.getElementById('histItensLabel').textContent = _diasComDado.length
+    ? 'Selecione um dia com marcação no calendário.'
+    : 'Nenhum arquivo processado ainda.';
+}
+
+function calMudarMes(delta){
+  _calMes += delta;
+  if(_calMes<0){ _calMes=11; _calAno--; }
+  if(_calMes>11){ _calMes=0; _calAno++; }
+  renderCalendarioModal();
+}
+
+function renderCalendarioModal(){
+  document.getElementById('calMesAno').textContent = MESES_PT[_calMes]+' de '+_calAno;
+  const grid = document.getElementById('calGrid');
+  const hojeStr = _hojeLocal();
+  const primeiroDia = new Date(_calAno,_calMes,1).getDay();
+  const totalDias = new Date(_calAno,_calMes+1,0).getDate();
+  let html='';
+  for(let i=0;i<primeiroDia;i++) html+='<div class="hist-cal-cell"></div>';
+  for(let d=1; d<=totalDias; d++){
+    const diaStr = _calAno+'-'+String(_calMes+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const temDado = _diasComDado.includes(diaStr);
+    const classes=['hist-cal-cell'];
+    if(temDado) classes.push('tem-dado');
+    if(diaStr===hojeStr) classes.push('hoje');
+    if(diaStr===_diaSelecionadoCal) classes.push('selecionado');
+    html+=`<div class="${classes.join(' ')}"${temDado?` onclick="selecionarDiaCal('${diaStr}')"`:''}>${d}${temDado?'<span class="hist-cal-dot"></span>':''}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+async function selecionarDiaCal(diaStr){
+  _diaSelecionadoCal = diaStr;
+  renderCalendarioModal();
+  document.getElementById('histItensLabel').textContent = 'Carregando…';
+  const qsDia = _empresaAtual ? ('?empresa='+encodeURIComponent(_empresaAtual)) : '';
+  const d = await fetch('/api/armazem/dia/'+diaStr+qsDia).then(r=>r.json());
+  if(!d.tem_dados || !d.metricas){
+    document.getElementById('histItensLabel').textContent = 'Esse dia só tem dado do QlikView, sem TXT do Produto Paletizado processado.';
+    return;
+  }
+  _diaVisualizando = diaStr;
+  fecharModal('modal-calendario');
+  const [ano,mes,dia] = diaStr.split('-');
+  document.getElementById('diaHistTxt').textContent =
+    `Vendo o snapshot de ${dia}/${mes}/${ano} (${escHtml(d.nome_arquivo||'')}) — somente leitura.`;
+  document.getElementById('diaHistBanner').classList.add('show');
+  document.getElementById('conteudo').classList.remove('hidden');
+  document.getElementById('pendBanner').classList.remove('show');
+  // exportarImagem() detecta _diaVisualizando e exporta esse snapshot —
+  // botão continua visível/funcional aqui (pedido do usuário 22/08/2026)
+  document.getElementById('btn-exportar').style.display = '';
+  _capVisao = d.capacidade_visao || null;
+  renderEmpresasFora(d);
+  renderTudo(d.metricas);
+}
+
+async function voltarParaHoje(){
+  _diaVisualizando = null;
+  document.getElementById('diaHistBanner').classList.remove('show');
+  await carregarDados();
+}
+
+// ── Detalhe de um número (quais produtos formam aquele total) ──────
+// As regras de classificação ficam no servidor (armazem_service.detalhar_
+// linhas), as mesmas do cálculo — a lista sempre fecha com o número clicado.
+const DET_TITULO = {fifo:'FIFO (vence em menos de 21 dias)', vencido:'Vencido',
+  enderecado:'Endereçado', sem_endereco:'Sem endereço', bloqueio:'Bloqueado',
+  reservado:'Reservado', faixa:'Vencimento', estoque:'Estoque'};
+let _detItens = [], _detNome = '';
+
+async function abrirDetalhe(categoria, temperatura, faixa){
+  const params = new URLSearchParams({categoria});
+  if(temperatura) params.set('temperatura', temperatura);
+  if(faixa) params.set('faixa', faixa);
+  if(_empresaAtual) params.set('empresa', _empresaAtual);
+  if(_diaVisualizando) params.set('data', _diaVisualizando);
+  const titulo = (DET_TITULO[categoria]||'Detalhe')
+    + (faixa ? ` · ${faixa} dias` : '') + (temperatura ? ` · ${TEMP_LABEL[temperatura]}` : '');
+  _detNome = titulo;
+  document.getElementById('det-titulo').textContent = titulo;
+  document.getElementById('det-resumo').textContent = 'Carregando...';
+  document.getElementById('det-tabela').innerHTML = '';
+  abrirModal('modal-detalhe');
+  const r = await fetch('/api/armazem/detalhe?'+params.toString()).then(r=>r.json()).catch(()=>null);
+  if(!r || r.error){
+    document.getElementById('det-resumo').textContent = (r && r.error) || 'Não foi possível carregar a lista.';
+    return;
+  }
+  _detItens = r.itens || [];
+  const multi = r.multi_empresa;
+  const partes = [`${fmtN(r.total_kg/1000)} ton em ${r.total_itens} linha(s)`];
+  if(r.data) partes.push(`dia ${r.data.split('-').reverse().join('/')}`);
+  if(multi) partes.push(`empresas: ${r.empresas.join(' + ')}`);
+  if(r.sem_dado && r.sem_dado.length) partes.push(`sem arquivo processado: ${r.sem_dado.join(', ')}`);
+  if(r.truncado) partes.push(`mostrando as ${_detItens.length} primeiras — baixe o CSV para a lista inteira`);
+  document.getElementById('det-resumo').textContent = partes.join(' · ');
+  if(!_detItens.length){
+    document.getElementById('det-tabela').innerHTML =
+      '<tbody><tr><td class="muted">Nenhum produto nesse número.</td></tr></tbody>';
+    return;
+  }
+  const cols = (multi?['Empresa']:[]).concat(['Local de estoque','Código','Descrição','Quantidade (kg)','Validade','Dias a vencer']);
+  document.getElementById('det-tabela').innerHTML =
+    `<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>` +
+    _detItens.map(i=>{
+      const d = i.dias_vencer;
+      const cls = d!=null && d < 0 ? 'det-vence critico' : 'det-vence';
+      return `<tr>${multi?`<td>${escHtml(i.empresa)}</td>`:''}
+        <td>${escHtml(i.local)}</td><td>${escHtml(i.codigo)}</td><td>${escHtml(i.descricao)}</td>
+        <td style="text-align:right">${fmtN(i.peso_kg)}</td>
+        <td>${i.validade ? i.validade.split('-').reverse().join('/') : '—'}</td>
+        <td style="text-align:right" class="${cls}">${d==null?'—':d}</td></tr>`;
+    }).join('') + '</tbody>';
+}
+
+function baixarDetalheCsv(){
+  if(!_detItens.length){ toast('Nada para baixar.'); return; }
+  const cab = ['Empresa','Local de estoque','Codigo','Descricao','Quantidade (kg)','Validade','Dias a vencer'];
+  const linhas = _detItens.map(i=>[i.empresa||'', i.local, i.codigo, i.descricao,
+    String(i.peso_kg).replace('.', ','), i.validade || '', i.dias_vencer==null?'':i.dias_vencer]);
+  const csv = [cab, ...linhas].map(l=>l.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'}));
+  a.download = (_detNome||'detalhe').replace(/[^\wÀ-ú ]+/g,' ').trim().replace(/\s+/g,'_') + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── QlikView (colar manualmente) ────────────────────────────
+function abrirQlikview(){
+  // empresa do QlikView: a que está sendo vista; na visão consolidada cai
+  // na primeira, porque a colagem é sempre de UMA empresa (23/09/2026)
+  const campo = document.getElementById('qlik-empresa-campo');
+  const sel = document.getElementById('qlik-empresa');
+  const multi = _empresasDisponiveis.length > 1;
+  campo.classList.toggle('hidden', !multi);
+  document.getElementById('qlik-empresa-dica').classList.toggle('hidden', !multi);
+  if(multi){
+    const atual = (_empresaAtual && _empresaAtual !== 'TODAS') ? _empresaAtual : _empresasDisponiveis[0];
+    sel.innerHTML = _empresasDisponiveis.map(e =>
+      `<option value="${escAttr(e)}" ${e===atual?'selected':''}>${escHtml(e)}</option>`).join('');
+  } else {
+    sel.innerHTML = '';
+  }
+  document.getElementById('qlik-texto').value = '';
+  document.getElementById('qlik-msg').innerHTML = '';
+  document.getElementById('qlik-upload-msg').innerHTML = '';
+  document.getElementById('qlik-arquivo').value = '';
+  const hoje = new Date();
+  document.getElementById('qlik-mes').value = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+  abrirModal('modal-qlikview');
+}
+function qlikMudouMes(){
+  document.getElementById('qlik-upload-msg').innerHTML = '';
+}
+function _qlikEmpresa(){
+  const sel = document.getElementById('qlik-empresa');
+  return sel && sel.value ? sel.value : '';
+}
+function baixarModeloQlikview(){
+  const ano_mes = document.getElementById('qlik-mes').value;
+  if(!ano_mes){ toast('Selecione o mês primeiro.'); return; }
+  window.location.href = '/api/armazem/qlikview/modelo?ano_mes=' + encodeURIComponent(ano_mes)
+    + (_qlikEmpresa() ? '&empresa=' + encodeURIComponent(_qlikEmpresa()) : '');
+}
+async function enviarPlanilhaQlikview(){
+  const ano_mes = document.getElementById('qlik-mes').value;
+  const fileEl = document.getElementById('qlik-arquivo');
+  const msgEl = document.getElementById('qlik-upload-msg');
+  if(!ano_mes){ msgEl.innerHTML = '<div class="qlik-msg err">Selecione o mês primeiro.</div>'; return; }
+  if(!fileEl.files.length){ msgEl.innerHTML = '<div class="qlik-msg err">Escolha o arquivo .xlsx preenchido.</div>'; return; }
+  const fd = new FormData();
+  fd.append('arquivo', fileEl.files[0]);
+  fd.append('ano_mes', ano_mes);
+  if(_qlikEmpresa()) fd.append('empresa', _qlikEmpresa());
+  msgEl.innerHTML = '<div class="qlik-msg">Enviando...</div>';
+  const r = await _post('/api/armazem/qlikview/upload', fd, true).then(r=>r.json());
+  if(!r.ok){
+    msgEl.innerHTML = `<div class="qlik-msg err">❌ ${escHtml(r.error||'Erro ao processar.')}</div>`;
+    return;
+  }
+  let html = `<div class="qlik-msg ok">✅ ${r.linhas_salvas} registro(s) salvo(s) (${ano_mes}).`;
+  if(r.linhas_ignoradas && r.linhas_ignoradas.length){
+    html += ` Linhas não reconhecidas (ignoradas): ${r.linhas_ignoradas.map(escHtml).join(', ')}.`;
+  }
+  html += '</div>';
+  msgEl.innerHTML = html;
+  fileEl.value = '';
+  await carregarEvolucaoMensal();
+}
+
+async function colarQlikview(){
+  const texto = document.getElementById('qlik-texto').value;
+  const ano_mes = document.getElementById('qlik-mes').value;
+  const temperatura = document.getElementById('qlik-temperatura').value;
+  const msgEl = document.getElementById('qlik-msg');
+  if(!texto.trim()){ msgEl.innerHTML = '<div class="qlik-msg err">Cole os dados primeiro.</div>'; return; }
+  if(!ano_mes){ msgEl.innerHTML = '<div class="qlik-msg err">Selecione o mês.</div>'; return; }
+  const r = await _post('/api/armazem/qlikview/colar',
+    {texto, ano_mes, temperatura, empresa: _qlikEmpresa()}).then(r=>r.json());
+  if(!r.ok){
+    msgEl.innerHTML = `<div class="qlik-msg err">❌ ${escHtml(r.error||'Erro ao processar.')}</div>`;
+    return;
+  }
+  const empTxt = _qlikEmpresa() ? _qlikEmpresa() + ', ' : '';
+  let html = `<div class="qlik-msg ok">✅ ${r.linhas_salvas} dia(s) salvo(s) (${empTxt}${TEMP_LABEL[temperatura]}, ${ano_mes}).`;
+  if(r.linhas_ignoradas && r.linhas_ignoradas.length){
+    html += ` Linhas não reconhecidas (ignoradas): ${r.linhas_ignoradas.map(escHtml).join(', ')}.`;
+  }
+  if(r.erros && r.erros.length){
+    html += `<br>⚠️ ${r.erros.slice(0,5).map(escHtml).join(' | ')}`;
+  }
+  html += '</div>';
+  msgEl.innerHTML = html;
+  await carregarEvolucaoMensal();
+}
+
+// ── Evolução Mensal (QlikView, com paletes do TXT quando disponível) ──
+const EVOL_TEMPS = ['TOTAL','RESFRIADO','CONGELADO','AMBIENTE'];
+const EVOL_LABELS = {atacado_ton:'Atacado', varejo_ton:'Varejo', devolucao_ton:'Devolução', total:'Total', terceiros_ton:'Importados'};
+const EVOL_ROTULOS_TABELA = [
+  {campo:'atacado_ton', label:'Atacado (Geral)'},
+  {campo:'varejo_ton', label:'Varejo (Geral)'},
+  {campo:'terceiros_ton', label:'Somente Terceiros'},
+  {campo:'devolucao_ton', label:'Devolução'},
+  {campo:'paletes', label:'Paletes'},
+  {campo:'total', label:'Total'},
+  {campo:'capacidade_ton', label:'Capacidade'},
+];
+const DIA_SEMANA_ABREV = ['dom','seg','ter','qua','qui','sex','sáb'];
+
+async function carregarEvolucaoMensal(){
+  // Evolução Mensal é uma série histórica, não um snapshot do dia — tem
+  // seletor de mês próprio (não segue nem o calendário de dias do TXT nem
+  // fica travada num mês só). Abre sempre no mês atual; o usuário troca no
+  // seletor pra ver julho, agosto, etc. (pedido do usuário 22/08/2026).
+  const hoje = new Date();
+  const mesAtual = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0');
+  document.getElementById('evol-mes-sel').value = mesAtual;
+  await _carregarEvolucaoDoMes(mesAtual);
+}
+
+async function mudarEvolMes(){
+  const mesStr = document.getElementById('evol-mes-sel').value;
+  if(mesStr) await _carregarEvolucaoDoMes(mesStr);
+}
+
+// Data de referência pra resolver a capacidade vigente (mesma lógica do
+// export em Python, _ref_data_para_mes em web/armazem.py): último dia do
+// mês exibido, ou hoje se o mês ainda não terminou.
+function _refDataParaMes(mesStr){
+  const [ano, mes] = mesStr.split('-').map(Number);
+  const ultimoDia = new Date(ano, mes, 0);
+  const ultimoDiaStr = ano+'-'+String(mes).padStart(2,'0')+'-'+String(ultimoDia.getDate()).padStart(2,'0');
+  const hoje = new Date();
+  const hojeStr = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
+  return ultimoDiaStr < hojeStr ? ultimoDiaStr : hojeStr;
+}
+
+async function _carregarEvolucaoDoMes(mesStr){
+  const emp = _empresaAtual ? '?empresa=' + encodeURIComponent(_empresaAtual) : '';
+  // capacidade da VISÃO (empresa vista ou consolidada), a mesma do topo da
+  // página — antes vinha a física da câmara e não mudava com o filtro (22/10/2026)
+  const empCap = _empresaAtual ? '&empresa=' + encodeURIComponent(_empresaAtual) : '';
+  const [r, capResp] = await Promise.all([
+    fetch('/api/armazem/qlikview/mes/'+mesStr+emp).then(r=>r.json()).catch(()=>({dias:{}})),
+    fetch('/api/armazem/capacidade?data='+_refDataParaMes(mesStr)+empCap).then(r=>r.json()).catch(()=>({capacidades:{}})),
+  ]);
+  _evolCapVisao = capResp.capacidade_visao || null;
+  renderEvolucaoBlocos(r.dias||{}, mesStr, capResp.capacidades_visao || capResp.capacidades || {});
+}
+
+// Monta, dia a dia (1..diasNoMes), os valores de uma temperatura (ou a soma
+// das 3 quando temp==='TOTAL'). temDado=false nos dias sem nenhum registro
+// — usado pra distinguir "0 de verdade" de "sem dado ainda" (o gráfico
+// preenche com 0 pra não deixar buraco na linha, igual à planilha original;
+// a tabela deixa em branco).
+function _evolDadosPorDia(dias, anoMes, temp, diasNoMes){
+  const somaveis = ['atacado_ton','varejo_ton','devolucao_ton','terceiros_ton','paletes'];
+  const out = [];
+  for(let dia=1; dia<=diasNoMes; dia++){
+    const dataStr = anoMes+'-'+String(dia).padStart(2,'0');
+    const porTemp = dias[dataStr];
+    let v = null, temDado = false;
+    if(porTemp){
+      if(temp==='TOTAL'){
+        const temps = ['RESFRIADO','CONGELADO','AMBIENTE'].filter(t=>porTemp[t]);
+        if(temps.length){
+          temDado = true;
+          v = {};
+          somaveis.forEach(c=>{ v[c] = temps.reduce((s,t)=>s+((porTemp[t]&&porTemp[t][c])||0), 0); });
+        }
+      } else if(porTemp[temp]){
+        temDado = true;
+        v = porTemp[temp];
+      }
+    }
+    v = v || {};
+    const atacado = v.atacado_ton||0, varejo = v.varejo_ton||0, devolucao = v.devolucao_ton||0;
+    out.push({
+      dia, temDado,
+      atacado_ton: atacado, varejo_ton: varejo, devolucao_ton: devolucao, terceiros_ton: v.terceiros_ton||0,
+      paletes: v.paletes,
+      // Total = Atacado+Varejo+Devolução, SEM Terceiros — confirmado contra
+      // os números reais da planilha original do usuário (19/08/2026):
+      // Terceiros/Importados é uma categoria à parte, não soma no Total.
+      total: atacado + varejo + devolucao,
+    });
+  }
+  return out;
+}
+
+// Capacidade pra linha de referência do gráfico vem do cadastro de
+// "Capacidade e Contrato" (mesma fonte de Ocupação Câmaras/Financeiro),
+// NÃO do campo opcional "Capacidade" que o QlikView às vezes traz colado
+// por dia (achado do usuário 24/08/2026: quase nunca vem preenchido, então
+// a linha verde nunca aparecia mesmo com a capacidade cadastrada).
+// "TOTAL" soma só as capacidades independentes (Resfriado+Congelado, mais
+// Ambiente se ele tiver câmara própria) — mesma lógica de renderOcupacao,
+// evita contar 2x a do Resfriado quando o Ambiente a compartilha.
+let _evolCapVisao = null;   // {empresas, origem} da capacidade do gráfico
+
+function _evolCapacidadeTemp(capacidades, temp){
+  const ambientePropria = _armazemAmbienteModo === 'capacidade_propria';
+  if(temp==='TOTAL'){
+    let total = (capacidades.RESFRIADO||0) + (capacidades.CONGELADO||0);
+    if(ambientePropria) total += capacidades.AMBIENTE||0;
+    return total || null;
+  }
+  if(temp==='AMBIENTE' && !ambientePropria) return null;
+  return capacidades[temp] || null;
+}
+
+function renderEvolucaoBlocos(dias, mesStr, capacidades){
+  capacidades = capacidades || {};
+  const el = document.getElementById('evol-conteudo');
+  if(!Object.keys(dias).length){
+    el.innerHTML = '<p class="muted" style="margin:0">Nenhum dado do QlikView colado ainda este mês — use "📋 Colar QlikView" no topo.</p>';
+    return;
+  }
+  const [ano, mes] = mesStr.split('-').map(Number);
+  const diasNoMes = new Date(ano, mes, 0).getDate();
+
+  // viewBox precisa bater com a largura REAL renderizada, senão
+  // preserveAspectRatio="none" estica o desenho todo (inclusive o texto
+  // dos números) de forma desproporcional pra preencher a largura — achado
+  // 22/08/2026 ("os números ficaram esticados"). 32 = padding do
+  // .evol-block (16px cada lado); 900 é só um fallback se a medição falhar.
+  const larguraMedida = el.clientWidth;
+  const larguraGrafico = (larguraMedida > 100 ? larguraMedida : 932) - 32;
+
+  const blocos = EVOL_TEMPS.map(temp=>{
+    const pontos = _evolDadosPorDia(dias, mesStr, temp, diasNoMes);
+    if(!pontos.some(p=>p.temDado)) return '';
+    const cap = _evolCapacidadeTemp(capacidades, temp);
+    const label = temp==='TOTAL' ? 'Total' : TEMP_LABEL[temp];
+    const picos = _evolPicos(pontos, _armazemModeloPagamento);
+    return `<div class="evol-block">
+      <div class="evol-block-title"><b>Estoque Médio ${label} CDA — ${MESES_PT[mes-1]}/${ano}</b>
+        ${cap?`<span class="evol-cap-label">Capacidade ${fmtN0(cap)} Ton.${
+          _evolCapVisao && _evolCapVisao.origem === 'contratada'
+            ? ' (contratada ' + escHtml((_evolCapVisao.empresas||[]).join(' + ')) + ')' : ''}</span>`:''}</div>
+      ${_evolMainChartSvg(pontos, cap, diasNoMes, picos, larguraGrafico)}
+      ${_evolMiniChartSvg(pontos, diasNoMes, larguraGrafico)}
+      ${_evolWideTableHtml(pontos, diasNoMes, mesStr, cap)}
+    </div>`;
+  }).join('');
+  el.innerHTML = blocos || '<p class="muted" style="margin:0">Nenhum dado do QlikView colado ainda este mês — use "📋 Colar QlikView" no topo.</p>';
+}
+
+// Dia(s) de pico de peso armazenado (campo "total") pra destacar no
+// gráfico — quinzenal: 1 pico em cada metade do mês (1–15, 16–fim), mensal:
+// 1 pico só no mês inteiro. Pedido do usuário 22/08/2026: "precisa chamar
+// atenção" no maior peso da quinzena, pra fins de cobrança.
+function _evolPicos(pontos, modeloPagamento){
+  const comDado = pontos.filter(p=>p.temDado);
+  if(!comDado.length) return new Set();
+  const _maxDia = lista => lista.reduce((m,p)=>(p.total>m.total?p:m), lista[0]).dia;
+  if(modeloPagamento==='quinzenal'){
+    const q1 = comDado.filter(p=>p.dia<=15), q2 = comDado.filter(p=>p.dia>15);
+    const picos = [];
+    if(q1.length) picos.push(_maxDia(q1));
+    if(q2.length) picos.push(_maxDia(q2));
+    return new Set(picos);
+  }
+  return new Set([_maxDia(comDado)]);
+}
+
+// Rótulo em caixinha colorida acima do ponto — mesmo padrão visual da
+// planilha original (número com fundo colorido em cada marcador). Pico
+// (destaque=true) fica maior, com 1 casa decimal e pisca (ver CSS
+// .evol-peak-blink) — os demais pontos ficam sem decimal, mais compactos,
+// pra reduzir sobreposição de rótulo (pedido do usuário 22/08/2026).
+function _evolLabelBox(x, y, texto, cor, corTexto, destaque){
+  const w = Math.max(16, texto.length*6.5+(destaque?12:8)), h=destaque?17:14;
+  // classe direto no <rect> (não no <g> pai) — stroke-width inline no
+  // próprio elemento bloquearia a herança do <g>, então a animação
+  // precisa estar no elemento que de fato desenha o contorno
+  const rectCls = destaque ? ' class="evol-peak-blink"' : '';
+  return `<g><rect${rectCls} x="${(x-w/2).toFixed(1)}" y="${(y-h-3).toFixed(1)}" width="${w}" height="${h}" rx="3" fill="${cor}"/>
+    <text x="${x.toFixed(1)}" y="${(y-3-h/2+(destaque?4:3.5)).toFixed(1)}" font-size="${destaque?11:9.5}" font-weight="800" fill="${corTexto}" text-anchor="middle">${texto}</text></g>`;
+}
+
+function _evolMainChartSvg(pontos, cap, diasNoMes, picos, larguraGrafico){
+  const series = [
+    {campo:'atacado_ton', cor:'#17324d', corTexto:'#fff'},
+    {campo:'varejo_ton', cor:'#DC2626', corTexto:'#fff'},
+    {campo:'devolucao_ton', cor:'#A78BFA', corTexto:'#1a1a2e'},
+    {campo:'total', cor:'#F97316', corTexto:'#fff'},
+  ];
+  const todosValores = pontos.flatMap(p=>series.map(s=>p[s.campo]||0)).concat(cap?[cap]:[]);
+  const maxV = Math.max(1, ...todosValores) * 1.1;
+  const w=larguraGrafico||900, h=230, padL=40, padT=18, padB=22, plotW=w-padL-10, plotH=h-padT-padB;
+  const xOf = dia => padL + ((dia-1)/(diasNoMes-1||1))*plotW;
+  const yOf = v => padT + plotH - (v/maxV)*plotH;
+
+  const grid = [0,0.25,0.5,0.75,1].map(f=>{
+    const v=maxV*f, y=yOf(v).toFixed(1);
+    return `<line x1="${padL}" y1="${y}" x2="${w-10}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>
+      <text x="${padL-6}" y="${(+y+3)}" font-size="9" fill="#8a8a9a" text-anchor="end">${fmtN0(v)}</text>`;
+  }).join('');
+  const xTicks = [];
+  for(let dia=1; dia<=diasNoMes; dia++){
+    xTicks.push(`<text x="${xOf(dia).toFixed(1)}" y="${h-6}" font-size="8.5" fill="#8a8a9a" text-anchor="middle">${String(dia).padStart(2,'0')}</text>`);
+  }
+  const capLinha = cap ? `<line x1="${padL}" y1="${yOf(cap).toFixed(1)}" x2="${w-10}" y2="${yOf(cap).toFixed(1)}" stroke="#65A30D" stroke-width="2"/>` : '';
+  const linhas = series.map(s=>{
+    const d = pontos.map((p,i)=>`${i===0?'M':'L'}${xOf(p.dia).toFixed(1)},${yOf(p[s.campo]||0).toFixed(1)}`).join(' ');
+    return `<path d="${d}" fill="none" stroke="${s.cor}" stroke-width="2"/>`;
+  }).join('');
+  const pontosSvg = series.map(s=>pontos.map(p=>{
+    const valor = p[s.campo]||0;
+    const cx=xOf(p.dia).toFixed(1), cy=yOf(valor).toFixed(1);
+    // só o pico de "total" ganha destaque — as outras 3 linhas (Atacado/
+    // Varejo/Devolução) nunca destacam, mesmo no dia do pico
+    const ehPico = s.campo==='total' && picos.has(p.dia);
+    const raio = ehPico ? 4.5 : 2.5;
+    const circCls = ehPico ? ' class="evol-peak-blink"' : '';
+    const circ = `<circle${circCls} cx="${cx}" cy="${cy}" r="${raio}" fill="${s.cor}"><title>Dia ${p.dia}: ${EVOL_LABELS[s.campo]} ${fmtN(valor)} ton${ehPico?' — pico da quinzena':''}</title></circle>`;
+    // sem rótulo quando não tem dado OU quando o valor é zero de verdade
+    // (pedido do usuário 22/08/2026: "se o valor for zero ou inexistente é
+    // melhor não mostrar nada")
+    if(!p.temDado || (!valor && !ehPico)) return circ;
+    const texto = ehPico ? fmtN(valor) : fmtN0(valor);
+    return circ + _evolLabelBox(+cx, +cy, texto, s.cor, s.corTexto, ehPico);
+  }).join('')).join('');
+
+  return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:230px;display:block">
+      ${grid}${capLinha}${linhas}${pontosSvg}${xTicks.join('')}
+    </svg>
+    <div class="evol-legend">
+      ${series.map(s=>`<span><span class="dot" style="background:${s.cor}"></span>${EVOL_LABELS[s.campo]}</span>`).join('')}
+      ${cap?'<span><span class="dot" style="background:#65A30D"></span>Capacidade</span>':''}
+      <span><span class="dot evol-peak-blink" style="background:#F97316"></span>${_armazemModeloPagamento==='quinzenal'?'Pico da quinzena':'Pico do mês'}</span>
+    </div>`;
+}
+
+function _evolMiniChartSvg(pontos, diasNoMes, larguraGrafico){
+  if(!pontos.some(p=>p.temDado && p.terceiros_ton)) return '';
+  const cor = '#06B6D4';
+  const maxV = Math.max(1, ...pontos.map(p=>p.terceiros_ton||0)) * 1.15;
+  const w=larguraGrafico||900, h=140, padL=40, padT=10, padB=20, plotW=w-padL-10, plotH=h-padT-padB;
+  const xOf = dia => padL + ((dia-1)/(diasNoMes-1||1))*plotW;
+  const yOf = v => padT + plotH - (v/maxV)*plotH;
+  const grid = [0,0.5,1].map(f=>{
+    const v=maxV*f, y=yOf(v).toFixed(1);
+    return `<line x1="${padL}" y1="${y}" x2="${w-10}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/>
+      <text x="${padL-6}" y="${(+y+3)}" font-size="9" fill="#8a8a9a" text-anchor="end">${fmtN0(v)}</text>`;
+  }).join('');
+  const xTicks = [];
+  for(let dia=1; dia<=diasNoMes; dia++){
+    xTicks.push(`<text x="${xOf(dia).toFixed(1)}" y="${h-5}" font-size="8.5" fill="#8a8a9a" text-anchor="middle">${String(dia).padStart(2,'0')}</text>`);
+  }
+  const d = pontos.map((p,i)=>`${i===0?'M':'L'}${xOf(p.dia).toFixed(1)},${yOf(p.terceiros_ton||0).toFixed(1)}`).join(' ');
+  const pontosSvg = pontos.map(p=>{
+    const valor = p.terceiros_ton||0;
+    const cx=xOf(p.dia).toFixed(1), cy=yOf(valor).toFixed(1);
+    const circ = `<circle cx="${cx}" cy="${cy}" r="2.5" fill="${cor}"><title>Dia ${p.dia}: Importados ${fmtN(valor)} ton</title></circle>`;
+    if(!p.temDado || !valor) return circ;
+    return circ + _evolLabelBox(+cx, +cy, fmtN0(valor), cor, '#1a1a2e', false);
+  }).join('');
+  return `<div class="evol-mini-title">Importados</div>
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:140px;display:block">
+      ${grid}<path d="${d}" fill="none" stroke="${cor}" stroke-width="2"/>${pontosSvg}${xTicks.join('')}
+    </svg>`;
+}
+
+function _evolWideTableHtml(pontos, diasNoMes, anoMes, cap){
+  const [ano, mes] = anoMes.split('-').map(Number);
+  const diaSemanaHtml = pontos.map(p=>`<th>${DIA_SEMANA_ABREV[new Date(ano, mes-1, p.dia).getDay()]}</th>`).join('');
+  const diaNumHtml = pontos.map(p=>`<th>${String(p.dia).padStart(2,'0')}</th>`).join('');
+
+  const linhas = EVOL_ROTULOS_TABELA.map(({campo, label})=>{
+    const getVal = p => campo==='capacidade_ton' ? (p.temDado ? cap : null) : p[campo];
+    const comDado = pontos.filter(p=>p.temDado && getVal(p)!=null);
+    const media = comDado.length ? comDado.reduce((s,p)=>s+getVal(p),0)/comDado.length : null;
+    const celulas = pontos.map(p=>{
+      const v = getVal(p);
+      // zero ou sem dado = célula em branco, sem "0" nem "—" poluindo a
+      // tabela (pedido do usuário 22/08/2026)
+      return (!p.temDado || v==null || !v) ? '<td></td>' : `<td>${fmtN0(v)}</td>`;
+    }).join('');
+    return `<tr><td>${label}</td>${celulas}<td><b>${media?fmtN0(media):''}</b></td></tr>`;
+  }).join('');
+
+  return `<div style="overflow-x:auto">
+    <table class="evol-wide-table">
+      <thead>
+        <tr><th></th>${diaSemanaHtml}<th></th></tr>
+        <tr><th>Temperatura</th>${diaNumHtml}<th>Total Média</th></tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+    </table>
+  </div>`;
+}
+
+// ── Locais de Estoque ────────────────────────────────────
+async function abrirLocais(){
+  abrirModal('modal-locais');
+  const d = await fetch('/api/armazem/locais').then(r=>r.json());
+  const el = document.getElementById('lista-locais');
+  if(!d.locais.length){ el.innerHTML = '<p class="muted">Nenhum local carregado ainda — processe um arquivo primeiro.</p>'; return; }
+  el.innerHTML = d.locais.map(l=>`
+    <div class="local-item ${l.classificacao==='pendente'?'pendente':''}">
+      <span class="nome">${escHtml(l.nome)}</span>
+      <select onchange="classificarLocal('${escAttr(l.nome)}', this.value)">
+        <option value="pendente" ${l.classificacao==='pendente'?'selected':''} disabled>${CLASS_LABEL.pendente}</option>
+        <option value="varejo" ${l.classificacao==='varejo'?'selected':''}>Varejo</option>
+        <option value="atacado" ${l.classificacao==='atacado'?'selected':''}>Atacado</option>
+        <option value="devolucao" ${l.classificacao==='devolucao'?'selected':''}>Devolução</option>
+        <option value="desconsiderar" ${l.classificacao==='desconsiderar'?'selected':''}>Desconsiderar</option>
+      </select>
+    </div>`).join('');
+}
+
+async function classificarLocal(nome, classificacao){
+  await _post('/api/armazem/locais/classificar', {nome, classificacao}).then(r=>r.json());
+  await abrirLocais();
+  await carregarDados();
+}
+
+// "Hoje" pelo relógio/fuso do NAVEGADOR, nunca .toISOString() — essa vira
+// UTC sempre, então de noite (a partir das ~21h no fuso de Brasília) já
+// mostrava o dia seguinte como "hoje" (achado ao vivo 29/08/2026: usuário
+// via o calendário abrir direto num dia errado e sumir dado real do dia
+// certo). getFullYear/getMonth/getDate são do fuso local do navegador.
+function _hojeLocal(){
+  const h = new Date();
+  return h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
+}
+function escHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escAttr(s){ return escHtml(s).replace(/`/g,'&#96;'); }
+
+// ── Capacidade, contrato, modo do Ambiente e rótulo ────────
+const TEMPS = ['RESFRIADO','CONGELADO','AMBIENTE'];
+
+async function abrirConfig(){
+  abrirModal('modal-config');
+  document.getElementById('cfg-vigencia').value = _hojeLocal();
+  const [capResp, contratoResp, cfgResp] = await Promise.all([
+    fetch('/api/armazem/capacidade').then(r=>r.json()),
+    fetch('/api/armazem/contrato').then(r=>r.json()),
+    fetch('/api/armazem/config').then(r=>r.json()),
+  ]);
+  document.getElementById('cfg-rotulo').value = cfgResp.rotulo || '';
+  document.getElementById('cfg-ambiente-modo').value = cfgResp.ambiente_modo || 'consome_resfriado';
+  document.getElementById('cfg-modelo-pagamento').value = cfgResp.modelo_pagamento || 'mensal';
+  document.getElementById('cfg-valor-contrato').value = contratoResp.valor_contrato_ton || '';
+  const blocos = document.getElementById('cap-blocos');
+  blocos.innerHTML = TEMPS.map(temp=>{
+    const real = capResp.capacidades[temp] || 0;
+    const estimada = (capResp.capacidades_estimadas||{})[temp] || 0;
+    // Sem valor físico salvo mas com capacidade contratada já configurada:
+    // mostra a soma contratada como DICA (placeholder), não como valor —
+    // evita parecer que já foi salvo quando na verdade é só uma estimativa
+    // (pedido do usuário 29/08/2026: a Ocupação de Câmaras ficava sem
+    // barra nenhuma enquanto a física não era redigitada manualmente).
+    const placeholder = (!real && estimada) ? `estimado: ${estimada}` : '';
+    return `
+    <div class="cap-field"><label>${TEMP_LABEL[temp]}</label>
+      <input type="number" step="0.01" id="cap-${temp}" value="${real||''}" placeholder="${escAttr(placeholder)}"></div>`;
+  }).join('');
+  renderEmpresasContrato(contratoResp);
+}
+
+// Capacidade CONTRATADA é por empresa (redesenho Local×Empresa, 29/08/2026)
+// — a maioria dos CDs tem 1 empresa só (empresas.length===1), aí não mostra
+// cabeçalho de empresa nem linha de "combinado" pra não confundir quem
+// nunca precisou disso. Só quando há 2+ (ex.: CDA+CDB) a UI mostra os dois
+// blocos separados e o previsto combinado embaixo.
+function renderEmpresasContrato(contratoResp){
+  const empresas = contratoResp.empresas || [];
+  const porEmpresa = contratoResp.por_empresa || {};
+  const multi = empresas.length > 1;
+  const blocosEmpresa = empresas.map(emp=>{
+    const dados = porEmpresa[emp] || {capacidade_contratada:{}, previsto_mensal:0};
+    const cap = dados.capacidade_contratada || {};
+    return `<div class="cap-temp-block">
+      <h4>${multi?`Capacidade contratada — ${escHtml(emp)}`:'Capacidade contratada (ton)'}</h4>
+      <div class="cap-grid">
+        ${TEMPS.map(temp=>`<div class="cap-field"><label>${TEMP_LABEL[temp]}</label>
+          <input type="number" step="0.01" class="cfg-cap-contratada" data-empresa="${escAttr(emp)}" data-temp="${temp}" value="${cap[temp]||''}"></div>`).join('')}
+      </div>
+      <p class="muted" style="margin:6px 0 0">Previsto mensal${multi?' — '+escHtml(emp):''}: <strong>${fmtMoeda(dados.previsto_mensal||0)}</strong></p>
+    </div>`;
+  }).join('');
+  const combinadoHtml = multi ? `<p style="margin:10px 0 0;font-size:13px">
+      <strong>Previsto combinado (${empresas.map(escHtml).join(' + ')}): ${fmtMoeda(contratoResp.previsto_combinado||0)}</strong></p>` : '';
+  document.getElementById('cfg-empresas-bloco').innerHTML = blocosEmpresa + combinadoHtml;
+}
+
+async function salvarCapacidade(){
+  const vigente_desde = document.getElementById('cfg-vigencia').value || _hojeLocal();
+  const bodyCap = {vigente_desde};
+  TEMPS.forEach(temp=>{ bodyCap[temp] = document.getElementById('cap-'+temp).value || 0; });
+
+  const capacidades_contratadas = {};
+  document.querySelectorAll('.cfg-cap-contratada').forEach(inp=>{
+    const emp = inp.dataset.empresa, temp = inp.dataset.temp;
+    (capacidades_contratadas[emp] ||= {})[temp] = inp.value || 0;
+  });
+
+  await Promise.all([
+    _post('/api/armazem/capacidade', bodyCap).then(r=>r.json()),
+    _post('/api/armazem/contrato', {
+      valor_contrato_ton: document.getElementById('cfg-valor-contrato').value || 0,
+      vigente_desde,
+      capacidades_contratadas,
+    }).then(r=>r.json()),
+    _post('/api/armazem/config', {
+      rotulo: document.getElementById('cfg-rotulo').value,
+      ambiente_modo: document.getElementById('cfg-ambiente-modo').value,
+      modelo_pagamento: document.getElementById('cfg-modelo-pagamento').value,
+    }).then(r=>r.json()),
+  ]);
+  _armazemModeloPagamento = document.getElementById('cfg-modelo-pagamento').value;
+  _armazemAmbienteModo = document.getElementById('cfg-ambiente-modo').value;
+  fecharModal('modal-config');
+  await carregarDados();
+  await mudarEvolMes(); // reaplica o modelo de pagamento novo sem pular o mês que estava selecionado
+}
+
+async function verHistoricoCapacidade(){
+  const [capD, contratoD] = await Promise.all([
+    fetch('/api/armazem/capacidade').then(r=>r.json()),
+    fetch('/api/armazem/contrato').then(r=>r.json()),
+  ]);
+  const body = document.getElementById('hist-capacidade-body');
+  let html = '<h4 style="margin:0 0 6px">Capacidade por câmara</h4>';
+  if(!capD.historico.length){
+    html += '<p class="muted">Nenhuma alteração registrada ainda.</p>';
+  } else {
+    html += `<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">
+      <thead><tr style="text-align:left;border-bottom:2px solid var(--glass-b)">
+        <th style="padding:6px">Vigente desde</th><th style="padding:6px">Temperatura</th>
+        <th style="padding:6px">Capacidade (ton)</th></tr></thead>
+      <tbody>${capD.historico.map(h=>`<tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+        <td style="padding:6px">${h.vigente_desde}</td><td style="padding:6px">${TEMP_LABEL[h.temperatura]||h.temperatura}</td>
+        <td style="padding:6px">${fmtN(h.capacidade_ton)}</td>
+      </tr>`).join('')}</tbody></table>`;
+  }
+  html += '<h4 style="margin:0 0 6px">Valor do contrato (R$/ton)</h4>';
+  if(!contratoD.historico.length){
+    html += '<p class="muted">Nenhuma alteração registrada ainda.</p>';
+  } else {
+    html += `<table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="text-align:left;border-bottom:2px solid var(--glass-b)">
+        <th style="padding:6px">Vigente desde</th><th style="padding:6px">R$/ton</th></tr></thead>
+      <tbody>${contratoD.historico.map(h=>`<tr style="border-bottom:1px solid rgba(0,0,0,.05)">
+        <td style="padding:6px">${h.vigente_desde}</td><td style="padding:6px">${fmtMoeda(h.valor_contrato_ton)}</td>
+      </tr>`).join('')}</tbody></table>`;
+  }
+  body.innerHTML = html;
+  abrirModal('modal-hist-capacidade');
+}
+</script>
+</body>
+</html>

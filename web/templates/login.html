@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Login — CD Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#e8f4fd 0%,#dce8f5 40%,#e4dff5 70%,#f0eafa 100%);
+}
+.card{
+  background:rgba(255,255,255,0.62);
+  backdrop-filter:blur(20px) saturate(1.6);
+  -webkit-backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid rgba(255,255,255,0.35);
+  border-radius:24px;padding:44px 48px;width:min(400px,90vw);
+  box-shadow:0 8px 40px rgba(0,0,0,.13);
+  text-align:center;
+}
+.icon{font-size:48px;margin-bottom:14px}
+h1{font-size:22px;font-weight:700;color:#1a1a2e;margin-bottom:4px}
+.sub{font-size:14px;color:rgba(26,26,46,.5);margin-bottom:28px}
+.field{text-align:left;margin-bottom:16px}
+label{display:block;font-size:12px;font-weight:600;color:rgba(26,26,46,.5);margin-bottom:6px}
+input{
+  width:100%;padding:11px 16px;border-radius:12px;
+  border:1px solid rgba(255,255,255,0.4);
+  background:rgba(255,255,255,0.5);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  color:#1a1a2e;font-size:15px;font-family:inherit;
+  transition:all .18s;
+}
+input:focus{outline:none;box-shadow:0 0 0 3px rgba(0,122,255,.2);border-color:rgba(0,122,255,.4)}
+.btn{
+  width:100%;padding:13px;margin-top:8px;
+  background:rgba(0,122,255,.88);border:none;border-radius:14px;
+  color:#fff;font-size:16px;font-weight:600;cursor:pointer;
+  transition:all .18s;
+}
+.btn:hover{background:rgba(0,122,255,1);box-shadow:0 4px 16px rgba(0,122,255,.3)}
+.err{margin-top:12px;padding:10px 14px;border-radius:10px;
+  background:rgba(255,59,48,.1);border:1px solid rgba(255,59,48,.25);
+  color:#c0392b;font-size:13px;display:none}
+.footer{margin-top:22px;font-size:12px;color:rgba(26,26,46,.35)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon" style="font-size:48px">📦</div>
+  <h1>CD Demo</h1>
+  <p class="sub">Monitoramento de Recebimento</p>
+  <div class="field"><label>Usuário</label><input id="user" type="text" autocomplete="username" placeholder="seu usuário"></div>
+  <div class="field"><label>Senha</label><input id="pwd" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+  <div class="err" id="err"></div>
+  <div id="captcha-wrap" style="display:none;margin:14px 0"><div id="captcha-widget"></div></div>
+  <button class="btn" onclick="login()">Entrar</button>
+  <div class="footer">Estoque / Logística · CD Demo</div>
+</div>
+<script>
+// Cloudflare Turnstile — só entra em cena a partir da N-ésima tentativa
+// errada (pedido do usuário 29/08/2026), o backend que decide quando via
+// "show_captcha" na resposta; sem chave configurada em Configurações,
+// isso nunca aparece e o login funciona exatamente como antes.
+let _captchaWidgetId = null;
+let _captchaScriptCarregando = null;
+
+function _carregarScriptTurnstile(){
+  if(window.turnstile) return Promise.resolve();
+  if(_captchaScriptCarregando) return _captchaScriptCarregando;
+  _captchaScriptCarregando = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    s.async = true; s.defer = true;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return _captchaScriptCarregando;
+}
+
+async function _mostrarCaptcha(siteKey){
+  document.getElementById('captcha-wrap').style.display = 'block';
+  try{
+    await _carregarScriptTurnstile();
+    if(_captchaWidgetId !== null){
+      turnstile.reset(_captchaWidgetId);
+    } else {
+      _captchaWidgetId = turnstile.render('#captcha-widget', {sitekey: siteKey});
+    }
+  }catch(e){
+    // se o script da Cloudflare não carregar (bloqueio de rede etc.), não
+    // trava o login — só fica sem a verificação extra dessa vez
+  }
+}
+
+async function login(){
+  const user=document.getElementById('user').value.trim();
+  const password=document.getElementById('pwd').value;
+  const err=document.getElementById('err');
+  const btn=document.querySelector('.btn');
+  err.style.display='none';
+  btn.textContent='Entrando...';
+  btn.disabled=true;
+  const body = {user, password};
+  if(_captchaWidgetId !== null && window.turnstile){
+    body.captcha_token = turnstile.getResponse(_captchaWidgetId) || '';
+  }
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.ok){
+      // Salva o token CSRF antes de redirecionar
+      if(d.csrf_token) sessionStorage.setItem('csrf_token', d.csrf_token);
+      window.location.href = d.inicio || '/';
+    } else {
+      err.textContent=d.error||'Erro ao fazer login.';
+      err.style.display='block';
+      if(d.show_captcha && d.captcha_site_key) await _mostrarCaptcha(d.captcha_site_key);
+      btn.textContent='Entrar';
+      btn.disabled=false;
+    }
+  }catch(e){
+    err.textContent='Erro de conexão. Tente novamente.';
+    err.style.display='block';
+    btn.textContent='Entrar';
+    btn.disabled=false;
+  }
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+</script>
+</body>
+</html>

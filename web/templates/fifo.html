@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Devolução & Vencimento — CD Demo</title>
+<style>
+:root{
+  --glass:rgba(255,255,255,0.62); --glass-b:rgba(255,255,255,0.28);
+  --text:#1a1a2e; --text-s:rgba(26,26,46,0.58);
+  --accent:#007AFF; --accent-l:rgba(0,122,255,0.10);
+  --ok:#28a745; --warn:#ff9500; --danger:#ff3b30;
+  --radius:16px; --rsm:10px; --shadow:0 4px 24px rgba(0,0,0,0.12);
+  --border-vis: rgba(0,0,0,0.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Inter,sans-serif;
+  font-size:13px;color:var(--text);
+  background:linear-gradient(135deg,#eef2f7 0%,#e6ecf5 60%,#eaf0f8 100%)}
+.wrap{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 18px;height:52px;flex-shrink:0;
+  background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);border-bottom:1px solid var(--glass-b)}
+.topbar a.back{text-decoration:none;color:var(--accent);font-weight:600;font-size:13px}
+.topbar-logo{font-size:22px}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.topbar-sub{font-size:12px;color:var(--text-s)}
+.spacer{flex:1}
+.btn{border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-family:inherit;
+  cursor:pointer;font-weight:600;background:var(--accent);color:#fff;transition:.15s}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:rgba(0,0,0,.05);color:var(--text)}
+.btn.ok{background:var(--ok)} .btn.sm{padding:5px 10px;font-size:12px}
+.btn.danger{background:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* ── SIDEBAR DE MÓDULOS (padrão idêntico aos outros módulos) ── */
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);
+  z-index:998;opacity:0;pointer-events:none;transition:opacity .2s}
+.sidebar-overlay.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:999;
+  background:var(--glass);backdrop-filter:blur(20px) saturate(1.6);
+  border-right:1px solid var(--glass-b);box-shadow:4px 0 24px rgba(0,0,0,.15);
+  transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;padding:14px 0}
+.sidebar.show{transform:translateX(0)}
+.sidebar-header{display:flex;align-items:center;gap:8px;padding:0 16px 14px;
+  border-bottom:1px solid var(--glass-b);margin-bottom:8px}
+.sidebar-header .sidebar-logo{font-size:20px}
+.sidebar-header .sidebar-title{font-size:14px;font-weight:700;flex:1}
+.sidebar-close{background:none;border:none;font-size:16px;color:var(--text-s);cursor:pointer;padding:4px;line-height:1}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  text-decoration:none;color:var(--text);font-size:13px;font-weight:500;transition:.15s}
+.sidebar-link:hover{background:rgba(0,122,255,.08)}
+.sidebar-link.active{background:var(--accent-l);color:var(--accent);font-weight:700}
+.sidebar-spacer{flex:1}
+.sidebar-config{border-top:1px solid var(--glass-b);padding:8px 10px 4px}
+.sidebar-config-toggle{width:100%;background:none;border:none;text-align:left;padding:10px 12px;
+  border-radius:10px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;gap:10px;font-family:inherit}
+.sidebar-config-toggle:hover{background:rgba(0,122,255,.08)}
+.sidebar-config-toggle .arrow{margin-left:auto;font-size:11px;color:var(--text-s);transition:transform .15s}
+.sidebar-config-toggle.open .arrow{transform:rotate(90deg)}
+.sidebar-config-sub{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px 10px}
+.sidebar-sublink{display:block;padding:8px 12px;border-radius:8px;text-decoration:none;
+  color:var(--text-s);font-size:12.5px}
+.sidebar-sublink:hover{background:rgba(0,122,255,.08);color:var(--text)}
+
+.body{flex:1;overflow:auto;padding:16px 18px 40px}
+.card{background:var(--glass);backdrop-filter:blur(14px) saturate(1.5);
+  border:1px solid var(--glass-b);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px 16px;margin-bottom:14px}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:.4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hidden{display:none}
+.muted{color:var(--text-s)}
+input,select{border:1px solid var(--glass-b);background:rgba(255,255,255,.75);border-radius:8px;
+  padding:6px 9px;font-size:12px;font-family:inherit;color:var(--text)}
+input:focus,select:focus{outline:1.5px solid var(--accent)}
+.field label{display:block;font-size:11px;color:var(--text-s);margin-bottom:3px}
+
+.banner{display:none;border-radius:var(--rsm);padding:10px 14px;margin-bottom:14px;align-items:center;gap:10px}
+.banner.show{display:flex}
+
+.kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.kpi{flex:1;min-width:150px;background:rgba(255,255,255,.6);border:1px solid var(--glass-b);
+  border-radius:var(--rsm);padding:10px 12px;text-align:center}
+
+/* Subcards por empresa dentro de Devolução/Próx. Vencimento — só aparece
+   quando o Local tem 2+ empresas de verdade nos dados (ex.: CDA+CDB);
+   pra maioria dos CDs a tela fica idêntica a antes (redesenho
+   Local×Empresa, 29/08/2026). */
+.empresa-subcards{display:flex;gap:12px;flex-wrap:wrap}
+.empresa-subcard{flex:1;min-width:320px;background:rgba(255,255,255,.45);
+  border:1px solid var(--glass-b);border-radius:var(--rsm);padding:10px 12px}
+.empresa-subcard h4{margin:0 0 8px;font-size:12px;font-weight:800;color:var(--text);
+  text-transform:uppercase;letter-spacing:.3px}
+.kpi .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.kpi .l{font-size:11px;color:var(--text-s);margin-top:2px}
+
+.fifo-table{width:100%;border-collapse:collapse;font-size:12px}
+.fifo-table th{text-align:left;padding:7px 9px;border-bottom:2px solid var(--border-vis);
+  color:var(--text-s);font-size:11px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.fifo-table td{padding:6px 9px;border-bottom:1px solid rgba(0,0,0,.06);white-space:nowrap}
+.fifo-table th:nth-child(n+6),.fifo-table td:nth-child(n+6){text-align:center}
+.fifo-table tr.subtotal td{font-weight:700;background:rgba(0,122,255,.08)}
+.fifo-table tr.total-geral td{font-weight:800;background:rgba(0,122,255,.16);font-size:13px}
+
+/* Modal (mesmo padrão dos outros módulos) */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:50}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius);box-shadow:0 10px 50px rgba(0,0,0,.3);
+  width:min(480px,94vw);max-height:88vh;display:flex;flex-direction:column}
+.modal h2{margin:0;padding:16px 20px;border-bottom:1px solid #eee;font-size:16px;display:flex;align-items:center;gap:10px}
+.modal .mbody{padding:16px 20px;overflow:auto}
+.modal .mfoot{padding:12px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
+.espelho-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--rsm);
+  border:1px solid var(--glass-b)}
+.espelho-avatar{width:32px;height:32px;border-radius:50%;background:rgba(0,122,255,.12);
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.espelho-info{flex:1;min-width:0}
+.espelho-nome{font-size:13px;font-weight:600}
+.espelho-ts{font-size:10px;color:var(--text-s);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR DE MÓDULOS -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Xsense</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm icon" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/">‹ Painel</a>
+    <span class="topbar-logo">📦</span>
+    <span class="topbar-title">Devolução & Vencimento</span>
+    <span class="topbar-sub">Fonte: Produto Paletizado (mesmo TXT do Painel do Armazém)</span>
+    <span class="spacer"></span>
+    <button class="btn ghost sm" id="btn-espelhar" onclick="abrirEspelho()" style="display:none">👁 Espelhar</button>
+    <button class="btn sm danger" id="btn-sair-espelho" onclick="sairEspelho()" style="display:none">✕ Sair do espelho</button>
+    <span id="badge-espelhado" style="display:none;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;background:rgba(255,149,0,.18);color:#7c4700" title="Seu painel está sendo visualizado">👁 Sendo espelhado</span>
+  </div>
+
+  <div class="body">
+    <div class="banner" id="banner-espelho" style="background:rgba(0,122,255,.1);border:1px solid rgba(0,122,255,.3);color:#0055cc">
+      👁 Você está visualizando o painel de <strong id="banner-espelho-nome"></strong> — somente leitura
+      <button class="btn sm danger" onclick="sairEspelho()">✕ Sair do espelho</button>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="field"><label>Dia</label><input type="date" id="fifo-data" onchange="carregarDados()"></div>
+        <div class="field"><label>Vencendo em até (dias)</label><input type="number" id="fifo-dias" value="15" min="1" style="width:80px" onchange="carregarDados()"></div>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;margin-top:14px">
+          <input type="checkbox" id="fifo-bloqueados" style="width:auto" onchange="carregarDados()">
+          Mostrar produtos bloqueados
+        </label>
+        <span class="spacer"></span>
+        <button class="btn ghost sm" id="btn-reservas" onclick="abrirReservas()">⚙️ Reservas</button>
+        <button class="btn" id="btn-exportar" onclick="exportarExcel()">📊 Exportar Excel</button>
+      </div>
+    </div>
+
+    <div id="sem-dados" class="card hidden">
+      <p class="muted" style="margin:0">Nenhum dado pra esse dia ainda — processe o TXT "Produto Paletizado" no
+        <a href="/armazem">Painel do Armazém</a> primeiro (esse módulo reaproveita o mesmo upload).</p>
+    </div>
+
+    <div id="conteudo" class="hidden">
+      <div class="kpis">
+        <div class="kpi"><div class="v" id="k_devolucao">–</div><div class="l">Devolução (kg)</div></div>
+        <div class="kpi"><div class="v" id="k_vencimento">–</div><div class="l">Próx. Vencimento (kg)</div></div>
+        <div class="kpi"><div class="v" id="k_total">–</div><div class="l">Total Geral (kg)</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Devolução</h3>
+        <div id="secao-devolucao"></div>
+      </div>
+
+      <div class="card">
+        <h3>Próx. Vencimento</h3>
+        <div id="secao-vencimento"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: RESERVAS -->
+<div class="modal-bg" id="modal-reservas">
+  <div class="modal" style="width:min(480px,94vw)">
+    <h2>⚙️ Reservas <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-reservas')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin:0 0 12px">Desmarque as reservas que não devem aparecer no relatório (ex.: produto não localizado, que não dá pra vender de verdade). Lista vem das reservas já vistas nos relatórios.</p>
+      <div id="lista-reservas" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn ghost" onclick="fecharModal('modal-reservas')">Cancelar</button>
+      <button class="btn" onclick="salvarReservas()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ESPELHAR -->
+<div class="modal-bg" id="modal-espelho">
+  <div class="modal" style="width:min(480px,94vw)">
+    <h2>👁 Espelhar painel de... <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-espelho')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin:0 0 12px">Selecione um usuário para ver o painel dele em modo somente leitura. O usuário será notificado que você está visualizando.</p>
+      <div id="lista-espelho" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-espelho')">Fechar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+// ── SIDEBAR DE MÓDULOS ─────────────────────────────────
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Xsense (Câmaras)', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebar-overlay').classList.add('show');}
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebar-overlay').classList.remove('show');}
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  // módulo com telas (SLAs, 27/10/2026): o nome abre a lista das telas
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+function montarConfigSidebar(perfil, isMaster){
+  // admin e master unificados (29/08/2026) — mesmo nível de acesso, sem
+  // distinção de sublinks nenhuma mais (isMaster/'master' mantidos só
+  // como fallback pra sessão antiga em cache até relogar).
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ fecharSidebar(); fecharModal('modal-espelho'); fecharModal('modal-reservas'); } });
+
+let _csrf='';
+const _post=(url,body)=>fetch(url,{method:'POST',
+  headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body:JSON.stringify(body)});
+function abrirModal(id){document.getElementById(id).classList.add('show');}
+function fecharModal(id){document.getElementById(id).classList.remove('show');}
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block';
+  setTimeout(()=>{ t.style.display='none'; }, 2600);
+}
+function escHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtN0(n){ return Math.round(n||0).toLocaleString('pt-BR'); }
+
+async function init(){
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  _csrf = me.csrf_token || '';
+  montarSidebar(me.modulos_permitidos, 'fifo');
+  montarConfigSidebar(me.perfil, me.is_master);
+  _atualizarBadgeEspelhado(me.observadores || []);
+  const cdNome = me.cd_nome_exibicao || 'CDA';
+  document.title = 'Devolução & Vencimento — ' + cdNome;
+  const sbTitle = document.querySelector('.sidebar-title');
+  if(sbTitle) sbTitle.textContent = cdNome;
+  if(me.perfil==='admin' || me.perfil==='master' || (me.unidades_extras_espelho&&me.unidades_extras_espelho.length)){
+    document.getElementById('btn-espelhar').style.display = '';
+  }
+  if(me.espelhando){
+    _entrarModoEspelho(me.espelhando);
+    iniciarHeartbeatEspelho();
+  }
+  iniciarPollingEspelhado();
+
+  const hoje = new Date();
+  document.getElementById('fifo-data').value = hoje.getFullYear()+'-'+String(hoje.getMonth()+1).padStart(2,'0')+'-'+String(hoje.getDate()).padStart(2,'0');
+  await carregarDados();
+}
+init();
+
+// ── DADOS ────────────────────────────────────────────────
+function _linhaHtml(g, multiEmpresa){
+  const produto = `${escHtml(g.produto_codigo)} ${escHtml(g.produto_nome)}`.trim();
+  return `<tr>
+    <td>${escHtml(g.local)}</td>
+    ${multiEmpresa?`<td>${escHtml(g.empresa)||'—'}</td>`:''}
+    <td>${escHtml(g.reserva_codigo)||'—'}</td>
+    <td>${escHtml(g.reserva_nome)||'—'}</td>
+    <td>${produto}</td>
+    <td>${g.dias_min ?? '—'}</td>
+    <td>${g.dias_max ?? '—'}</td>
+    <td>${fmtN0(g.peso_liquido)}</td>
+  </tr>`;
+}
+function _tabelaHtml(linhas, totalLabel, total){
+  // Coluna Empresa só aparece quando o Local tem 2+ empresas de verdade
+  // nos dados (ex.: CDA+CDB) — pra maioria dos CDs (1 empresa só) a
+  // tabela fica idêntica a antes (redesenho Local×Empresa, 29/08/2026).
+  const multiEmpresa = new Set(linhas.map(g=>g.empresa).filter(Boolean)).size > 1;
+  const colspan = multiEmpresa ? 8 : 7;
+  const head = `<tr><th>Local Estoque</th>${multiEmpresa?'<th>Empresa</th>':''}<th>Cód. Reserva</th><th>Desc. Reserva</th><th>Produto</th>
+    <th>Dias Mín.</th><th>Dias Máx.</th><th>Peso Líquido</th></tr>`;
+  if(!linhas.length){
+    return `<thead>${head}</thead><tbody><tr><td colspan="${colspan}" class="muted">Nenhum item.</td></tr></tbody>`;
+  }
+  const corpo = linhas.map(g=>_linhaHtml(g, multiEmpresa)).join('');
+  const subtotal = `<tr class="subtotal"><td colspan="${colspan-1}">${totalLabel} Total</td><td>${fmtN0(total)}</td></tr>`;
+  return `<thead>${head}</thead><tbody>${corpo}${subtotal}</tbody>`;
+}
+
+async function carregarDados(){
+  const data = document.getElementById('fifo-data').value;
+  const dias = document.getElementById('fifo-dias').value || 15;
+  const bloqueados = document.getElementById('fifo-bloqueados').checked ? '1' : '0';
+  if(!data) return;
+  const r = await fetch(`/api/fifo/dados?data=${data}&dias=${dias}&bloqueados=${bloqueados}`).then(r=>r.json()).catch(()=>({tem_dados:false}));
+  const semDados = document.getElementById('sem-dados');
+  const conteudo = document.getElementById('conteudo');
+  const btnExportar = document.getElementById('btn-exportar');
+  if(!r.tem_dados){
+    semDados.classList.remove('hidden');
+    conteudo.classList.add('hidden');
+    btnExportar.disabled = true;
+    return;
+  }
+  semDados.classList.add('hidden');
+  conteudo.classList.remove('hidden');
+  btnExportar.disabled = false;
+  document.getElementById('k_devolucao').textContent = fmtN0(r.devolucao_total);
+  document.getElementById('k_vencimento').textContent = fmtN0(r.vencimento_total);
+  document.getElementById('k_total').textContent = fmtN0(r.total_geral);
+  document.getElementById('secao-devolucao').innerHTML = _renderSecao(r.devolucao, 'Devolução', r.devolucao_total);
+  document.getElementById('secao-vencimento').innerHTML = _renderSecao(r.vencimento, 'Próx. Vencimento', r.vencimento_total);
+}
+
+// Uma tabela só (padrão de sempre) quando o dia tem 1 empresa só; quando
+// tem 2+ (ex.: CDA+CDB), vira 1 subcard por empresa dentro do mesmo card
+// — pedido do usuário 29/08/2026, refinado 2x: começou como filtro, depois
+// cards separados, fechou em subcards dentro de Devolução/Próx.Vencimento.
+function _renderSecao(linhas, totalLabel, total){
+  const empresas = [...new Set(linhas.map(g=>g.empresa).filter(Boolean))].sort();
+  if(empresas.length <= 1){
+    return `<div style="overflow-x:auto"><table class="fifo-table">${_tabelaHtml(linhas, totalLabel, total)}</table></div>`;
+  }
+  const subcards = empresas.map(emp=>{
+    const linhasEmp = linhas.filter(g=>g.empresa===emp);
+    const totalEmp = linhasEmp.reduce((s,g)=>s+g.peso_liquido, 0);
+    return `<div class="empresa-subcard">
+      <h4>${escHtml(emp)}</h4>
+      <div style="overflow-x:auto"><table class="fifo-table">${_tabelaHtml(linhasEmp, totalLabel, totalEmp)}</table></div>
+    </div>`;
+  }).join('');
+  return `<div class="empresa-subcards">${subcards}</div>`;
+}
+
+function exportarExcel(){
+  const data = document.getElementById('fifo-data').value;
+  const dias = document.getElementById('fifo-dias').value || 15;
+  const bloqueados = document.getElementById('fifo-bloqueados').checked ? '1' : '0';
+  window.location.href = `/api/fifo/exportar?data=${data}&dias=${dias}&bloqueados=${bloqueados}`;
+}
+
+// ── RESERVAS (quais aparecem no relatório) ──────────────────
+async function abrirReservas(){
+  const r = await fetch('/api/fifo/reservas').then(r=>r.json()).catch(()=>({reservas:[]}));
+  const lista = document.getElementById('lista-reservas');
+  const reservas = r.reservas || [];
+  if(!reservas.length){
+    lista.innerHTML = '<div class="muted" style="font-size:12px">Nenhuma reserva vista ainda nos relatórios.</div>';
+  } else {
+    lista.innerHTML = reservas.map(rv => `
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12.5px;padding:6px 8px;border-radius:8px;border:1px solid var(--glass-b)">
+        <input type="checkbox" data-codigo="${escHtml(rv.codigo)}" ${rv.excluida ? '' : 'checked'} style="width:auto">
+        <span>${escHtml(rv.codigo)} — ${escHtml(rv.nome)||'(sem nome)'}</span>
+      </label>`).join('');
+  }
+  abrirModal('modal-reservas');
+}
+async function salvarReservas(){
+  const marcadas = Array.from(document.querySelectorAll('#lista-reservas input[type=checkbox]'));
+  const excluidas = marcadas.filter(el => !el.checked).map(el => el.dataset.codigo);
+  const res = await _post('/api/fifo/reservas', {excluidas});
+  const d = await res.json();
+  if(!d.ok){ toast(d.error || 'Erro'); return; }
+  fecharModal('modal-reservas');
+  await carregarDados();
+}
+
+// ── ESPELHAMENTO ─────────────────────────────────────────
+function _entrarModoEspelho(usuario){
+  window._espelhando = true;
+  document.getElementById('banner-espelho-nome').textContent = usuario;
+  document.getElementById('banner-espelho').classList.add('show');
+  document.getElementById('btn-sair-espelho').style.display = '';
+  document.getElementById('btn-espelhar').style.display = 'none';
+  document.getElementById('btn-reservas').style.display = 'none';
+}
+function _sairModoEspelho(){
+  window._espelhando = false;
+  document.getElementById('banner-espelho').classList.remove('show');
+  document.getElementById('btn-sair-espelho').style.display = 'none';
+  document.getElementById('btn-espelhar').style.display = '';
+  document.getElementById('btn-reservas').style.display = '';
+}
+async function abrirEspelho(){
+  const res = await fetch('/api/espelho/usuarios');
+  const data = await res.json();
+  const lista = document.getElementById('lista-espelho');
+  const usuarios = data.usuarios || [];
+  if(!usuarios.length){
+    lista.innerHTML = '<div class="muted" style="font-size:12px">Nenhum usuário com dados disponíveis.</div>';
+  } else {
+    lista.innerHTML = '';
+    usuarios.forEach(u=>{
+      const ts = u.atualizado ? new Date(u.atualizado).toLocaleString('pt-BR') : '';
+      const card = document.createElement('div');
+      card.className = 'espelho-card';
+      card.innerHTML = `
+        <div class="espelho-avatar">👤</div>
+        <div class="espelho-info">
+          <div class="espelho-nome">${escHtml(u.usuario)}</div>
+          <div class="espelho-ts">${ts ? 'Atualizado: '+escHtml(ts) : ''}</div>
+        </div>
+        <button class="btn sm">👁 Espelhar</button>`;
+      card.querySelector('button').onclick = () => iniciarEspelho(u.usuario);
+      lista.appendChild(card);
+    });
+  }
+  abrirModal('modal-espelho');
+}
+let _espelhoHeartbeatTimer = null;
+function iniciarHeartbeatEspelho(){
+  if(_espelhoHeartbeatTimer) clearInterval(_espelhoHeartbeatTimer);
+  _espelhoHeartbeatTimer = setInterval(()=>{ _post('/api/espelho/heartbeat', {}).catch(()=>{}); }, 20000);
+}
+function pararHeartbeatEspelho(){
+  if(_espelhoHeartbeatTimer){ clearInterval(_espelhoHeartbeatTimer); _espelhoHeartbeatTimer = null; }
+}
+async function iniciarEspelho(usuario){
+  const res = await _post('/api/espelho/iniciar', {usuario});
+  const d = await res.json();
+  if(!d.ok){ toast(d.error || 'Erro'); return; }
+  fecharModal('modal-espelho');
+  _entrarModoEspelho(usuario);
+  iniciarHeartbeatEspelho();
+  await carregarDados();
+}
+async function sairEspelho(){
+  await _post('/api/espelho/sair', {});
+  pararHeartbeatEspelho();
+  _sairModoEspelho();
+  await carregarDados();
+}
+function _atualizarBadgeEspelhado(observadores){
+  const el = document.getElementById('badge-espelhado');
+  if(!el) return;
+  if(observadores && observadores.length){
+    el.style.display = '';
+    const nomes = observadores.join(', ');
+    el.title = 'Sendo visualizado por: ' + nomes;
+    el.textContent = '👁 Sendo espelhado por ' + (observadores.length > 1 ? observadores.length + ' usuários' : nomes);
+  } else {
+    el.style.display = 'none';
+  }
+}
+let _espelhadoPollTimer = null;
+function iniciarPollingEspelhado(){
+  if(_espelhadoPollTimer) clearInterval(_espelhadoPollTimer);
+  _espelhadoPollTimer = setInterval(async ()=>{
+    try{
+      const d = await fetch('/api/me').then(r=>r.json());
+      _atualizarBadgeEspelhado(d.observadores || []);
+    }catch(e){}
+  }, 15000);
+}
+</script>
+</body>
+</html>

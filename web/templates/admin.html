@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administração — CD Demo</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Inter,sans-serif;
+  font-size:13px;
+  background:linear-gradient(135deg,#e8f4fd 0%,#dce8f5 40%,#e4dff5 70%,#f0eafa 100%);
+  background-attachment:fixed;min-height:100vh;color:#1a1a2e;
+}
+:root{
+  --blur:blur(18px) saturate(1.6);
+  --glass:rgba(255,255,255,0.52);
+  --glass-b:rgba(255,255,255,0.22);
+  --text:#1a1a2e;--text-s:rgba(26,26,46,0.58);
+  --accent:#007AFF;--radius:14px;
+}
+.topbar{
+  display:flex;align-items:center;gap:10px;padding:0 20px;height:52px;
+  background:rgba(255,255,255,0.5);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid var(--glass-b);position:sticky;top:0;z-index:100;
+}
+.topbar-title{font-size:15px;font-weight:700}
+.spacer{flex:1}
+.gbtn{
+  display:inline-flex;align-items:center;gap:5px;padding:6px 14px;border-radius:99px;
+  border:1px solid var(--glass-b);background:rgba(255,255,255,0.45);
+  backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  color:var(--text);font-size:12px;font-weight:500;cursor:pointer;
+  transition:all .18s;white-space:nowrap;
+}
+.gbtn:hover{background:rgba(255,255,255,.72)}
+.gbtn.accent{background:rgba(0,122,255,.85);border-color:transparent;color:#fff}
+.gbtn.accent:hover{background:rgba(0,122,255,1)}
+.gbtn.danger{color:#ff3b30}.gbtn.danger:hover{background:rgba(255,59,48,.1)}
+.gbtn.sm{padding:4px 10px;font-size:11px}
+
+.container{max-width:900px;margin:28px auto;padding:0 16px}
+
+.card{
+  background:rgba(255,255,255,.58);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--glass-b);border-radius:var(--radius);padding:22px 24px;
+  box-shadow:0 4px 20px rgba(0,0,0,.1);margin-bottom:18px;
+}
+.card-title{font-size:15px;font-weight:700;margin-bottom:16px;
+  display:flex;align-items:center;justify-content:space-between}
+
+table.utbl{width:100%;border-collapse:collapse;font-size:12px}
+table.utbl th{padding:8px 10px;text-align:left;color:var(--text-s);font-weight:600;
+  border-bottom:1px solid var(--glass-b);font-size:11px;white-space:nowrap}
+table.utbl td{padding:8px 10px;border-bottom:1px solid rgba(0,0,0,.05);vertical-align:middle}
+table.utbl tr:last-child td{border-bottom:none}
+
+.badge-perfil{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-master{background:rgba(220,38,38,.12);color:#b91c1c}
+.badge-admin{background:rgba(124,58,237,.15);color:#6d28d9}
+.badge-operador{background:rgba(0,122,255,.12);color:#0055cc}
+.badge-visualizador{background:rgba(0,0,0,.06);color:#4a5568}
+.badge-inativo{background:rgba(255,59,48,.1);color:#c0392b}
+
+.field-label{font-size:11px;color:var(--text-s);font-weight:500;margin-bottom:5px}
+.ginput,.gselect-f,.gtextarea{
+  width:100%;padding:8px 12px;border-radius:10px;
+  border:1px solid var(--glass-b);background:rgba(255,255,255,.55);
+  color:var(--text);font-size:13px;font-family:inherit;
+}
+.ginput:focus,.gselect-f:focus{outline:none;box-shadow:0 0 0 3px rgba(0,122,255,.2);border-color:var(--accent)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.form-grid.full{grid-template-columns:1fr}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.hint{font-size:11px;color:var(--text-s);margin-top:3px}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;z-index:1000}
+.overlay.hidden{display:none}
+.modal{background:rgba(255,255,255,.82);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--glass-b);border-radius:18px;padding:26px;
+  box-shadow:0 12px 48px rgba(0,0,0,.18);width:min(520px,94vw);max-height:90vh;overflow:auto}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:18px;
+  display:flex;justify-content:space-between;align-items:center}
+.close-btn{font-size:20px;cursor:pointer;background:none;border:none;color:var(--text-s);line-height:1}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+.msg-erro{font-size:12px;color:#c0392b;min-height:16px;margin-top:4px}
+
+.toast{position:fixed;bottom:20px;right:20px;max-width:280px;
+  background:rgba(255,255,255,.9);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--glass-b);border-radius:12px;padding:10px 15px;
+  font-size:12px;z-index:3000;box-shadow:0 4px 20px rgba(0,0,0,.12);
+  transform:translateY(10px);opacity:0;transition:all .22s;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-color:rgba(52,199,89,.4);color:#1a7a36}
+.toast.err{border-color:rgba(255,59,48,.4);color:#c0392b}
+
+.perfil-desc{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
+.pd{padding:10px 12px;border-radius:10px;border:1px solid var(--glass-b);
+  background:rgba(255,255,255,.4);font-size:11px;line-height:1.45}
+.pd strong{display:block;font-size:12px;margin-bottom:4px}
+
+.mod-check-row{display:flex;gap:16px;flex-wrap:wrap}
+.mod-check{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer}
+.mod-check input{cursor:pointer}
+.badge-modulo{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;
+  font-weight:600;background:rgba(0,122,255,.1);color:#0055cc;margin-right:3px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span style="font-size:20px">⚙️</span>
+  <span class="topbar-title">Administração — CD Demo</span>
+  <div class="spacer"></div>
+  <span style="font-size:12px;color:var(--text-s);margin-right:8px">{{ user }}</span>
+  <button class="gbtn" onclick="window.location.href='/'">← Voltar</button>
+</div>
+
+<div class="container">
+
+  <!-- PERFIS EXPLICADOS -->
+  <div class="card">
+    <div class="card-title">Perfis disponíveis</div>
+    <div class="perfil-desc" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="pd" style="border-color:rgba(220,38,38,.3)">
+        <strong style="color:#b91c1c">👑 Master</strong>
+        Tudo que o Admin faz, mais: credenciais de sistemas externos (ex.: usuário/senha da OpenTech) e localizações dos CDs. Promoção a Master só é feita por script direto no servidor (<code>promover_master.py</code>), não por essa tela — por segurança.
+      </div>
+      <div class="pd" style="border-color:rgba(124,58,237,.3)">
+        <strong style="color:#6d28d9">🔑 Admin</strong>
+        Acesso total: importar relatórios, editar todos os campos, exportar, gerenciar usuários e configurar o CD. Exclusivo para você.
+      </div>
+      <div class="pd" style="border-color:rgba(0,122,255,.3)">
+        <strong style="color:#0055cc">✏️ Operador</strong>
+        Tudo que o Admin faz, exceto gerenciar usuários e acessar /admin. Ideal para gestor, coordenador, professor.
+      </div>
+    </div>
+  </div>
+
+  <!-- LISTA DE USUÁRIOS -->
+  <div class="card">
+    <div class="card-title">
+      Usuários cadastrados
+      <button class="gbtn accent" onclick="abrirCriar()">+ Novo usuário</button>
+    </div>
+    <div id="tabela-wrap">
+      <table class="utbl">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>Nome exibição</th>
+            <th>Perfil</th>
+            <th>Vinculadas</th>
+            <th>Unidades permitidas</th>
+            <th>Módulos</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-usuarios"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EMPRESA CONSOLIDADA -->
+  <div class="card">
+    <div class="card-title">
+      🏢 Empresa consolidada
+      <button class="gbtn sm" onclick="carregarEmpCons()">🔄 Atualizar</button>
+    </div>
+    <div class="hint" style="margin-bottom:12px">
+      Empresas que dividem o <b>mesmo local físico</b>. Uma carreta que entrega
+      em duas empresas do mesmo local descarrega num lugar só, então vira
+      <b>um card só</b> no Abastecimento, identificando as duas unidades.
+      Empresa não cadastrada fica sozinha.
+    </div>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr auto;margin-bottom:12px">
+      <div class="form-field">
+        <div class="field-label">Empresa</div>
+        <input class="ginput" id="ec-sigla" placeholder="CDB" maxlength="10">
+      </div>
+      <div class="form-field">
+        <div class="field-label">Empresa consolidada</div>
+        <input class="ginput" id="ec-cons" placeholder="CDA" maxlength="10">
+      </div>
+      <div class="form-field" style="align-self:end">
+        <button class="gbtn" onclick="salvarEmpCons()">Salvar</button>
+      </div>
+    </div>
+    <table class="utbl">
+      <thead><tr><th>Empresa consolidada</th><th>Empresa</th><th></th></tr></thead>
+      <tbody id="tbody-empcons"></tbody>
+    </table>
+    <div class="hint" id="ec-msg" style="margin-top:8px"></div>
+  </div>
+
+  <!-- LOG DE AUDITORIA -->
+  <div class="card">
+    <div class="card-title">
+      📋 Log de auditoria
+      <button class="gbtn sm" onclick="carregarLogAuditoria()">🔄 Atualizar</button>
+    </div>
+    <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:12px">
+      <div class="form-field">
+        <div class="field-label">Usuário</div>
+        <select class="gselect-f" id="log-f-usuario" onchange="carregarLogAuditoria()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <div class="field-label">Ação</div>
+        <select class="gselect-f" id="log-f-acao" onchange="carregarLogAuditoria()">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <div class="field-label">Período</div>
+        <select class="gselect-f" id="log-f-dias" onchange="carregarLogAuditoria()">
+          <option value="1">Últimas 24h</option>
+          <option value="7">Últimos 7 dias</option>
+          <option value="30" selected>Últimos 30 dias</option>
+          <option value="90">Últimos 90 dias</option>
+          <option value="0">Tudo</option>
+        </select>
+      </div>
+    </div>
+    <div style="max-height:480px;overflow:auto">
+      <table class="utbl">
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Usuário</th>
+            <th>Ação</th>
+            <th>Alvo</th>
+            <th>Detalhe</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-log"></tbody>
+      </table>
+    </div>
+    <div class="hint" id="log-info" style="margin-top:8px"></div>
+  </div>
+
+</div>
+
+<!-- MODAL CRIAR -->
+<div class="overlay hidden" id="overlay-criar">
+<div class="modal">
+  <div class="modal-title">Novo usuário <button class="close-btn" onclick="fechar('overlay-criar')">✕</button></div>
+  <div class="form-grid">
+    <div class="form-field">
+      <div class="field-label">Usuário (login) *</div>
+      <input class="ginput" id="c-user" placeholder="ex: joao.silva" autocomplete="off">
+    </div>
+    <div class="form-field">
+      <div class="field-label">Nome exibição</div>
+      <input class="ginput" id="c-nome" placeholder="ex: João Silva">
+    </div>
+    <div class="form-field">
+      <div class="field-label">Senha *</div>
+      <input class="ginput" id="c-pwd" type="password" placeholder="mínimo 6 caracteres">
+    </div>
+    <div class="form-field">
+      <div class="field-label">Perfil</div>
+      <select class="gselect-f" id="c-perfil">
+        <option value="coordenador">Coordenador — edita dados do CD dele</option>
+        <option value="analista">Analista — edita dados do CD dele</option>
+        <option value="qualidade">Qualidade — só leitura, dados do CD dele</option>
+        <option value="operador">Operador — só leitura, sem localização exata</option>
+        <option value="admin">Admin — gerencia usuários, acesso a todos os CDs</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <div class="field-label">Unidades vinculadas (dono dos dados)</div>
+    <input class="ginput" id="c-vinculadas" placeholder="ex: CDA,CDB — deixe vazio se não é dono de nenhum CD">
+    <div class="hint">Separe por vírgula. Essa conta vira a DONA dos dados de Armazém/Xsense/Adensamento dessas siglas, e elas viram o CD1/CD2 iniciais em "Configurar CD" (o usuário pode mudar o nome depois, sem afetar o vínculo real).</div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <div class="field-label">Unidades permitidas (o que pode ver)</div>
+    <input class="ginput" id="c-unidades" placeholder="ex: CDA,CDF — deixe vazio para liberar todas">
+    <div class="hint">Separe por vírgula. Sempre inclui as vinculadas automaticamente — acrescente outras siglas aqui pra liberar visualização (somente leitura, via Espelhar) de unidades que não são dessa conta, ex.: cobertura temporária. Deixe em branco para dar acesso de visualização a todas.</div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <div class="field-label">Módulos liberados</div>
+    <div class="mod-check-row">
+      <label class="mod-check"><input type="checkbox" id="c-mod-monitoramento" checked> Monitoramento</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-adensamento"> Adensamento</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-armazem"> Painel do Armazém</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-xsense"> Xsense (Câmaras)</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-fifo"> Devolução & Vencimento</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-mapa_estoque"> Mapa de Estoque</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-giro"> Giro de Estoque</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-produtividade"> Produtividade</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-expedito"> Expedito</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-slas"> SLAs</label>
+      <label class="mod-check"><input type="checkbox" id="c-mod-entregas"> Monitoramento de Entregas</label>
+    </div>
+    <div class="hint">Com tudo marcado, o usuário tem acesso a todos os módulos (inclusive novos que forem criados depois). Desmarque para restringir. Admin/Master sempre têm acesso a tudo, independente disso.</div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <label class="mod-check"><input type="checkbox" id="c-call-center"> Operador de call center — abre em Monitoramento de Entregas</label>
+    <div class="hint">Ligar esta marcação não retira módulos; define a página de entrada. O módulo Monitoramento de Entregas é liberado junto.</div>
+  </div>
+  <div class="msg-erro" id="c-erro"></div>
+  <div class="modal-actions">
+    <button class="gbtn" onclick="fechar('overlay-criar')">Cancelar</button>
+    <button class="gbtn accent" onclick="criarUsuario()">Criar</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="overlay hidden" id="overlay-editar">
+<div class="modal">
+  <div class="modal-title">Editar usuário <button class="close-btn" onclick="fechar('overlay-editar')">✕</button></div>
+  <input type="hidden" id="e-id">
+  <div class="form-grid">
+    <div class="form-field">
+      <div class="field-label">Usuário</div>
+      <input class="ginput" id="e-user" disabled style="opacity:.55">
+    </div>
+    <div class="form-field">
+      <div class="field-label">Nome exibição</div>
+      <input class="ginput" id="e-nome" placeholder="ex: João Silva">
+    </div>
+    <div class="form-field">
+      <div class="field-label">Perfil</div>
+      <select class="gselect-f" id="e-perfil">
+        <option value="coordenador">Coordenador — edita dados do CD dele</option>
+        <option value="analista">Analista — edita dados do CD dele</option>
+        <option value="qualidade">Qualidade — só leitura, dados do CD dele</option>
+        <option value="operador">Operador — só leitura, sem localização exata</option>
+        <option value="admin">Admin — gerencia usuários, acesso a todos os CDs</option>
+      </select>
+    </div>
+    <div class="form-field">
+      <div class="field-label">Status</div>
+      <select class="gselect-f" id="e-ativo">
+        <option value="1">Ativo</option>
+        <option value="0">Inativo (bloqueado)</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <div class="field-label">Unidades vinculadas (dono dos dados)</div>
+    <input class="ginput" id="e-vinculadas" placeholder="ex: CDA,CDB — vazio se não é dono de nenhum CD">
+    <div class="hint">Separe por vírgula. Alimenta `cd_conta_canonica` — cuidado ao mudar, é o que decide onde essa conta lê/grava dados de Armazém/Xsense/Adensamento.</div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <div class="field-label">Unidades permitidas (o que pode ver)</div>
+    <input class="ginput" id="e-unidades" placeholder="ex: CDA,CDF — vazio = todas">
+    <div class="hint">Separe por vírgula. Sempre inclui as vinculadas automaticamente. Vazio = acesso de visualização a todas.</div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <div class="field-label">Módulos liberados</div>
+    <div class="mod-check-row">
+      <label class="mod-check"><input type="checkbox" id="e-mod-monitoramento"> Monitoramento</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-adensamento"> Adensamento</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-armazem"> Painel do Armazém</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-xsense"> Xsense (Câmaras)</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-fifo"> Devolução & Vencimento</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-mapa_estoque"> Mapa de Estoque</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-giro"> Giro de Estoque</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-produtividade"> Produtividade</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-expedito"> Expedito</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-slas"> SLAs</label>
+      <label class="mod-check"><input type="checkbox" id="e-mod-entregas"> Monitoramento de Entregas</label>
+    </div>
+    <div class="hint">Com tudo marcado, o usuário tem acesso a todos os módulos (inclusive novos). Admin/Master sempre têm acesso a tudo, independente disso.</div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <label class="mod-check"><input type="checkbox" id="e-call-center"> Operador de call center — abre em Monitoramento de Entregas</label>
+    <div class="hint">Ligar esta marcação não retira módulos; define a página de entrada. O módulo Monitoramento de Entregas é liberado junto.</div>
+  </div>
+  <div class="form-field" style="margin-bottom:14px">
+    <div class="field-label">Nova senha (deixe vazio para não alterar)</div>
+    <input class="ginput" id="e-pwd" type="password" placeholder="••••••••">
+  </div>
+  <div class="msg-erro" id="e-erro"></div>
+  <div class="modal-actions">
+    <button class="gbtn danger" onclick="excluirUsuario()" style="margin-right:auto">Excluir</button>
+    <button class="gbtn" onclick="fechar('overlay-editar')">Cancelar</button>
+    <button class="gbtn accent" onclick="salvarEdicao()">Salvar</button>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PERFIL_BADGE = {
+  master:       '<span class="badge-perfil badge-master">👑 Master</span>',
+  admin:        '<span class="badge-perfil badge-admin">🔑 Admin</span>',
+  coordenador:  '<span class="badge-perfil badge-operador">🧭 Coordenador</span>',
+  analista:     '<span class="badge-perfil badge-operador">✏️ Analista</span>',
+  qualidade:    '<span class="badge-perfil badge-operador">🔍 Qualidade</span>',
+  operador:     '<span class="badge-perfil badge-operador">👁 Operador</span>',
+};
+const MODULOS = ['monitoramento','adensamento','armazem','xsense','fifo','mapa_estoque','giro','produtividade','expedito','slas','entregas'];
+const MODULO_LABEL = {monitoramento:'Monitoramento', adensamento:'Adensamento', armazem:'Painel do Armazém', xsense:'Xsense (Câmaras)', fifo:'Devolução & Vencimento', mapa_estoque:'Mapa de Estoque', giro:'Giro de Estoque', produtividade:'Produtividade', expedito:'Expedito', slas:'SLAs', entregas:'Monitoramento de Entregas'};
+const ACAO_LABEL = {
+  login: '🔓 Login', login_falhou: '⛔ Login falhou', logout: '🚪 Logout',
+  trocar_senha: '🔑 Trocou a própria senha',
+  criar_usuario: '➕ Criou usuário', editar_usuario: '✏️ Editou usuário', excluir_usuario: '🗑️ Excluiu usuário',
+  editar_campo: '✏️ Editou campo', limpar_dados: '🧹 Limpou dados',
+  config_opentech: '⚙️ Alterou config OpenTech',
+  salvar_cd_localizacao: '📍 Salvou CD', excluir_cd_localizacao: '🗑️ Excluiu CD',
+  espelho_iniciar: '👁 Iniciou espelhamento', espelho_sair: '👁 Saiu do espelhamento',
+  adensamento_herdar_cadastro: '📥 Herdou cadastro (Adensamento)',
+};
+
+function fetchPost(url, bodyObj){
+  const token = window._csrfToken || sessionStorage.getItem('csrf_token') || '';
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json', 'X-CSRF-Token': token},
+    body: JSON.stringify(bodyObj),
+  });
+}
+
+function modulosBadges(csv){
+  if(!csv || !csv.trim()) return '<span class="badge-modulo" style="background:rgba(52,199,89,.12);color:#1a7a36">Todos</span>';
+  return csv.split(',').map(m=>m.trim()).filter(Boolean)
+    .map(m=>`<span class="badge-modulo">${MODULO_LABEL[m]||m}</span>`).join('');
+}
+
+// true (todos marcados) -> ''  |  parcial -> csv só dos marcados
+function caixaDoModulo(prefixo, m){
+  const el = document.getElementById(`${prefixo}-mod-${m}`);
+  if(!el) console.warn(`Módulo "${m}" está na lista e não tem caixa na tela.`);
+  return el;
+}
+
+function lerModulosCheckbox(prefixo){
+  const caixas = MODULOS.map(m=>[m, caixaDoModulo(prefixo, m)]).filter(([,el])=>el);
+  const marcados = caixas.filter(([,el])=>el.checked).map(([m])=>m);
+  return marcados.length === caixas.length ? '' : marcados.join(',');
+}
+
+function setModulosCheckbox(prefixo, csv){
+  const permitidos = (csv||'').split(',').map(m=>m.trim()).filter(Boolean);
+  MODULOS.forEach(m=>{
+    const el = caixaDoModulo(prefixo, m);
+    if(el) el.checked = !permitidos.length || permitidos.includes(m);
+  });
+}
+
+async function carregarUsuarios(){
+  const res = await fetch('/api/admin/usuarios');
+  const data = await res.json();
+  const tbody = document.getElementById('tbody-usuarios');
+  tbody.innerHTML = '';
+  (data.usuarios||[]).forEach(u=>{
+    const statusBadge = u.ativo
+      ? '<span style="color:#1a7a36;font-weight:600">● Ativo</span>'
+      : '<span class="badge-perfil badge-inativo">Inativo</span>';
+    const unis = u.unidades_permitidas || '<span style="color:var(--text-s)">Todas</span>';
+    const vinc = u.unidades_vinculadas || '<span style="color:var(--text-s)">—</span>';
+    const modulos = (u.perfil==='admin'||u.perfil==='master')
+      ? '<span style="color:var(--text-s)">— (perfil)</span>'
+      : modulosBadges(u.modulos_permitidos);
+    tbody.innerHTML += `
+      <tr>
+        <td><strong>${u.username}</strong></td>
+        <td>${u.nome_exibicao||'—'}</td>
+        <td>${PERFIL_BADGE[u.perfil]||u.perfil}</td>
+        <td>${vinc}</td>
+        <td>${unis}</td>
+        <td>${modulos}</td>
+        <td>${statusBadge}</td>
+        <td><button class="gbtn sm" onclick="abrirEditar(${JSON.stringify(u).replace(/"/g,'&quot;')})">Editar</button></td>
+      </tr>`;
+  });
+}
+
+function abrirCriar(){
+  ['c-user','c-nome','c-pwd','c-vinculadas','c-unidades'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('c-perfil').value='visualizador';
+  setModulosCheckbox('c', '');
+  document.getElementById('c-erro').textContent='';
+  abrir('overlay-criar');
+  setTimeout(()=>document.getElementById('c-user').focus(),60);
+}
+
+async function criarUsuario(){
+  const erro = document.getElementById('c-erro');
+  erro.textContent='';
+  const body = {
+    username:           document.getElementById('c-user').value.trim(),
+    password:           document.getElementById('c-pwd').value,
+    perfil:             document.getElementById('c-perfil').value,
+    nome_exibicao:      document.getElementById('c-nome').value.trim(),
+    unidades_vinculadas:document.getElementById('c-vinculadas').value.trim().toUpperCase(),
+    unidades_permitidas:document.getElementById('c-unidades').value.trim().toUpperCase(),
+    modulos_permitidos: lerModulosCheckbox('c'),
+    operador_call_center: document.getElementById('c-call-center').checked ? 1 : 0,
+  };
+  const res = await fetchPost('/api/admin/criar_usuario', body);
+  const d = await res.json();
+  if(d.ok){ toast(d.msg,'ok'); fechar('overlay-criar'); carregarUsuarios(); }
+  else erro.textContent = d.msg||'Erro.';
+}
+
+function abrirEditar(u){
+  document.getElementById('e-id').value      = u.id;
+  document.getElementById('e-user').value    = u.username;
+  document.getElementById('e-nome').value    = u.nome_exibicao||'';
+  document.getElementById('e-perfil').value  = u.perfil;
+  document.getElementById('e-ativo').value   = String(u.ativo);
+  document.getElementById('e-vinculadas').value = u.unidades_vinculadas||'';
+  document.getElementById('e-unidades').value= u.unidades_permitidas||'';
+  document.getElementById('e-pwd').value     = '';
+  setModulosCheckbox('e', u.modulos_permitidos||'');
+  document.getElementById('e-call-center').checked = !!u.operador_call_center;
+  document.getElementById('e-erro').textContent='';
+  abrir('overlay-editar');
+}
+
+async function salvarEdicao(){
+  const erro = document.getElementById('e-erro');
+  erro.textContent='';
+  const body = {
+    id:                 parseInt(document.getElementById('e-id').value),
+    nome_exibicao:      document.getElementById('e-nome').value.trim(),
+    perfil:             document.getElementById('e-perfil').value,
+    unidades_vinculadas:document.getElementById('e-vinculadas').value.trim().toUpperCase(),
+    unidades_permitidas:document.getElementById('e-unidades').value.trim().toUpperCase(),
+    ativo:              parseInt(document.getElementById('e-ativo').value),
+    nova_senha:         document.getElementById('e-pwd').value,
+    modulos_permitidos: lerModulosCheckbox('e'),
+    operador_call_center: document.getElementById('e-call-center').checked ? 1 : 0,
+  };
+  const res = await fetchPost('/api/admin/editar_usuario', body);
+  const d = await res.json();
+  if(d.ok){ toast(d.msg,'ok'); fechar('overlay-editar'); carregarUsuarios(); }
+  else erro.textContent = d.msg||'Erro.';
+}
+
+async function excluirUsuario(){
+  const id = parseInt(document.getElementById('e-id').value);
+  const user = document.getElementById('e-user').value;
+  if(!confirm(`Excluir o usuário "${user}" permanentemente?`)) return;
+  const res = await fetchPost('/api/admin/excluir_usuario', {id});
+  const d = await res.json();
+  if(d.ok){ toast(d.msg,'ok'); fechar('overlay-editar'); carregarUsuarios(); }
+  else toast(d.msg||'Erro.','err');
+}
+
+function escHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let _logFiltrosCarregados = false;
+
+async function carregarEmpCons(){
+  const r = await fetch('/api/master/empresas-consolidadas').then(r=>r.json()).catch(()=>[]);
+  const tb = document.getElementById('tbody-empcons');
+  if(!tb) return;
+  tb.innerHTML = (r||[]).map(x=>`<tr>
+      <td><b>${x.consolidada}</b></td>
+      <td>${x.sigla}</td>
+      <td style="text-align:right"><button class="gbtn sm danger"
+          onclick="excluirEmpCons(${x.id},'${x.sigla}')">Excluir</button></td>
+    </tr>`).join('') ||
+    '<tr><td colspan="3" class="hint">Nenhuma empresa cadastrada — cada uma fica sozinha.</td></tr>';
+}
+
+async function salvarEmpCons(){
+  const sigla = document.getElementById('ec-sigla').value.trim().toUpperCase();
+  const cons  = document.getElementById('ec-cons').value.trim().toUpperCase();
+  const msg = document.getElementById('ec-msg');
+  if(!sigla || !cons){ msg.textContent = 'Preencha as duas colunas.'; return; }
+  const r = await fetchPost('/api/master/empresas-consolidadas', {sigla, consolidada: cons})
+    .then(r=>r.json()).catch(()=>({ok:false, error:'falha de rede'}));
+  msg.textContent = r.ok ? `${sigla} → ${cons} salvo.` : (r.error || 'erro ao salvar');
+  if(r.ok){ document.getElementById('ec-sigla').value=''; document.getElementById('ec-cons').value=''; }
+  carregarEmpCons();
+}
+
+async function excluirEmpCons(id, sigla){
+  if(!confirm(`Remover ${sigla} do cadastro? Ela passa a ficar sozinha no card.`)) return;
+  const token = window._csrfToken || sessionStorage.getItem('csrf_token') || '';
+  await fetch('/api/master/empresas-consolidadas/'+id, {
+    method:'DELETE', headers:{'X-CSRF-Token': token}}).catch(()=>null);
+  carregarEmpCons();
+}
+
+async function carregarLogAuditoria(){
+  const usuario = document.getElementById('log-f-usuario').value;
+  const acao    = document.getElementById('log-f-acao').value;
+  const dias    = document.getElementById('log-f-dias').value;
+  const qs = new URLSearchParams({usuario, acao, dias});
+  const res = await fetch('/api/admin/log_auditoria?'+qs.toString());
+  if(!res.ok){ document.getElementById('log-info').textContent = 'Erro ao carregar o log.'; return; }
+  const data = await res.json();
+
+  if(!_logFiltrosCarregados){
+    const selU = document.getElementById('log-f-usuario');
+    (data.usuarios||[]).forEach(u=>{ selU.innerHTML += `<option value="${escHtml(u)}">${escHtml(u)}</option>`; });
+    const selA = document.getElementById('log-f-acao');
+    (data.acoes||[]).forEach(a=>{ selA.innerHTML += `<option value="${escHtml(a)}">${escHtml(ACAO_LABEL[a]||a)}</option>`; });
+    _logFiltrosCarregados = true;
+  }
+
+  const tbody = document.getElementById('tbody-log');
+  tbody.innerHTML = '';
+  (data.entradas||[]).forEach(e=>{
+    tbody.innerHTML += `
+      <tr>
+        <td style="white-space:nowrap">${escHtml(e.timestamp)}</td>
+        <td>${escHtml(e.usuario)||'—'}</td>
+        <td>${escHtml(ACAO_LABEL[e.acao]||e.acao)}</td>
+        <td>${escHtml(e.alvo)||'—'}</td>
+        <td style="color:var(--text-s)">${escHtml(e.detalhe)}</td>
+      </tr>`;
+  });
+  const info = document.getElementById('log-info');
+  info.textContent = data.entradas.length === 500
+    ? 'Mostrando as 500 entradas mais recentes — refine o filtro pra ver além disso.'
+    : `${data.entradas.length} entrada(s).`;
+}
+
+function abrir(id){ document.getElementById(id).classList.remove('hidden'); }
+function fechar(id){ document.getElementById(id).classList.add('hidden'); }
+function toast(msg,tipo='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show '+tipo;
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+document.querySelectorAll('.overlay').forEach(o=>
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.add('hidden'); }));
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') document.querySelectorAll('.overlay:not(.hidden)').forEach(o=>o.classList.add('hidden'));
+});
+
+(async()=>{
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  window._csrfToken = me.csrf_token || '';
+  if(window._csrfToken) sessionStorage.setItem('csrf_token', window._csrfToken);
+  else window._csrfToken = sessionStorage.getItem('csrf_token') || '';
+  const cdNome = me.cd_nome_exibicao || 'CDA';
+  document.title = 'Administração — ' + cdNome;
+  const tbTitle = document.querySelector('.topbar-title');
+  if(tbTitle) tbTitle.textContent = 'Administração — ' + cdNome;
+  carregarUsuarios();
+  carregarEmpCons();
+  carregarLogAuditoria();
+})();
+</script>
+</body>
+</html>

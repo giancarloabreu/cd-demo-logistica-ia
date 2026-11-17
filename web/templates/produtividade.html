@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Produtividade — CD Demo</title>
+<style>
+:root{
+  --glass:rgba(255,255,255,0.62); --glass-b:rgba(255,255,255,0.28);
+  --text:#1a1a2e; --text-s:rgba(26,26,46,0.58);
+  --accent:#007AFF; --accent-l:rgba(0,122,255,0.10);
+  --ok:#28a745; --warn:#ff9500; --danger:#ff3b30;
+  --radius:16px; --rsm:10px; --shadow:0 4px 24px rgba(0,0,0,0.12);
+  --border-vis: rgba(0,0,0,0.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Inter,sans-serif;
+  font-size:13px;color:var(--text);
+  background:linear-gradient(135deg,#eef2f7 0%,#e6ecf5 60%,#eaf0f8 100%)}
+.wrap{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 18px;height:52px;flex-shrink:0;
+  background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);border-bottom:1px solid var(--glass-b)}
+.topbar a.back{text-decoration:none;color:var(--accent);font-weight:600;font-size:13px}
+.topbar-logo{font-size:22px}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.topbar-sub{font-size:12px;color:var(--text-s)}
+.spacer{flex:1}
+.btn{border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-family:inherit;
+  cursor:pointer;font-weight:600;background:var(--accent);color:#fff;transition:.15s}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:rgba(0,0,0,.05);color:var(--text)}
+.btn.ok{background:var(--ok)} .btn.sm{padding:5px 10px;font-size:12px}
+.btn.danger{background:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* ── SIDEBAR DE MÓDULOS (padrão idêntico aos outros módulos) ── */
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);
+  z-index:998;opacity:0;pointer-events:none;transition:opacity .2s}
+.sidebar-overlay.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:999;
+  background:var(--glass);backdrop-filter:blur(20px) saturate(1.6);
+  border-right:1px solid var(--glass-b);box-shadow:4px 0 24px rgba(0,0,0,.15);
+  transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;padding:14px 0}
+.sidebar.show{transform:translateX(0)}
+.sidebar-header{display:flex;align-items:center;gap:8px;padding:0 16px 14px;
+  border-bottom:1px solid var(--glass-b);margin-bottom:8px}
+.sidebar-header .sidebar-logo{font-size:20px}
+.sidebar-header .sidebar-title{font-size:14px;font-weight:700;flex:1}
+.sidebar-close{background:none;border:none;font-size:16px;color:var(--text-s);cursor:pointer;padding:4px;line-height:1}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  text-decoration:none;color:var(--text);font-size:13px;font-weight:500;transition:.15s}
+.sidebar-link:hover{background:rgba(0,122,255,.08)}
+.sidebar-link.active{background:var(--accent-l);color:var(--accent);font-weight:700}
+.sidebar-spacer{flex:1}
+.sidebar-config{border-top:1px solid var(--glass-b);padding:8px 10px 4px}
+.sidebar-config-toggle{width:100%;background:none;border:none;text-align:left;padding:10px 12px;
+  border-radius:10px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;gap:10px;font-family:inherit}
+.sidebar-config-toggle:hover{background:rgba(0,122,255,.08)}
+.sidebar-config-toggle .arrow{margin-left:auto;font-size:11px;color:var(--text-s);transition:transform .15s}
+.sidebar-config-toggle.open .arrow{transform:rotate(90deg)}
+.sidebar-config-sub{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px 10px}
+.sidebar-sublink{display:block;padding:8px 12px;border-radius:8px;text-decoration:none;
+  color:var(--text-s);font-size:12.5px}
+.sidebar-sublink:hover{background:rgba(0,122,255,.08);color:var(--text)}
+
+.body{flex:1;overflow:auto;padding:16px 18px 40px}
+.card{background:var(--glass);backdrop-filter:blur(14px) saturate(1.5);
+  border:1px solid var(--glass-b);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px 16px;margin-bottom:14px}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:.4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hidden{display:none !important}
+.muted{color:var(--text-s)}
+input,select{border:1px solid var(--glass-b);background:rgba(255,255,255,.75);border-radius:8px;
+  padding:6px 9px;font-size:12px;font-family:inherit;color:var(--text)}
+input:focus,select:focus{outline:1.5px solid var(--accent)}
+.field label{display:block;font-size:11px;color:var(--text-s);margin-bottom:3px}
+
+.box-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.box-table th{text-align:left;padding:5px 8px;border-bottom:2px solid var(--border-vis);
+  color:var(--text-s);font-size:10.5px;text-transform:uppercase;white-space:nowrap}
+.box-table td{padding:4px 8px;border-bottom:1px solid rgba(0,0,0,.06);white-space:nowrap}
+
+.kpi{flex:1;min-width:150px;background:rgba(255,255,255,.6);border:1px solid var(--glass-b);
+  border-radius:var(--rsm);padding:10px 12px;text-align:center}
+.kpi .v{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.kpi .l{font-size:11px;color:var(--text-s);margin-top:2px}
+
+.slot-pill{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.55);
+  border:1px solid var(--glass-b);border-radius:99px;padding:6px 10px 6px 14px;font-size:12px;white-space:nowrap}
+.slot-pill .slot-nome{font-weight:700}
+.slot-pill .slot-ts{color:var(--text-s);font-size:10.5px}
+.slot-pill .btn{white-space:nowrap;flex-shrink:0}
+.slot-pill button.slot-del{border:none;background:rgba(255,59,48,.12);color:#b91c1c;border-radius:50%;
+  width:20px;height:20px;cursor:pointer;font-size:11px;line-height:1;flex-shrink:0}
+/* slot de fornecedor terceiro — listrado, mesma ideia do rajado no 3D */
+.slot-pill.outros{background:repeating-linear-gradient(45deg,rgba(255,255,255,.72),
+  rgba(255,255,255,.72) 6px,rgba(148,163,184,.20) 6px,rgba(148,163,184,.20) 12px)}
+.slot-pill .slot-tag{font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  background:rgba(71,85,105,.16);color:#334155;border-radius:99px;padding:2px 7px}
+.slot-pill .slot-ou{color:var(--text-s);font-size:10.5px}
+.qtd-linha{display:flex;align-items:center;gap:10px;padding:7px 0;
+  border-bottom:1px solid var(--glass-b);font-size:13px}
+.qtd-linha:last-child{border-bottom:none}
+.qtd-linha span:first-child{flex:1}
+.qtd-linha input{width:88px;padding:5px 9px;border-radius:8px;text-align:right;
+  border:1px solid var(--glass-b);background:rgba(255,255,255,.8);font-size:13px}
+.qtd-linha .muted{font-size:11px}
+.aviso-conflito{background:rgba(255,59,48,.10);border:1px solid rgba(255,59,48,.42);
+  border-radius:var(--rsm);padding:10px 13px;font-size:12px;margin-bottom:10px;line-height:1.5}
+.aviso-conflito .erro-titulo{font-weight:700;color:#b91c1c;font-size:13px}
+.aviso-conflito .erro-lista{display:flex;flex-wrap:wrap;gap:6px}
+.aviso-conflito .erro-end{background:rgba(255,255,255,.7);border:1px solid rgba(0,0,0,.10);
+  border-radius:6px;padding:3px 8px;font-size:11.5px;white-space:nowrap}
+
+/* ── Mapa 2D (Fase 4) ── */
+.camara-sec{border:1px solid var(--glass-b);border-radius:var(--rsm);margin-bottom:8px;overflow:hidden}
+.camara-head{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;
+  background:rgba(255,255,255,.4)}
+.camara-head:hover{background:rgba(255,255,255,.6)}
+.camara-head .arrow{font-size:11px;color:var(--text-s);transition:transform .15s}
+.camara-sec.open .camara-head .arrow{transform:rotate(90deg)}
+.camara-tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:uppercase}
+.camara-tag.congelado{background:rgba(56,189,248,.18);color:#0369a1}
+.camara-tag.resfriado{background:rgba(34,197,94,.18);color:#15803d}
+.camara-tag.ambiente{background:rgba(251,191,36,.2);color:#92400e}
+.camara-tag.antecamara{background:rgba(148,163,184,.25);color:#475569}
+.camara-body{display:none;padding:10px 12px;border-top:1px solid var(--glass-b)}
+.camara-sec.open .camara-body{display:block}
+.mapa2d-rua-row{display:flex;align-items:center;gap:4px;margin-bottom:5px;flex-wrap:wrap}
+.mapa2d-rua-label{font-size:10px;font-weight:700;color:var(--text-s);width:20px;flex-shrink:0}
+.mapa2d-box{width:44px;height:38px;border-radius:6px;border:1px solid rgba(0,0,0,.15);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:9px;cursor:pointer;flex-shrink:0;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);
+  transition:transform .1s}
+.mapa2d-box:hover{transform:scale(1.08);z-index:2}
+.mapa2d-box.vazio{background:rgba(0,0,0,.05);color:var(--text-s);text-shadow:none}
+.mapa2d-box.bloqueado{background:repeating-linear-gradient(45deg,#94a3b8,#94a3b8 4px,#cbd5e1 4px,#cbd5e1 8px);color:#fff}
+.mapa2d-box .nome{font-weight:700}
+.mapa2d-box .frac{font-size:8px;opacity:.9}
+.mapa2d-corredor{height:1px;background:repeating-linear-gradient(90deg,var(--glass-b),var(--glass-b) 4px,transparent 4px,transparent 8px);
+  margin:8px 0}
+.mapa2d-legenda{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;margin-bottom:12px}
+.mapa2d-legenda .item{display:flex;align-items:center;gap:5px}
+.mapa2d-legenda .dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+/* ── Mapa 3D (Fase 5) ── */
+.mapa3d-box{position:relative;height:560px;border-radius:var(--rsm);overflow:hidden;
+  border:1px solid var(--glass-b);background:#eef2f7}
+.mapa3d-box:fullscreen{height:100vh;border-radius:0}
+.mapa3d-box canvas{display:block;width:100%;height:100%}
+.mapa3d-vazio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--text-s);font-size:13px}
+/* HUD e ajuda sobem 34px porque a legenda ocupa o rodapé da cena */
+.mapa3d-hud{position:absolute;left:12px;bottom:46px;background:rgba(255,255,255,.92);
+  border:1px solid var(--glass-b);border-radius:var(--rsm);padding:8px 12px;font-size:12px;
+  max-width:330px;box-shadow:0 4px 16px rgba(0,0,0,.15);pointer-events:none}
+.mapa3d-hud .muted{font-size:11px;margin-top:2px;line-height:1.45}
+.mapa3d-ajuda{position:absolute;left:50%;bottom:46px;transform:translateX(-50%);
+  background:rgba(26,26,46,.82);color:#fff;border-radius:99px;padding:6px 16px;font-size:11.5px;
+  pointer-events:none;white-space:nowrap}
+/* legenda das cores, fixa no rodapé da cena (vale também em tela cheia) */
+.mapa3d-legenda{position:absolute;left:0;right:0;bottom:0;display:flex;gap:14px;flex-wrap:wrap;
+  align-items:center;padding:7px 12px;background:rgba(255,255,255,.93);
+  border-top:1px solid var(--glass-b);font-size:11.5px;pointer-events:none}
+.mapa3d-legenda .item{display:flex;align-items:center;gap:5px}
+.mapa3d-legenda .dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;
+  border:1px solid rgba(0,0,0,.18)}
+/* card de temperatura — o usuário pediu que chamasse mais atenção que o
+   badge discreto que existia na barra de cima (31/08/2026) */
+.mapa3d-temp{position:absolute;right:12px;top:12px;min-width:136px;
+  background:rgba(255,255,255,.95);border:1px solid var(--glass-b);
+  border-left:5px solid #64748b;border-radius:var(--rsm);padding:8px 14px;
+  box-shadow:0 4px 16px rgba(0,0,0,.15);pointer-events:none}
+.mapa3d-temp .rot{font-size:10px;font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--text-s)}
+.mapa3d-temp .valor{font-size:26px;font-weight:800;line-height:1.1;letter-spacing:-.5px}
+.mapa3d-temp .faixa{font-size:10.5px;color:var(--text-s);margin-top:1px}
+.mapa3d-temp.ok{border-left-color:#22C55E}
+.mapa3d-temp.ok .valor{color:#15803d}
+.mapa3d-temp.alerta{border-left-color:#EF4444;animation:temp-pulsa 1.7s ease-in-out infinite}
+.mapa3d-temp.alerta .valor{color:#b91c1c}
+@keyframes temp-pulsa{0%,100%{box-shadow:0 4px 16px rgba(0,0,0,.15)}
+  50%{box-shadow:0 4px 24px rgba(239,68,68,.6)}}
+
+/* barra de progresso do upload — mesmo padrão do Painel do Armazém */
+.progress-bar-wrap{max-width:260px;height:6px;background:rgba(0,0,0,.08);
+  border-radius:99px;overflow:hidden;position:relative}
+.progress-bar-fill{position:absolute;top:0;bottom:0;width:40%;background:var(--accent);
+  border-radius:99px;animation:progress-slide 1.1s ease-in-out infinite}
+@keyframes progress-slide{0%{left:-40%}100%{left:100%}}
+
+.view-toggle{display:flex;gap:6px;margin-bottom:12px}
+.view-toggle .btn.active{background:var(--accent);color:#fff}
+.view-toggle .btn:not(.active){background:rgba(0,0,0,.05);color:var(--text)}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:50}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius);box-shadow:0 10px 50px rgba(0,0,0,.3);
+  width:min(480px,94vw);max-height:88vh;display:flex;flex-direction:column}
+.modal h2{margin:0;padding:16px 20px;border-bottom:1px solid #eee;font-size:16px;display:flex;align-items:center;gap:10px}
+.modal .mbody{padding:16px 20px;overflow:auto}
+.modal .mfoot{padding:12px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:#1a1a2e;color:#fff;padding:10px 18px;border-radius:99px;font-size:12.5px;z-index:200}
+
+.graf{margin-top:12px;display:flex;align-items:flex-end;gap:10px;height:168px;
+  padding:0 4px;overflow-x:auto;flex-shrink:0}
+.graf .barra-col{display:flex;flex-direction:column;align-items:center;gap:5px;min-width:52px;flex:1}
+.graf .barra{width:100%;max-width:46px;background:linear-gradient(180deg,#4da3ff,#007AFF);
+  border-radius:5px 5px 0 0;min-height:2px;transition:.2s}
+.graf .barra.resf{background:linear-gradient(180deg,#5bc0eb,#0a84c4)}
+.graf .barra.cong{background:linear-gradient(180deg,#7aa7ff,#2b57d6)}
+.graf .barra.amb{background:linear-gradient(180deg,#ffd166,#e8951d)}
+.graf .barra-val{font-size:10.5px;font-weight:700}
+.graf .barra-lbl{font-size:10px;color:var(--text-s);text-align:center;line-height:1.25}
+.graf-vazio{color:var(--text-s);font-size:12px;align-self:center}
+
+/* ── Produtividade — layout de painel corporativo (16/09/2026) ──
+   Superfície lisa e neutra, hierarquia por tipografia e régua fina; a cor
+   fica reservada para o dado (azul = separado, laranja = redespacho,
+   verde/vermelho = variação). */
+:root{
+  --ink:#0f172a; --ink-2:#475569; --ink-3:#94a3b8;
+  --line:#e2e8f0; --line-2:#eef2f6; --surface:#ffffff; --canvas:#f3f5f8;
+  --brand:#0b4f9c; --brand-2:#2f7de1; --brand-soft:#e8f0fb;
+  --red-cor:#e8891c; --red-soft:#fdf1e3;
+  --pos:#15803d; --pos-soft:#e7f5ec; --neg:#b42318; --neg-soft:#fdecea;
+  --warn:#b45309; --warn-soft:#fff5e6;
+  --onda1:#0b4f9c; --onda2:#2f7de1; --onda3:#0f9f94; --onda4:#7c5cd6;
+}
+html,body{background:var(--canvas)}
+body{color:var(--ink);font-feature-settings:"tnum" 1}
+.topbar{background:#fff;backdrop-filter:none;border-bottom:1px solid var(--line)}
+.body{padding:0 0 48px}
+.pg{max-width:1440px;margin:0 auto;padding:0 24px}
+
+/* cabeçalho da página + filtros */
+.pg-head{background:#fff;border-bottom:1px solid var(--line)}
+.pg-head .pg{padding-top:18px}
+.pg-titulo{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.pg-titulo h1{margin:0;font-size:20px;font-weight:650;letter-spacing:-.3px}
+.pg-titulo .sub{color:var(--ink-2);font-size:12.5px;margin-top:3px}
+.pg-acoes{margin-left:auto;display:flex;gap:8px}
+.btn-c{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:6px;
+  padding:7px 12px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.btn-c:hover{background:#f8fafc;border-color:#cbd5e1}
+.btn-c.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-c.pri:hover{background:#0a4486}
+.filtros{display:flex;flex-wrap:wrap;gap:14px 18px;align-items:flex-end;margin-top:16px}
+.fl label{display:block;font-size:10.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:5px}
+.fl select,.fl input{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 9px;
+  font:inherit;font-size:12.5px;color:var(--ink);height:32px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff;height:32px}
+.seg button{border:none;background:none;padding:0 12px;font:inherit;font-size:12.5px;cursor:pointer;
+  color:var(--ink-2);font-weight:600;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:none}
+.seg button:hover{background:#f8fafc}
+.seg button.on{background:var(--brand);color:#fff}
+.status{font-size:11.5px;color:var(--ink-2);margin-top:12px;display:flex;gap:6px 16px;flex-wrap:wrap}
+.status b{color:var(--ink);font-weight:600}
+.status .pt{display:inline-flex;align-items:center;gap:6px}
+.status .pt::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ink-3)}
+.status .pt.ok::before{background:var(--pos)}
+.status .pt.at::before{background:var(--warn)}
+
+/* abas */
+.abas{display:flex;gap:4px;margin-top:14px;overflow-x:auto;scrollbar-width:none}
+.abas button{border:none;background:none;padding:10px 14px;font:inherit;font-size:13px;font-weight:600;
+  color:var(--ink-2);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.abas button:hover{color:var(--ink)}
+.abas button.on{color:var(--brand);border-bottom-color:var(--brand)}
+.abas .ct{display:inline-block;margin-left:6px;font-size:10.5px;background:var(--line-2);color:var(--ink-2);
+  border-radius:99px;padding:1px 7px;font-weight:600}
+.abas button.on .ct{background:var(--brand-soft);color:var(--brand)}
+.aba{display:none;padding-top:20px}
+.aba.on{display:block}
+
+/* cartões */
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g32{grid-template-columns:minmax(0,3fr) minmax(0,2fr)}
+.g13{grid-template-columns:minmax(280px,1fr) minmax(0,3fr)}
+.mb{margin-bottom:16px}
+.cx{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 1px 2px rgba(15,23,42,.04);min-width:0}
+.cx-h{display:flex;align-items:center;gap:12px;padding:14px 18px 0;flex-wrap:wrap}
+.cx-h h2{margin:0;font-size:14px;font-weight:650}
+.cx-h .d{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+.cx-h .dir{margin-left:auto;display:flex;gap:8px;align-items:center}
+.cx-b{padding:14px 18px 18px}
+.nota{font-size:11.5px;color:var(--ink-2);line-height:1.55}
+
+/* KPI */
+.kp{padding:14px 16px 12px;display:flex;flex-direction:column;gap:4px;position:relative}
+.kp .rot{font-size:10.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px;
+  display:flex;align-items:center;gap:6px}
+.kp .rot .i{cursor:help;color:var(--ink-3);font-weight:700;border:1px solid var(--line);border-radius:50%;
+  width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;text-transform:none}
+.kp .val{font-size:28px;font-weight:650;letter-spacing:-.6px;line-height:1.15}
+.kp .val small{font-size:13px;font-weight:600;color:var(--ink-2);margin-left:3px;letter-spacing:0}
+.kp .rod{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-2);min-height:18px}
+.kp .spark{position:absolute;right:14px;top:14px;opacity:.9}
+.kp.com-spark .rot{padding-right:96px}
+.kp.alerta{border-color:#f5c2bd;background:linear-gradient(0deg,#fff,#fff) padding-box}
+.kp.alerta .val{color:var(--neg)}
+.dl{display:inline-flex;align-items:center;gap:3px;font-weight:650;border-radius:4px;padding:1px 6px;font-size:11px}
+.dl.pos{color:var(--pos);background:var(--pos-soft)}
+.dl.neg{color:var(--neg);background:var(--neg-soft)}
+.dl.neu{color:var(--ink-2);background:var(--line-2)}
+.barra-part{height:6px;border-radius:3px;background:var(--line-2);overflow:hidden;display:flex;margin-top:4px}
+.barra-part i{display:block;height:100%}
+
+/* gráficos */
+.graf-svg{width:100%;display:block}
+.graf-svg text{font-size:10.5px;fill:var(--ink-2)}
+.graf-svg .eixo{stroke:var(--line)}
+.graf-svg .grade{stroke:var(--line-2)}
+.graf-svg .ref{stroke:var(--ink);stroke-dasharray:4 3;stroke-width:1}
+.graf-svg .ref-t{fill:var(--ink);font-weight:600}
+.graf-svg .vl{fill:var(--ink);font-weight:600;font-size:10px}
+.leg{display:flex;gap:14px;font-size:11.5px;color:var(--ink-2);flex-wrap:wrap}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.vazio-g{color:var(--ink-3);font-size:12px;padding:30px 0;text-align:center}
+
+/* tabelas */
+.tw{overflow:auto}
+/* campos do apontamento do efetivo (30/09/2026) */
+.ap-in{width:64px;text-align:right;padding:4px 6px;border:1px solid var(--line-2);border-radius:6px;
+  font:inherit;font-size:12.5px;background:#fff}
+.ap-in.lg{width:74px}
+.ap-in:disabled{background:#f4f6f9;color:var(--ink-2)}
+
+.tb{width:100%;border-collapse:collapse;font-size:12px}
+.tb th{text-align:left;font-size:10.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.4px;
+  padding:9px 10px;border-bottom:1px solid var(--line);background:#f8fafc;white-space:nowrap;position:sticky;top:0;z-index:1}
+.tb td{padding:8px 10px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+.tb tr:hover td{background:#f8fbff}
+.tb .n{text-align:right}
+.tb .c{text-align:center}
+.tb th.ord{cursor:pointer;user-select:none}
+.tb th.ord:hover{color:var(--ink)}
+.tb th.ord.on{color:var(--brand)}
+.tb tfoot td{font-weight:650;border-top:1px solid var(--line);background:#f8fafc}
+.tb tr.agrupa td{border-top:1px solid var(--line)}
+.tb tr.fora td{color:var(--ink-3)}
+.tb tr.fora td.mant{color:var(--ink)}
+.tb .neg{color:var(--neg)}
+.tb .fraco{color:var(--ink-3)}
+.lnk{color:var(--brand);text-decoration:none;font-weight:600}
+.lnk:hover{text-decoration:underline}
+.rk{display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;background:var(--line-2);color:var(--ink-2)}
+.rk.top{background:var(--brand);color:#fff}
+.hb{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.hb .tr{width:70px;height:6px;border-radius:3px;background:var(--line-2);overflow:hidden}
+.hb .tr i{display:block;height:100%;background:var(--brand-2)}
+.hb .tr.tr-cx i{background:#0f9f94}
+.chip{display:inline-block;font-size:10px;font-weight:650;border-radius:4px;padding:2px 6px;margin-right:4px;letter-spacing:.2px}
+.chip.cpx{background:#efeafd;color:#5b3fc4}
+.chip.red{background:var(--red-soft);color:#9a5412}
+.chip.exp{background:var(--line-2);color:var(--ink-2)}
+.chip.ok{background:var(--pos-soft);color:var(--pos)}
+.chip.at{background:var(--warn-soft);color:var(--warn)}
+.chip.er{background:var(--neg-soft);color:var(--neg)}
+.bnr{border:1px solid;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;display:flex;gap:10px;align-items:flex-start}
+.bnr.at{background:var(--warn-soft);border-color:#f6d9a8;color:#7a3e06}
+.bnr.er{background:var(--neg-soft);border-color:#f5c2bd;color:#7a1a12}
+.bnr.in{background:var(--brand-soft);border-color:#c9dbf3;color:#0b3a73}
+.bnr b{font-weight:650}
+
+/* projeção */
+.pj-in .fl{margin-bottom:14px}
+.pj-in .fl input{width:100%}
+.pj-in .aj{font-size:11px;color:var(--ink-3);margin-top:4px}
+.pj-res{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.pj-card{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.pj-card .rot{font-size:10.5px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px}
+.pj-card .val{font-size:30px;font-weight:650;letter-spacing:-.6px;margin-top:4px}
+.pj-card .val small{font-size:12px;color:var(--ink-2);font-weight:600;margin-left:4px;letter-spacing:0}
+.pj-card .alt{font-size:11.5px;color:var(--ink-2);margin-top:2px}
+.cap{height:8px;border-radius:4px;background:var(--line-2);margin-top:8px;overflow:hidden;display:flex}
+.cap i{display:block;height:100%;background:var(--brand-2)}
+.cap i.exc{background:var(--neg)}
+.cap i.lim{background:var(--warn)}
+.pj-plano{margin-top:12px;border:1px solid #f5c2bd;border-radius:8px;padding:12px 14px;background:#fffafa}
+.pj-plano .rot{font-size:10.5px;font-weight:600;color:var(--neg);text-transform:uppercase;letter-spacing:.5px}
+.pj-plano-g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:8px}
+.pj-plano-g b{display:block;font-size:20px;font-weight:650;letter-spacing:-.3px}
+.pj-plano-g span{font-size:11px;color:var(--ink-2)}
+.pj-plano-g .exc b{color:var(--neg)}
+@media (max-width:640px){ .pj-plano-g{grid-template-columns:repeat(2,minmax(0,1fr))} }
+.memoria{margin:0;padding:0;list-style:none;font-size:12px;line-height:1.6}
+.memoria li{padding:6px 0;border-bottom:1px dashed var(--line)}
+.memoria li:last-child{border-bottom:none}
+.memoria b{font-weight:650}
+
+/* ondas */
+.gantt text{font-size:10.5px;fill:var(--ink-2)}
+.gantt .dia{fill:var(--ink);font-weight:600}
+.gantt .rot-b{fill:#fff;font-weight:600;font-size:10px}
+
+/* modal (redesenho do padrão da casa) */
+.modal{border-radius:12px}
+.modal h2{font-size:15px;font-weight:650}
+.qtd-linha{border-bottom:1px solid var(--line-2)}
+.qtd-linha input{border:1px solid var(--line);background:#fff;border-radius:6px}
+.grp-t{font-size:10.5px;font-weight:650;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-2);margin:14px 0 2px}
+.grp-t:first-child{margin-top:0}
+.qtd-dica{flex:0 0 210px;line-height:1.3}
+.sem-dados .aba{display:none !important}
+.seg button{white-space:nowrap;flex-shrink:0}
+.vazio-t{margin:0 0 6px;font-size:15px}
+
+@media (max-width:1100px){
+  .g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .g32,.g13{grid-template-columns:minmax(0,1fr)}
+  .pj-res{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .g2{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .pg{padding:0 16px}
+  .g2,.g4{grid-template-columns:minmax(0,1fr)}
+  .kp .val{font-size:24px}
+  .pg-acoes{margin-left:0;width:100%}
+  .filtros{gap:10px}
+  .seg button{padding:0 9px}
+  .pj-res{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .cx-h .dir{margin-left:0;width:100%;flex-wrap:wrap}
+  #busca-inst{width:100% !important;flex:1 1 100%}
+  #seg-inst{max-width:100%;overflow-x:auto}
+  .qtd-linha{flex-wrap:wrap}
+  .qtd-dica{flex:1 1 100%}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR DE MÓDULOS -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Xsense</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm icon" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/">‹ Painel</a>
+    <span class="topbar-logo">⏱️</span>
+    <span class="topbar-title">Produtividade</span>
+  </div>
+
+  <div class="body">
+    <div class="pg-head">
+      <div class="pg">
+        <div class="pg-titulo">
+          <div>
+            <h1>Produtividade de Separação e Embarque</h1>
+            <div class="sub">Ritmo, aproveitamento e dimensionamento de equipe por centro de distribuição</div>
+          </div>
+          <div class="pg-acoes">
+            <button class="btn-c" onclick="abrirParametros()">⚙ Parâmetros</button>
+            <button class="btn-c pri admin-only hidden" onclick="document.getElementById('f-arq').click()">⬆ Importar arquivos</button>
+          </div>
+        </div>
+        <div class="filtros">
+          <div class="fl"><label>Centro de distribuição</label>
+            <select id="sel-cd" onchange="trocarCD()" style="min-width:120px"></select></div>
+          <div class="fl"><label>Período</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="date" id="dt-de" min="2000-01-01" max="2100-12-31" onchange="mudouData()">
+              <span class="nota">até</span>
+              <input type="date" id="dt-ate" min="2000-01-01" max="2100-12-31" onchange="mudouData()">
+            </div></div>
+          <div class="fl"><label>Intervalo rápido</label>
+            <div class="seg" id="seg-per">
+              <button data-v="7" onclick="periodo(7)">7 dias</button>
+              <button data-v="15" onclick="periodo(15)">15 dias</button>
+              <button data-v="30" onclick="periodo(30)">30 dias</button>
+              <button data-v="mes" onclick="periodo('mes')">Mês</button>
+            </div></div>
+          <div class="fl"><label>Turno · início da separação</label>
+            <div class="seg" id="seg-turno">
+              <button data-v="noturno" class="on" onclick="setTurno('noturno')">Noturno</button>
+              <button data-v="diurno" onclick="setTurno('diurno')">Diurno</button>
+              <button data-v="todos" onclick="setTurno('todos')">Todos</button>
+            </div></div>
+        </div>
+        <div class="status" id="status"></div>
+        <nav class="abas" id="abas">
+          <button data-a="visao" class="on" onclick="abrirAba('visao')">Visão geral</button>
+          <button data-a="equipe" onclick="abrirAba('equipe')">Equipe <span class="ct" id="ct-equipe"></span></button>
+          <button data-a="ondas" onclick="abrirAba('ondas')">Ondas de liberação <span class="ct" id="ct-ondas"></span></button>
+          <button data-a="projecao" onclick="abrirAba('projecao')">Projeção de equipe</button>
+          <button data-a="instrucoes" onclick="abrirAba('instrucoes')">Instruções <span class="ct" id="ct-inst"></span></button>
+        </nav>
+      </div>
+    </div>
+
+    <div class="pg">
+      <div id="vazio" class="hidden" style="padding-top:20px">
+        <div class="cx"><div class="cx-b">
+          <h2 class="vazio-t" id="vazio-tit">Nenhuma instrução no período selecionado</h2>
+          <div class="nota" id="vazio-txt"></div>
+        </div></div>
+      </div>
+
+      <!-- VISÃO GERAL -->
+      <section class="aba on" id="aba-visao">
+        <div class="grid g4 mb" id="kpis-1"></div>
+        <div class="grid g4 mb" id="kpis-2"></div>
+        <div class="grid g2 mb">
+          <div class="cx">
+            <div class="cx-h"><div><h2>Ritmo diário da equipe</h2>
+              <div class="d">Toneladas por hora líquida — soma do dia ÷ horas líquidas dos separadores</div></div>
+              <div class="dir leg"><span><i style="background:var(--brand-2)"></i>t/h do dia</span><span><i style="background:#9fc2ef"></i>abaixo de 85% da mediana</span><span id="leg-med"><i style="background:var(--ink);height:2px;vertical-align:3px"></i>mediana</span></div></div>
+            <div class="cx-b"><div id="g-ritmo"></div></div>
+          </div>
+          <div class="cx">
+            <div class="cx-h"><div><h2>Volume diário</h2>
+              <div class="d">Toneladas embarcadas por origem da carga</div></div>
+              <div class="dir leg"><span><i style="background:var(--brand)"></i>Separado no CD</span><span><i style="background:var(--red-cor)"></i>Redespacho</span></div></div>
+            <div class="cx-b"><div id="g-volume"></div></div>
+          </div>
+        </div>
+        <div class="cx mb">
+          <div class="cx-h"><div><h2>Equipe escalada × equipe necessária</h2>
+            <div class="d">Necessária = toneladas atribuídas a separadores no dia ÷ (ritmo de referência × horas líquidas do turno)</div></div>
+            <div class="dir leg"><span><i style="background:#cbd5e1"></i>Escalada</span><span><i style="background:var(--brand)"></i>Necessária</span></div></div>
+          <div class="cx-b"><div id="g-equipe"></div><div class="nota" id="nota-equipe" style="margin-top:6px"></div></div>
+        </div>
+        <div class="cx">
+          <div class="cx-h"><div><h2>Indicadores diários</h2></div></div>
+          <div class="cx-b"><div class="tw"><table class="tb" id="tb-dia"></table></div>
+            <div class="nota" style="margin-top:10px"><b>Ritmo</b>: toneladas (ou caixas) por hora líquida durante a separação.
+              A tonelada por hora acompanha o peso da carga, e as caixas por hora representam melhor o esforço — por isso os dois são exibidos.
+              <b>Aproveitamento</b>: horas líquidas de separação ÷ horas líquidas do turno.
+              <b>Demanda</b>: toneladas separadas ÷ separadores do dia. O redespacho não é atribuído a separadores.
+              <b>Necessários</b>: calculado sobre as toneladas atribuídas a um separador.</div></div>
+        </div>
+      </section>
+
+      <!-- EQUIPE -->
+      <section class="aba" id="aba-equipe">
+        <div class="cx mb hidden" id="cx-apont">
+          <div class="cx-h"><div><h2>Apontamento do efetivo</h2>
+            <div class="d">Efetivo previsto e presente por função, com o horário de entrada — é o que fecha o H-H do dia.
+              O WMS registra quem separou e quem conferiu, não quem esteve na casa.</div></div>
+            <div class="dir" id="apont-acoes"></div></div>
+          <div class="cx-b">
+            <div id="apont-form"></div>
+            <div class="tw" style="margin-top:14px"><table class="tb" id="tb-hh"></table></div>
+            <div class="nota" id="nota-hh" style="margin-top:10px"></div>
+          </div>
+        </div>
+        <div class="cx mb">
+          <div class="cx-h"><div><h2>Separadores</h2>
+            <div class="d">Mediana das pessoas-dia no período · selecione um nome para ver o detalhamento diário</div></div>
+            <div class="dir"><div class="seg" id="seg-rk">
+              <button data-v="t_h" class="on" onclick="ordenarSep('t_h', true)">Por t/h</button>
+              <button data-v="cx_h" onclick="ordenarSep('cx_h', true)">Por cx/h</button>
+            </div></div></div>
+          <div class="cx-b"><div class="tw"><table class="tb" id="tb-sep"></table></div></div>
+        </div>
+        <div class="cx">
+          <div class="cx-h"><div><h2>Conferentes</h2>
+            <div class="d">Toneladas embarcadas por conferente registrado na instrução</div></div>
+            <div class="dir"><div class="seg" id="seg-conf">
+              <button data-v="emb_t" class="on" onclick="setConf('emb_t')">Com redespacho</button>
+              <button data-v="sem_red_t" onclick="setConf('sem_red_t')">Sem redespacho</button>
+            </div></div></div>
+          <div class="cx-b"><div id="conf-alerta"></div><div class="tw"><table class="tb" id="tb-conf"></table></div></div>
+        </div>
+      </section>
+
+      <!-- ONDAS -->
+      <section class="aba" id="aba-ondas">
+        <div class="cx mb">
+          <div class="cx-h"><div><h2>Linha do tempo das ondas</h2>
+            <div class="d" id="ondas-sub"></div></div>
+            <div class="dir leg" id="leg-ondas"></div></div>
+          <div class="cx-b"><div id="g-ondas"></div></div>
+        </div>
+        <div class="cx">
+          <div class="cx-h"><div><h2>Detalhamento por onda</h2></div></div>
+          <div class="cx-b"><div class="tw"><table class="tb" id="tb-ondas"></table></div></div>
+        </div>
+      </section>
+
+      <!-- PROJEÇÃO -->
+      <section class="aba" id="aba-projecao">
+        <div class="grid g13 mb">
+          <div class="cx pj-in">
+            <div class="cx-h"><div><h2>Premissas</h2><div class="d">Base: período e turno selecionados</div></div></div>
+            <div class="cx-b">
+              <div class="fl"><label>Toneladas a separar</label>
+                <input type="number" id="pj-t" min="0" step="0.5" placeholder="ex.: 60" oninput="projetarDebounce()">
+                <div class="aj">Carga que passa pela separação no CD</div></div>
+              <div class="fl"><label>Redespacho previsto (t)</label>
+                <input type="number" id="pj-red" min="0" step="0.5" oninput="projetarDebounce()">
+                <div class="aj" id="pj-red-aj">Em branco: proporção histórica do período</div></div>
+              <div class="fl"><label>Caminhões</label>
+                <input type="number" id="pj-cam" min="0" step="1" oninput="projetarDebounce()">
+                <div class="aj" id="pj-cam-aj">Em branco: estimado pela carga mediana por caminhão</div></div>
+            </div>
+          </div>
+          <div class="cx">
+            <div class="cx-h"><div><h2>Dimensionamento</h2><div class="d" id="pj-sub"></div></div></div>
+            <div class="cx-b">
+              <div id="pj-res"><div class="vazio-g">Informe as toneladas a separar para calcular.</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="grid g2">
+          <div class="cx">
+            <div class="cx-h"><div><h2>Memória de cálculo</h2></div></div>
+            <div class="cx-b"><ul class="memoria" id="pj-mem"><li class="nota">—</li></ul></div>
+          </div>
+          <div class="cx">
+            <div class="cx-h"><div><h2>Aderência do modelo</h2>
+              <div class="d">Modelo aplicado às toneladas separadas e ao redespacho reais de cada dia, comparado ao que a operação utilizou. Separadores projetados sobre as toneladas atribuídas a um separador.</div></div></div>
+            <div class="cx-b"><div class="tw"><table class="tb" id="tb-bt"></table></div>
+              <div class="nota" style="margin-top:8px" id="bt-nota">Em dias de volume menor, a equipe escalada tende a superar a necessária;
+                a comparação relevante concentra-se nos dias de maior volume. Valores em vermelho: projeção acima do utilizado.</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- INSTRUÇÕES -->
+      <section class="aba" id="aba-instrucoes">
+        <div class="cx">
+          <div class="cx-h"><div><h2>Instruções do período</h2>
+            <div class="d">Desconsideradas automaticamente: prioridade 999, frete FOB, veículo sem placa e placa FIC0000.
+              <span class="admin-only hidden">A marcação manual permanece válida após nova importação do arquivo.</span></div></div>
+            <div class="dir">
+              <div class="seg" id="seg-inst">
+                <button data-v="todas" class="on" onclick="setFiltroInst('todas')">Todas</button>
+                <button data-v="complexas" onclick="setFiltroInst('complexas')">Complexas</button>
+                <button data-v="redespacho" onclick="setFiltroInst('redespacho')">Com redespacho</button>
+                <button data-v="expurgadas" onclick="setFiltroInst('expurgadas')">Desconsideradas</button>
+              </div>
+              <input type="search" id="busca-inst" class="fl" placeholder="Instrução, placa, pessoa, cidade ou cliente" oninput="renderInstrucoes()"
+                style="width:240px;border:1px solid var(--line);border-radius:6px;height:32px;padding:0 10px;font:inherit;font-size:12.5px">
+            </div></div>
+          <div class="cx-b"><div class="tw" style="max-height:620px"><table class="tb" id="tb-inst"></table></div></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- Parâmetros -->
+<div class="modal-bg" id="ov-param" onclick="if(event.target===this)fecharModal('ov-param')">
+  <div class="modal" style="width:min(600px,94vw)">
+    <h2>Parâmetros — <span id="param-cd"></span></h2>
+    <div class="mbody" id="param-corpo"></div>
+    <div class="mfoot">
+      <button class="btn-c" onclick="fecharModal('ov-param')">Fechar</button>
+      <button class="btn-c pri admin-only hidden" onclick="salvarParametros()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Separador: detalhamento diário -->
+<div class="modal-bg" id="ov-pessoa" onclick="if(event.target===this)fecharModal('ov-pessoa')">
+  <div class="modal" style="width:min(860px,96vw)">
+    <h2 id="pessoa-tit"></h2>
+    <div class="mbody"><div class="tw"><table class="tb" id="tb-pessoa"></table></div>
+      <div class="nota" style="margin-top:10px" id="pessoa-nota"></div></div>
+    <div class="mfoot"><button class="btn-c" onclick="fecharModal('ov-pessoa')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- Resultado da importação -->
+<div class="modal-bg" id="ov-envio" onclick="if(event.target===this)fecharModal('ov-envio')">
+  <div class="modal" style="width:min(640px,94vw)">
+    <h2>Resultado da importação</h2>
+    <div class="mbody" id="envio-corpo"></div>
+    <div class="mfoot"><button class="btn-c pri" onclick="fecharModal('ov-envio')">Concluir</button></div>
+  </div>
+</div>
+
+<!-- Desconsiderar instrução -->
+<div class="modal-bg" id="ov-desc" onclick="if(event.target===this)cancelarDesc()">
+  <div class="modal" style="width:min(460px,94vw)">
+    <h2 id="desc-tit"></h2>
+    <div class="mbody">
+      <div class="nota" style="margin-bottom:10px">A instrução deixa de compor os indicadores e a projeção. A marcação pode ser desfeita a qualquer momento.</div>
+      <div class="fl"><label>Motivo (opcional)</label>
+        <input type="text" id="desc-motivo" maxlength="200" style="width:100%" placeholder="ex.: carreta de transferência"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn-c" onclick="cancelarDesc()">Cancelar</button>
+      <button class="btn-c pri" onclick="confirmarDesc()">Desconsiderar</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="f-arq" multiple class="hidden" accept=".xls,.xlsx,.csv,.txt" onchange="enviarArquivos()">
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Xsense (Câmaras)', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebar-overlay').classList.add('show');}
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebar-overlay').classList.remove('show');}
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  // módulo com telas (SLAs, 27/10/2026): o nome abre a lista das telas
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+function montarConfigSidebar(perfil, isMaster){
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+  if(admin){
+    /* nada específico aqui */
+  }
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') fecharSidebar(); });
+function abrirModal(id){ document.getElementById(id).classList.add('show'); }
+function escHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fecharModal(id){ document.getElementById(id).classList.remove('show'); }
+function toast(msg, tipo, duracao){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.style.display='block';
+  t.style.background = tipo==='err' ? '#b91c1c' : '#1a1a2e';
+  clearTimeout(window._toastTimer);
+  // aviso de dia repetido entre arquivos precisa de mais tempo que um "ok"
+  window._toastTimer=setTimeout(()=>{ t.style.display='none'; }, duracao || 3000);
+}
+async function fetchPost(url, body, method){
+  return fetch(url, {
+    method: method || 'POST',
+    headers: {'Content-Type':'application/json','X-CSRF-Token':_csrf},
+    body: JSON.stringify(body),
+  });
+}
+
+// Parâmetros por grupo — a ordem aqui é a ordem do popup.
+const PARAM_GRUPOS = [
+  ['Turno', [
+    ['noturno_inicio', 'Início do turno noturno', 'h'],
+    ['noturno_fim', 'Término do turno noturno', 'h'],
+    ['turno_h', 'Duração do turno', 'h · limite da janela de separação'],
+  ]],
+  ['Janelas de separação e embarque', [
+    ['separacao_inicio', 'Início da separação', 'h'],
+    ['separacao_fim', 'Término da separação', 'h'],
+    ['embarque_inicio', 'Início do embarque', 'h'],
+    ['embarque_fim', 'Término do embarque', 'h · conferente entra mais tarde e sai depois'],
+  ]],
+  ['Pausas', [
+    ['refeicao_min', 'Intervalo de refeição', 'min · descontado em janelas acima de 4h'],
+    ['trabalho_continuo_min', 'Trabalho contínuo antes da pausa térmica', 'min'],
+    ['pausa_termica_min', 'Pausa térmica', 'min'],
+  ]],
+  ['Classificação', [
+    ['sku_complexa', 'Instrução complexa a partir de', 'SKUs'],
+    ['onda_intervalo_min', 'Intervalo máximo dentro da mesma onda', 'min entre liberações'],
+  ]],
+  ['Projeção', [
+    ['docas_disponiveis', 'Docas disponíveis', 'docas · 0 = maior uso observado'],
+    ['caminhoes_por_doca', 'Caminhões por doca no turno', 'giros por doca'],
+    ['caminhoes_por_conferente', 'Caminhões por conferente no turno', 'caminhões'],
+  ]],
+];
+
+let _csrf = '', _dados = null, _turno = 'noturno', _filtroInst = 'todas', _admin = false;
+let _ultimos = {}, _ordemSep = {col:'t_h', desc:true}, _confCol = 'emb_t', _aba = 'visao';
+let _descPend = null, _baseRk = 't_h', _pjSeq = 0;
+
+/* ── utilitários ───────────────────────────────────────────── */
+const esc = escHtml;
+function _hoje(){ const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10); }
+function _cd(){ return document.getElementById('sel-cd').value; }
+function _fmt(v, casas){
+  if(v==null || !isFinite(v)) return '—';
+  return Number(v).toLocaleString('pt-BR',{minimumFractionDigits:casas??0, maximumFractionDigits:casas??0});
+}
+function _pct(v, casas){ return v==null ? '—' : _fmt(v, casas??1)+'%'; }
+function _dia(iso){ if(!iso) return '—'; const [,m,d]=iso.slice(0,10).split('-'); return `${d}/${m}`; }
+function _hora(iso){ return iso ? iso.slice(11,16) : '—'; }
+function _diaHora(iso, ref){ if(!iso) return '—'; return (ref && iso.slice(0,10)===ref ? '' : _dia(iso)+' ') + _hora(iso); }
+function _horas(h){
+  if(h==null || !isFinite(h)) return '—';
+  const m = Math.round(h*60); return `${Math.floor(m/60)}h${String(m%60).padStart(2,'0')}`;
+}
+function _min(m){ return m==null ? '—' : (m >= 60 ? _horas(m/60) : `${m} min`); }
+function _seg(id, v){ document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.toggle('on', b.dataset.v===String(v))); }
+function _dsem(iso){ return ['dom','seg','ter','qua','qui','sex','sáb'][new Date(iso+'T12:00:00').getDay()]; }
+function _niceStep(x){
+  if(!(x>0)) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(x))), f = x/p;
+  return (f<=1?1: f<=2?2: f<=2.5?2.5: f<=5?5:10) * p;
+}
+const _pl = (n, s, p) => n === 1 ? s : p;
+const _qt = (n, s, p) => `${n} ${_pl(n, s, p)}`;
+function _lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function _lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+
+/* ── filtros e abas ────────────────────────────────────────── */
+function marcarPeriodo(q){ _seg('seg-per', q); }
+function periodo(q){
+  // âncora no último dia com dados, não na data de hoje (os arquivos chegam com atraso)
+  const ate = _ultimos[_cd()] || _hoje();
+  let de;
+  if(q==='mes') de = ate.slice(0,8)+'01';
+  else { const d=new Date(ate+'T12:00:00'); d.setDate(d.getDate()-(q-1)); de=d.toISOString().slice(0,10); }
+  document.getElementById('dt-de').value = de;
+  document.getElementById('dt-ate').value = ate;
+  marcarPeriodo(q);
+  recarregar();
+}
+function trocarCD(){ periodo(15); }
+let _dtTimer = null;
+function mudouData(){
+  marcarPeriodo('');
+  const ok = id => { const v = document.getElementById(id).value; return /^\d{4}-/.test(v) && +v.slice(0,4) >= 2000 && +v.slice(0,4) <= 2100; };
+  clearTimeout(_dtTimer);
+  _dtTimer = setTimeout(()=>{
+    if(ok('dt-de') && ok('dt-ate')) { recarregar(); return; }
+    // período incompleto: não deixa na tela os números do período anterior
+    _carregando++; _dados = null;
+    semDados('Período incompleto', 'Informe as datas inicial e final, entre 2000 e 2100.');
+  }, 600);
+}
+function setTurno(v){ _turno=v; _seg('seg-turno', v); recarregar(); }
+function setFiltroInst(v){ _filtroInst=v; _seg('seg-inst', v); renderInstrucoes(); }
+function setConf(v){ _confCol=v; _seg('seg-conf', v); renderConferentes(); }
+function abrirAba(a){
+  _aba = a; _lsSet('prod_aba', a);
+  document.querySelectorAll('#abas button').forEach(b=>b.classList.toggle('on', b.dataset.a===a));
+  document.querySelectorAll('.aba').forEach(s=>s.classList.toggle('on', s.id==='aba-'+a));
+  if(_dados && _dados.instrucoes && _dados.instrucoes.length) renderGraficos();
+}
+
+async function carregarCDs(){
+  const r = await fetch('/api/produtividade/cds').then(r=>r.json()).catch(()=>({cds:[]}));
+  _ultimos = r.ultimo_dia || {};
+  const sel = document.getElementById('sel-cd');
+  const atual = sel.value;
+  const pref = atual || (r.com_dado||[])[0] || (r.cds||[])[0] || '';
+  sel.innerHTML = (r.cds||[]).map(c=>`<option ${c===pref?'selected':''}>${esc(c)}</option>`).join('');
+}
+
+let _carregando = 0;
+async function recarregar(){
+  const cd = _cd(); if(!cd) return;
+  const q = new URLSearchParams({cd, turno:_turno,
+    de: document.getElementById('dt-de').value, ate: document.getElementById('dt-ate').value});
+  const meu = ++_carregando;
+  let d = null;
+  try{
+    const resp = await fetch('/api/produtividade/dados?'+q);
+    d = await resp.json();
+  }catch(e){ d = null; }
+  if(meu !== _carregando) return;            // resposta de um filtro anterior
+  if(!d || d.error){
+    // não deixa na tela os números do filtro anterior
+    _dados = null;
+    semDados('Não foi possível carregar os dados', esc((d && d.error) || 'Verifique a conexão e tente novamente.'));
+    return;
+  }
+  _dados = d;
+  const doTurno = d.instrucoes.filter(x=>!d.turno || x.turno===d.turno).length;
+  if(!doTurno){
+    if(d.instrucoes.length){
+      semDados('Nenhuma instrução no turno selecionado',
+        'Há instruções no período em outro turno. Selecione “Todos” no filtro de turno para visualizá-las.');
+    } else {
+      semDados('Nenhuma instrução no período selecionado', _admin
+        ? 'Importe o <b>Painel de produtividade</b> (um arquivo por dia) e o <b>Resumo do painel</b>. Os dois podem ser enviados juntos e em qualquer ordem — o sistema identifica cada um pelo cabeçalho e une as informações pela instrução.'
+        : 'Os dados deste período ainda não foram importados. A importação é realizada por gerentes e administradores.');
+    }
+    renderStatus();
+    return;
+  }
+  document.getElementById('vazio').classList.add('hidden');
+  document.querySelector('.body').classList.remove('sem-dados');
+  renderStatus();
+  renderKpis(); renderDias(); renderSeparadores(); renderConferentes(); renderOndas();
+  renderInstrucoes(); renderGraficos(); projetar();
+  carregarApontamento();
+}
+
+function semDados(titulo, html){
+  document.getElementById('vazio-tit').textContent = titulo;
+  document.getElementById('vazio-txt').innerHTML = html;
+  document.getElementById('vazio').classList.remove('hidden');
+  const body = document.querySelector('.body');
+  body.classList.add('sem-dados');
+  body.scrollTop = 0;
+  if(!_dados){
+    document.getElementById('status').innerHTML = '';
+    ['ct-equipe','ct-ondas','ct-inst'].forEach(id=>document.getElementById(id).textContent = '');
+  }
+}
+
+function renderStatus(){
+  const d = _dados, r = d.resumo || {};
+  const p = [];
+  p.push(`<span class="pt ok">Dados até <b>${_dia(d.ultimo_dia)}</b></span>`);
+  p.push(`<span class="pt">${_pl(d.empresas.length,'Empresa','Empresas')}: <b>${esc(d.empresas.join(', '))}</b></span>`);
+  if(r.dias) p.push(`<span class="pt"><b>${r.dias}</b> ${_pl(r.dias,'dia','dias')} com operação · <b>${r.instrucoes}</b> ${_pl(r.instrucoes,'instrução considerada','instruções consideradas')}</span>`);
+  if(r.expurgadas) p.push(`<span class="pt at"><b>${r.expurgadas}</b> ${_pl(r.expurgadas,'instrução desconsiderada','instruções desconsideradas')}</span>`);
+  if(r.teto_aplicado) p.push(`<span class="pt at" title="A separação ficou aberta por mais tempo que a duração do turno (por exemplo, iniciada antes de um feriado e encerrada depois). A janela considerada é a do turno.">
+    <b>${r.teto_aplicado}</b> ${_pl(r.teto_aplicado,'pessoa-dia','pessoas-dia')} com janela limitada ao turno</span>`);
+  if(r.sem_janela) p.push(`<span class="pt at" title="Separação sem horário de início ou de fim: as toneladas são atribuídas ao separador, mas não entram no ritmo nem no aproveitamento.">
+    <b>${r.sem_janela}</b> ${_pl(r.sem_janela,'pessoa-dia','pessoas-dia')} sem horário de separação</span>`);
+  if(r.sep_t_sem_separador > 0.0005) p.push(`<span class="pt at"><b>${_fmt(r.sep_t_sem_separador,1)} t</b> separadas sem separador informado</span>`);
+  if(d.pendentes_painel) p.push(`<span class="pt at" title="Instruções recebidas pelo Resumo do painel, ainda sem o Painel de produtividade do dia. Ficam fora dos indicadores até a importação.">
+    <b>${d.pendentes_painel}</b> ${_pl(d.pendentes_painel,'instrução aguardando','instruções aguardando')} o Painel de produtividade</span>`);
+  document.getElementById('status').innerHTML = p.join('');
+  const turnoOk = x => !d.turno || x.turno===d.turno;
+  document.getElementById('ct-equipe').textContent = (d.por_separador||[]).length || '';
+  document.getElementById('ct-ondas').textContent = (d.ondas||[]).length || '';
+  document.getElementById('ct-inst').textContent = d.instrucoes.filter(turnoOk).length || '';
+}
+
+/* ── KPIs ──────────────────────────────────────────────────── */
+function _spark(vals, cor){
+  const v = vals.map(x=>x==null?null:Number(x));
+  const ok = v.filter(x=>x!=null);
+  if(ok.length < 2) return '';
+  const W=84, H=26, mn=Math.min(...ok), mx=Math.max(...ok), amp=(mx-mn)||1;
+  const pts = v.map((x,i)=> x==null ? null : [ (i/(v.length-1))*(W-4)+2, H-2-((x-mn)/amp)*(H-4) ]).filter(Boolean);
+  const u = pts[pts.length-1];
+  return `<svg class="spark" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" aria-hidden="true">
+    <polyline fill="none" stroke="${cor||'#2f7de1'}" stroke-width="1.6" stroke-linejoin="round" points="${pts.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}"/>
+    <circle cx="${u[0].toFixed(1)}" cy="${u[1].toFixed(1)}" r="2.4" fill="${cor||'#2f7de1'}"/></svg>`;
+}
+// polaridade +1: subir é bom · −1: subir é ruim · 0: neutro. tipo 'pp' = diferença em pontos percentuais.
+function _delta(atual, ant, polaridade, tipo){
+  const a = _dados.anterior;
+  if(!a || !a.instrucoes) return `<span class="fraco">Período anterior sem dados para comparação</span>`;
+  if(atual==null || ant==null) return '';
+  let dif, txt;
+  if(tipo==='pp'){ dif = atual-ant; txt = `${dif>=0?'+':''}${_fmt(dif,1)} p.p.`; }
+  else { if(!ant) return ''; dif = (atual/ant-1)*100; txt = `${dif>=0?'+':''}${_fmt(dif,1)}%`; }
+  const cls = Math.abs(dif) < 0.05 || !polaridade ? 'neu' : (dif*polaridade > 0 ? 'pos' : 'neg');
+  const seta = Math.abs(dif) < 0.05 ? '' : (dif > 0 ? '▲ ' : '▼ ');
+  return `<span class="dl ${cls}">${seta}${txt}</span> <span title="Valor no período anterior: ${_fmt(ant, 2)}${tipo==='pp'?'%':''}">vs. ${_dia(a.de)} a ${_dia(a.ate)}</span>`;
+}
+function kpi(o){
+  return `<div class="cx kp ${o.alerta?'alerta':''} ${o.spark?'com-spark':''}">
+    ${o.spark||''}
+    <div class="rot">${o.rot}${o.info?` <span class="i" title="${esc(o.info)}">i</span>`:''}</div>
+    <div class="val">${o.val}${o.un?`<small>${o.un}</small>`:''}</div>
+    <div class="rod">${o.rod||''}</div>
+  </div>`;
+}
+function renderKpis(){
+  const r = _dados.resumo, a = _dados.anterior || {}, dias = _dados.por_dia;
+  const sp = (k, cor) => _spark(dias.map(x=>x[k]), cor);
+  document.getElementById('kpis-1').innerHTML = [
+    kpi({rot:'Ritmo por separador', val:_fmt(r.t_h,2), un:'t/h', spark:sp('t_h'),
+      info:'Mediana das pessoas-dia: toneladas separadas ÷ horas líquidas de separação',
+      rod:`${_delta(r.t_h, a.t_h, +1)}`}),
+    kpi({rot:'Ritmo em caixas', val:_fmt(r.cx_h,0), un:'cx/h', spark:sp('cx_h','#0f9f94'),
+      info:'Mediana das pessoas-dia: caixas separadas ÷ horas líquidas de separação',
+      rod:`${_delta(r.cx_h, a.cx_h, +1)}`}),
+    kpi({rot:'Aproveitamento do turno', val:_fmt(r.aproveitamento,1), un:'%', spark:sp('aproveitamento','#7c5cd6'),
+      info:'Horas líquidas separando ÷ horas líquidas disponíveis no turno',
+      rod:`${_delta(r.aproveitamento, a.aproveitamento, +1, 'pp')}`}),
+    kpi({rot:'Demanda por separador', val:_fmt(r.demanda_t_pessoa,2), un:'t', spark:sp('demanda_t_pessoa','#475569'),
+      info:'Toneladas separadas no dia ÷ separadores do dia (mediana dos dias)',
+      rod:`${_delta(r.demanda_t_pessoa, a.demanda_t_pessoa, 0)}`}),
+  ].join('');
+  const sepPct = r.emb_t ? Math.max(0, Math.min(100, r.sep_t/r.emb_t*100)) : 0;
+  const conf = r.conferente_pct;
+  const cam = dias.reduce((s,x)=>s+(x.caminhoes||0),0);
+  document.getElementById('kpis-2').innerHTML = [
+    kpi({rot:'Volume separado', val:_fmt(r.sep_t,1), un:'t', spark:sp('sep_t','#0b4f9c'),
+      rod:`${_qt(r.separadores,'separador','separadores')} · ${_fmt(r.sep_t/(r.dias||1),1)} t/dia`}),
+    kpi({rot:'Volume embarcado', val:_fmt(r.emb_t,1), un:'t',
+      rod:`<div style="flex:1"><div class="barra-part">${r.emb_t ? `<i style="width:${sepPct}%;background:var(--brand)"></i><i style="width:${100-sepPct}%;background:var(--red-cor)"></i>` : ''}</div>
+        <div style="margin-top:4px">Redespacho: <b>${_pct(r.red_pct)}</b> (${_fmt(r.red_t,1)} t)</div></div>`}),
+    kpi({rot:'Instruções', val:_fmt(r.instrucoes,0), spark:sp('inst','#475569'),
+      info:`Complexa: ${_dados.parametros.sku_complexa} SKUs ou mais`,
+      rod:`${_qt(cam,'caminhão','caminhões')} · <b>${r.complexas}</b> ${_pl(r.complexas,'complexa','complexas')} (${_pct(r.instrucoes ? r.complexas/r.instrucoes*100 : null,0)})`}),
+    kpi({rot:'Registro de conferente', val:_fmt(conf,1), un:'%', alerta: conf!=null && conf<80,
+      info:'Instruções com conferente registrado no sistema. Referência: 100% das instruções; abaixo de 80% o indicador é sinalizado.',
+      rod: conf!=null && conf<80 ? `<span class="dl neg">Abaixo de 80% — desvio de processo</span>` : `${_delta(conf, a.conferente_pct, +1, 'pp')}`}),
+  ].join('');
+}
+
+/* ── gráficos ──────────────────────────────────────────────── */
+function grafBarras(id, o){
+  const el = document.getElementById(id);
+  if(!el || !el.offsetParent) return;          // aba oculta: desenha quando abrir
+  const n = o.cats.length;
+  if(!n){ el.innerHTML = '<div class="vazio-g">Sem dados no período.</div>'; return; }
+  const W = Math.max(300, el.clientWidth), H = o.altura || 230;
+  const m = {l: 42, r: 12, t: 20, b: 34};
+  const tot = o.cats.map((_, i) => o.empilhado
+    ? o.series.reduce((s, se) => s + (se.vals[i] || 0), 0)
+    : Math.max(...o.series.map(se => se.vals[i] || 0)));
+  let max = Math.max(...tot, (o.ref && o.ref.valor) || 0);
+  if(!(max > 0)) max = 1;
+  const passo = _niceStep(max/4); max = Math.ceil(max*1.08/passo)*passo;
+  const ce = Number.isInteger(passo) ? 0 : Number.isInteger(Math.round(passo*1e6)/1e5) ? 1 : 2;
+  const iw = W-m.l-m.r, ih = H-m.t-m.b, bw = iw/n, gap = Math.min(14, bw*.28);
+  const y = v => m.t + ih - (v/max)*ih;
+  const cadaRot = Math.ceil(46 / bw);
+  let s = `<svg class="graf-svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img">`;
+  for(let v=0; v<=max+1e-9; v+=passo)
+    s += `<line class="grade" x1="${m.l}" x2="${W-m.r}" y1="${y(v)}" y2="${y(v)}"/>
+      <text x="${m.l-8}" y="${y(v)+3.5}" text-anchor="end">${_fmt(v, ce)}</text>`;
+  s += `<line class="eixo" x1="${m.l}" x2="${W-m.r}" y1="${y(0)}" y2="${y(0)}"/>`;
+  o.cats.forEach((c, i) => {
+    const x0 = m.l + i*bw + gap/2, w = bw - gap;
+    const dica = o.dica ? esc(o.dica(i)) : '';
+    if(o.empilhado){
+      let acc = 0;
+      o.series.forEach(se => {
+        const v = se.vals[i] || 0;
+        if(v > 0) s += `<rect x="${x0}" y="${y(acc+v)}" width="${w}" height="${Math.max(0.5, y(acc)-y(acc+v))}" fill="${se.cor}"><title>${dica}</title></rect>`;
+        acc += v;
+      });
+      if(w >= 22) s += `<text class="vl" x="${x0+w/2}" y="${y(acc)-5}" text-anchor="middle">${_fmt(acc, o.casas)}</text>`;
+    } else {
+      const k = o.series.length, ww = w/k;
+      o.series.forEach((se, j) => {
+        const v = se.vals[i]; if(v==null) return;
+        const cor = typeof se.cor === 'function' ? se.cor(i, v) : se.cor;
+        s += `<rect x="${x0+j*ww}" y="${y(v)}" width="${Math.max(1, ww-(k>1?2:0))}" height="${Math.max(0.5, y(0)-y(v))}" rx="1.5" fill="${cor}"><title>${dica}</title></rect>`;
+        if(ww >= 20) s += `<text class="vl" x="${x0+j*ww+ww/2-(k>1?1:0)}" y="${y(v)-5}" text-anchor="middle">${_fmt(v, o.casas)}</text>`;
+      });
+    }
+    if(i % cadaRot === 0){
+      const [l1, l2] = String(c).split('|');
+      s += `<text x="${x0+w/2}" y="${H-m.b+14}" text-anchor="middle">${esc(l1)}</text>`;
+      if(l2) s += `<text x="${x0+w/2}" y="${H-m.b+26}" text-anchor="middle" style="fill:var(--ink-3)">${esc(l2)}</text>`;
+    }
+  });
+  if(o.ref && o.ref.valor != null){
+    s += `<line class="ref" x1="${m.l}" x2="${W-m.r}" y1="${y(o.ref.valor)}" y2="${y(o.ref.valor)}"/>
+      ${o.ref.rotulo ? `<text class="ref-t" x="${W-m.r}" y="${y(o.ref.valor)-5}" text-anchor="end">${esc(o.ref.rotulo)}</text>` : ''}`;
+  }
+  el.innerHTML = s + '</svg>';
+}
+
+function renderGraficos(){
+  const dias = _dados.por_dia;
+  const cats = dias.map(x=>`${_dia(x.dia)}|${_dsem(x.dia)}`);
+  const med = _dados.resumo_equipe ? _dados.resumo_equipe.t_h_mediana : null;
+  grafBarras('g-ritmo', {cats, casas:2,
+    series:[{vals:dias.map(x=>x.t_h), cor:(i,v)=> med!=null && v < med*0.85 ? '#9fc2ef' : '#2f7de1'}],
+    ref: med!=null ? {valor:med, rotulo:''} : null,
+    dica:i=>`${_dia(dias[i].dia)}: ${_fmt(dias[i].t_h,2)} t/h · ${_fmt(dias[i].cx_h,0)} cx/h · ${_qt(dias[i].separadores,'separador','separadores')}`});
+  grafBarras('g-volume', {cats, casas:1, empilhado:true,
+    series:[{vals:dias.map(x=>x.sep_t), cor:'#0b4f9c'}, {vals:dias.map(x=>x.red_t), cor:'#e8891c'}],
+    dica:i=>`${_dia(dias[i].dia)}: ${_fmt(dias[i].sep_t,1)} t separadas + ${_fmt(dias[i].red_t,1)} t de redespacho · ${_qt(dias[i].caminhoes,'caminhão','caminhões')}`});
+  grafBarras('g-equipe', {cats, casas:0, altura:210,
+    series:[{vals:dias.map(x=>x.separadores), cor:'#cbd5e1'}, {vals:dias.map(x=>x.separadores_necessarios), cor:'#0b4f9c'}],
+    dica:i=>{ const x = dias[i], n = x.separadores_necessarios;
+      return `${_dia(x.dia)}: ${_qt(x.separadores,'separador escalado','separadores escalados')} · ${n ?? '—'} ${_pl(n,'necessário','necessários')} para ${_fmt(x.sep_t_creditado,1)} t atribuídas`; }});
+  document.getElementById('leg-med').lastChild.textContent = med!=null ? `mediana ${_fmt(med,2)} t/h` : 'mediana';
+  const esc_ = dias.reduce((s,x)=>s+x.separadores,0), nec = dias.reduce((s,x)=>s+(x.separadores_necessarios||0),0);
+  const re = _dados.resumo_equipe || {};
+  document.getElementById('nota-equipe').innerHTML = nec
+    ? `Ritmo de referência: <b>${_fmt(re.t_h_mediana,2)} t/h</b> (mediana dos dias) × <b>${_fmt(re.horas_liquidas_turno,2)} h</b> líquidas por turno.
+       No período: ${_qt(esc_,'pessoa-dia escalada','pessoas-dia escaladas')} para ${nec} ${_pl(nec,'necessária','necessárias')}
+       (${esc_ >= nec ? `${_pct(esc_ ? (esc_-nec)/esc_*100 : null,0)} de capacidade excedente` : `déficit de ${_qt(nec-esc_,'pessoa-dia','pessoas-dia')}`}).`
+    : '';
+  if(_aba==='ondas') grafOndas();
+}
+
+/* linha do tempo: a janela do eixo acompanha as ondas exibidas (horas
+   relativas à 00h do dia de operação), com margem e marcas a cada 2h */
+function grafOndas(){
+  const el = document.getElementById('g-ondas');
+  if(!el || !el.offsetParent || !_dados) return;
+  const ondas = _dados.ondas;
+  if(!ondas.length){ el.innerHTML = '<div class="vazio-g">Sem horário de liberação no período.</div>'; return; }
+  const rel = (iso, dia) => (new Date(iso.replace(' ','T')+':00') - new Date(dia+'T00:00:00')) / 36e5;
+  const porDia = {};
+  ondas.forEach(o=>{ (porDia[o.dia] = porDia[o.dia] || []).push(o); });
+  const dias = Object.keys(porDia).sort();
+  // janela: do menor início ao maior fim de embarque, sem passar de 36h
+  // (liberação dias antes aparece presa à borda, com a seta ◂)
+  const hs = [], fs = [];
+  ondas.forEach(o=>{ hs.push(rel(o.inicio, o.dia)); fs.push(rel(o.fim_embarque || o.inicio, o.dia)); });
+  const mediana = v => { const a = [...v].sort((x,y)=>x-y); return a[Math.floor(a.length/2)]; };
+  let h0 = Math.floor((Math.min(...hs.filter(h=>h >= mediana(hs) - 12)) - 1) / 2) * 2;
+  let h1 = Math.ceil((Math.max(...fs) + 1) / 2) * 2;
+  if(h1 - h0 > 36) h0 = h1 - 36;         // preserva o fim; liberação antecipada fica presa à esquerda
+  if(h1 - h0 < 8) h1 = h0 + 8;
+  const HORAS = h1 - h0;
+  const W = Math.max(320, el.clientWidth), LAB = 64, R = 12, TOP = 22, LANE = 20, GAPD = 10;
+  const H = TOP + dias.reduce((s,d)=>s + porDia[d].length*LANE + GAPD, 0) + 4;
+  const iw = W - LAB - R;
+  const x = (iso, dia) => { const h = rel(iso, dia) - h0;
+    return {px: LAB + Math.max(0, Math.min(HORAS, h))/HORAS*iw, antes: h < 0, depois: h > HORAS}; };
+  const COR = ['var(--onda1)','var(--onda2)','var(--onda3)','var(--onda4)'];
+  let s = `<svg class="graf-svg gantt" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`;
+  const passoH = HORAS > 24 ? 4 : 2;
+  for(let h=0; h<=HORAS; h+=passoH){
+    const px = LAB + h/HORAS*iw, hr = (((h0+h)%24)+24)%24;
+    s += `<line class="grade" x1="${px}" x2="${px}" y1="${TOP-4}" y2="${H}"/>
+      <text x="${px}" y="12" text-anchor="middle">${String(hr).padStart(2,'0')}h</text>`;
+  }
+  let yy = TOP;
+  dias.forEach(d => {
+    const ws = porDia[d];
+    s += `<line class="eixo" x1="0" x2="${W}" y1="${yy-GAPD/2+2}" y2="${yy-GAPD/2+2}"/>
+      <text class="dia" x="0" y="${yy+13}">${_dia(d)}</text><text x="0" y="${yy+25}" style="fill:var(--ink-3)">${_dsem(d)}</text>`;
+    ws.forEach(o => {
+      const a = x(o.inicio, d), b = x(o.fim_embarque || o.inicio, d);
+      const w = Math.max(6, b.px - a.px), cor = COR[(o.numero-1) % COR.length];
+      const dica = `${o.numero}ª onda · liberação ${_diaHora(o.inicio)}${o.fim!==o.inicio?' a '+_hora(o.fim):''} · `
+        + `${_qt(o.veiculos,'caminhão','caminhões')} · ${_fmt(o.emb_t,1)} t embarcadas · `
+        + `início da separação após ${_min(o.espera_min)}${o.liberacao_antecipada?' (liberação antecipada)':''} · `
+        + `fim do embarque ${_diaHora(o.fim_embarque)}`;
+      s += `<g><title>${esc(dica)}</title>
+        <rect x="${a.px}" y="${yy+2}" width="${w}" height="${LANE-6}" rx="3" fill="${cor}"/>`;
+      if(a.antes) s += `<text x="${a.px+3}" y="${yy+13}" class="rot-b">◂</text>`;
+      if(b.depois) s += `<text x="${a.px+w-10}" y="${yy+13}" class="rot-b">▸</text>`;
+      const longo = `${o.numero}ª · ${_qt(o.veiculos,'caminhão','caminhões')} · ${_fmt(o.emb_t,1)} t`;
+      const curto = `${o.numero}ª · ${_fmt(o.emb_t,1)} t`;
+      const larg = t => t.length*5.6;
+      const ini = a.px + (a.antes ? 14 : 6);
+      if(w > larg(longo) + 20) s += `<text x="${ini}" y="${yy+13}" class="rot-b">${esc(longo)}</text>`;
+      else if(a.px + w + 5 + larg(longo) <= W) s += `<text x="${a.px+w+5}" y="${yy+13}">${esc(longo)}</text>`;
+      else if(a.px - 5 - larg(longo) >= LAB) s += `<text x="${a.px-5}" y="${yy+13}" text-anchor="end">${esc(longo)}</text>`;
+      else if(a.px + w + 5 + larg(curto) <= W) s += `<text x="${a.px+w+5}" y="${yy+13}">${esc(curto)}</text>`;
+      else s += `<text x="${Math.max(LAB, a.px-5)}" y="${yy+13}" text-anchor="${a.px-5 > LAB ? 'end' : 'start'}">${esc(curto)}</text>`;
+      s += `</g>`;
+      yy += LANE;
+    });
+    yy += GAPD;
+  });
+  el.innerHTML = s + '</svg>';
+}
+
+/* ── tabelas ───────────────────────────────────────────────── */
+function renderDias(){
+  const dias = _dados.por_dia, r = _dados.resumo;
+  const soma = k => dias.reduce((s,x)=>s+(x[k]||0),0);
+  const confCls = v => v!=null && v<80 ? 'neg' : '';
+  document.getElementById('tb-dia').innerHTML =
+    `<thead><tr><th>Dia</th><th class="n">Caminhões</th><th class="n">Instruções</th><th class="n">Complexas</th><th class="n">SKU médio</th>
+      <th class="n">Separado (t)</th><th class="n">Redespacho (t)</th><th class="n">Redespacho (%)</th>
+      <th class="n">Separadores</th><th class="n">Necessários</th><th class="n">t/h</th><th class="n">cx/h</th>
+      <th class="n">Aproveitamento</th><th class="n">t/separador</th><th class="n">Docas</th><th class="n">Registro de conferente</th>
+      <th class="n">Última caixa</th><th class="n">Fechamento de status</th></tr></thead><tbody>` +
+    dias.map(x=>`<tr><td><b>${_dia(x.dia)}</b> <span class="fraco">${_dsem(x.dia)}</span></td><td class="n">${x.caminhoes}</td><td class="n">${x.inst}</td>
+      <td class="n">${x.complexas}</td><td class="n">${_fmt(x.sku_medio,1)}</td>
+      <td class="n" ${x.sep_t_sem_separador > 0.0005 ? `title="${_fmt(x.sep_t_sem_separador,1)} t sem separador informado"` : ''}>${_fmt(x.sep_t,1)}${x.sep_t_sem_separador > 0.0005 ? ' <span class="chip at">*</span>' : ''}</td>
+      <td class="n">${_fmt(x.red_t,1)}</td><td class="n">${_pct(x.red_pct,0)}</td><td class="n">${x.separadores}</td>
+      <td class="n">${x.separadores_necessarios ?? '—'}</td>
+      <td class="n"><b>${_fmt(x.t_h,2)}</b></td><td class="n"><b>${_fmt(x.cx_h,0)}</b></td><td class="n">${_pct(x.aproveitamento)}</td>
+      <td class="n">${_fmt(x.demanda_t_pessoa,2)}</td><td class="n">${x.docas||'—'}</td>
+      <td class="n ${confCls(x.conferente_pct)}">${_pct(x.conferente_pct,0)}</td>
+      <td class="n">${_diaHora(x.ultima_caixa, x.dia)}</td>
+      <td class="n">${_diaHora(x.fechamento_status, x.dia)}${x.fechamento_min!=null
+        ? ` <span class="chip at" title="Tempo entre a última caixa bipada e o fechamento de status">+${_min(x.fechamento_min)}</span>` : ''}</td></tr>`).join('') +
+    `</tbody><tfoot><tr><td>Período</td><td class="n">${soma('caminhoes')}</td><td class="n">${soma('inst')}</td><td class="n">${soma('complexas')}</td><td></td>
+      <td class="n">${_fmt(r.sep_t,1)}</td><td class="n">${_fmt(r.red_t,1)}</td><td class="n">${_pct(r.red_pct,0)}</td>
+      <td class="n">${soma('separadores')}</td><td class="n">${soma('separadores_necessarios')||'—'}</td>
+      <td class="n">${_fmt(r.t_h,2)}</td><td class="n">${_fmt(r.cx_h,0)}</td><td class="n">${_pct(r.aproveitamento)}</td>
+      <td class="n">${_fmt(r.demanda_t_pessoa,2)}</td><td></td><td class="n ${confCls(r.conferente_pct)}">${_pct(r.conferente_pct,0)}</td>
+      <td></td><td></td></tr></tfoot>`;
+}
+
+function ordenarSep(col, fixo){
+  let desc;
+  if(fixo){                                   // botões "Por t/h" / "Por cx/h"
+    _baseRk = col;
+    _seg('seg-rk', col);
+    desc = true;
+  } else {
+    desc = _ordemSep.col===col ? !_ordemSep.desc : !(col==='separador' || col.startsWith('pos_'));
+  }
+  _ordemSep = {col, desc};
+  if(_dados) renderSeparadores();
+}
+
+function renderSeparadores(){
+  if(!_dados) return;
+  const lst = [..._dados.por_separador];
+  const {col, desc} = _ordemSep;
+  const base = _baseRk;
+  const med = (()=>{ const v = lst.map(x=>x[base]).filter(v=>v!=null).sort((a,b)=>a-b); if(!v.length) return null;
+    const h = Math.floor(v.length/2); return v.length%2 ? v[h] : (v[h-1]+v[h])/2; })();
+  lst.sort((a,b)=>{
+    const va=a[col], vb=b[col];
+    if(va==null && vb==null) return 0; if(va==null) return 1; if(vb==null) return -1;
+    const c = typeof va==='string' ? va.localeCompare(vb) : va-vb;
+    return desc ? -c : c;
+  });
+  const maxT = Math.max(...lst.map(x=>x.t_h||0), 1e-4), maxC = Math.max(...lst.map(x=>x.cx_h||0), 1e-4);
+  const pos = base==='cx_h' ? 'pos_cx' : 'pos_t';
+  const th = (c, t, n) => `<th class="${n?'n':''} ord ${col===c?'on':''}" onclick="ordenarSep('${c}')">${t}${col===c?(desc?' ↓':' ↑'):''}</th>`;
+  document.getElementById('tb-sep').innerHTML =
+    `<thead><tr>${th(pos,'#',0)}${th('separador','Separador')}${th('t_h','t/h',1)}${th('cx_h','cx/h',1)}
+      <th class="n">vs. mediana</th>${th('aproveitamento','Aproveitamento',1)}${th('dias','Dias',1)}${th('inst','Instruções',1)}
+      ${th('complexas','Complexas',1)}${th('sku_medio','SKU médio',1)}${th('t','Separado (t)',1)}${th('cx','Caixas',1)}</tr></thead><tbody>` +
+    lst.map(x=>{
+      const vs = med && x[base]!=null ? (x[base]/med-1)*100 : null;
+      const rk = x[pos];
+      return `<tr><td><span class="rk ${rk && rk<=3 ? 'top':''}">${rk ?? '—'}</span></td>
+      <td><a href="#" class="lnk" data-nome="${esc(x.separador)}" onclick="abrirPessoa(this.dataset.nome);return false">${esc(x.separador)}</a></td>
+      <td class="n"><div class="hb"><b>${_fmt(x.t_h,2)}</b><span class="tr"><i style="width:${Math.round((x.t_h||0)/maxT*100)}%"></i></span></div></td>
+      <td class="n"><div class="hb"><b>${_fmt(x.cx_h,0)}</b><span class="tr tr-cx"><i style="width:${Math.round((x.cx_h||0)/maxC*100)}%"></i></span></div></td>
+      <td class="n">${vs==null?'—':`<span class="dl ${Math.abs(vs)<2?'neu':vs>0?'pos':'neg'}">${vs>=0?'+':''}${_fmt(vs,0)}%</span>`}</td>
+      <td class="n">${_pct(x.aproveitamento)}</td>
+      <td class="n">${x.dias}</td><td class="n">${x.inst}</td><td class="n">${x.complexas}</td><td class="n">${_fmt(x.sku_medio,1)}</td>
+      <td class="n">${_fmt(x.t,1)}</td><td class="n">${_fmt(x.cx,0)}</td></tr>`;
+    }).join('') + '</tbody>';
+}
+
+function abrirPessoa(nome){
+  const lst = _dados.pessoa_dia.filter(x=>x.separador===nome);
+  document.getElementById('pessoa-tit').textContent = nome;
+  document.getElementById('tb-pessoa').innerHTML =
+    `<thead><tr><th>Dia</th><th class="n">Instruções</th><th class="n">Complexas</th><th class="n">SKU médio</th>
+      <th class="n">Separado (t)</th><th class="n">Caixas</th><th class="n">Janela</th><th class="n">Horas líquidas</th>
+      <th class="n">t/h</th><th class="n">cx/h</th><th class="n">Aproveitamento</th></tr></thead><tbody>` +
+    lst.map(x=>`<tr><td><b>${_dia(x.dia)}</b> <span class="fraco">${_dsem(x.dia)}</span></td><td class="n">${x.inst}</td><td class="n">${x.complexas}</td>
+      <td class="n">${_fmt(x.sku_medio,1)}</td><td class="n">${_fmt(x.t,2)}</td><td class="n">${_fmt(x.cx,0)}</td>
+      <td class="n">${x.teto_aplicado ? `<span class="chip at" title="Janela registrada: ${_horas(x.janela_bruta_h)}">limitada</span>` : ''}${x.sem_janela ? '<span class="chip at" title="Separação sem horário de início ou de fim">sem horário</span>' : _horas(x.janela_h)}</td>
+      <td class="n">${_horas(x.liq_h)}</td><td class="n"><b>${_fmt(x.t_h,2)}</b></td>
+      <td class="n"><b>${_fmt(x.cx_h,0)}</b></td><td class="n">${_pct(x.aproveitamento)}</td></tr>`).join('') + '</tbody>';
+  const notas = [];
+  if(lst.some(x=>x.teto_aplicado)) notas.push('<b>Janela limitada</b>: a separação ficou aberta por mais tempo que a duração do turno (por exemplo, iniciada antes de um feriado e encerrada depois). Nesses dias, a janela considerada é a do turno.');
+  if(lst.some(x=>x.sem_janela)) notas.push('<b>Sem horário</b>: separação registrada sem horário de início ou de fim. As toneladas são atribuídas ao separador, mas não entram no ritmo nem no aproveitamento.');
+  document.getElementById('pessoa-nota').innerHTML = notas.join('<br>');
+  abrirModal('ov-pessoa');
+}
+
+function renderConferentes(){
+  if(!_dados) return;
+  const r = _dados.resumo, NI = '(não informado)';
+  const comConf = Math.round((r.conferente_pct||0)/100*r.instrucoes);
+  document.getElementById('conf-alerta').innerHTML = r.conferente_pct!=null && r.conferente_pct < 80
+    ? `<div class="bnr er mb"><div><b>Registro de conferente em ${_pct(r.conferente_pct)} das instruções</b> (${comConf} de ${r.instrucoes}).
+       As instruções sem registro estão agrupadas em “Não informado”.</div></div>` : '';
+  const col = _confCol;
+  const lst = [..._dados.por_conferente].sort((a,b)=>(a.conferente===NI)-(b.conferente===NI) || b[col]-a[col]);
+  const tot = lst.reduce((s,x)=>s+x[col],0) || 1;
+  document.getElementById('tb-conf').innerHTML =
+    `<thead><tr><th>Conferente</th><th class="n">Dias</th><th class="n">Instruções</th>
+      <th class="n">${col==='sem_red_t'?'Embarcado sem redespacho (t)':'Embarcado (t)'}</th><th class="n">Participação</th><th class="n">t/dia</th></tr></thead><tbody>` +
+    lst.map(x=>`<tr><td class="${x.conferente===NI?'neg':''}">${x.conferente===NI?'Não informado':esc(x.conferente)}</td>
+      <td class="n">${x.dias}</td><td class="n">${x.inst}</td><td class="n"><b>${_fmt(x[col],1)}</b></td>
+      <td class="n">${_pct(x[col]/tot*100)}</td><td class="n">${_fmt(x.dias ? x[col]/x.dias : null,1)}</td></tr>`).join('') + '</tbody>';
+}
+
+function renderOndas(){
+  const lst = _dados.ondas, p = _dados.parametros, sl = (_dados.resumo || {}).sem_liberacao || {};
+  document.getElementById('ondas-sub').textContent =
+    `Da liberação ao fim do embarque · liberações com intervalo de até ${p.onda_intervalo_min} min formam a mesma onda`;
+  const maxN = Math.max(0, ...lst.map(o=>o.numero));
+  document.getElementById('leg-ondas').innerHTML = Array.from({length:Math.min(maxN,4)}, (_,i)=>
+    `<span><i style="background:var(--onda${i+1})"></i>${i+1}ª onda</span>`).join('');
+  const aviso = sl.inst
+    ? `<div class="bnr at mb"><div><b>${_qt(sl.inst,'instrução','instruções')} (${_fmt(sl.sep_t,1)} t separadas)</b> sem horário de liberação e fora das ondas.
+       ${_admin ? 'Importe o Resumo do painel correspondente para completar.' : 'O Resumo do painel correspondente ainda não foi importado.'}</div></div>` : '';
+  const cab = document.getElementById('g-ondas').parentElement;
+  let av = document.getElementById('ondas-aviso');
+  if(!av){ av = document.createElement('div'); av.id = 'ondas-aviso'; cab.insertBefore(av, cab.firstChild); }
+  av.innerHTML = aviso;
+  if(!lst.length){
+    document.getElementById('tb-ondas').innerHTML = '<tbody><tr><td class="fraco">Sem horário de liberação no período.</td></tr></tbody>';
+    return;
+  }
+  let ult = '';
+  document.getElementById('tb-ondas').innerHTML =
+    `<thead><tr><th>Dia</th><th>Onda</th><th>Liberação</th><th class="n">Caminhões</th><th class="n">Instruções</th><th class="n">Complexas</th>
+      <th class="n">Separado (t)</th><th class="n">Redespacho (t)</th><th class="n">Embarcado (t)</th>
+      <th class="n">Início da separação após</th><th class="n">Última caixa</th>
+      <th class="n">Fechamento de status</th></tr></thead><tbody>` +
+    lst.map(o=>{
+      const novo = o.dia!==ult; ult = o.dia;
+      const lib = _diaHora(o.inicio) + (o.fim!==o.inicio ? ` – ${_hora(o.fim)}` : '');
+      const esp = o.liberacao_antecipada
+        ? `<span class="chip exp" title="Liberação anterior ao início do turno; tempo contado a partir do início do turno. Desde a liberação: ${_min(o.espera_liberacao_min)}.">antecipada</span> ${_min(o.espera_min)}`
+        : _min(o.espera_min);
+      return `<tr class="${novo?'agrupa':''}"><td>${novo?`<b>${_dia(o.dia)}</b> <span class="fraco">${_dsem(o.dia)}</span>`:''}</td>
+        <td><span class="chip" style="background:var(--onda${(o.numero-1)%4+1});color:#fff">${o.numero}ª</span></td>
+        <td>${lib}</td><td class="n">${o.veiculos}</td><td class="n">${o.inst}</td><td class="n">${o.complexas}</td>
+        <td class="n">${_fmt(o.sep_t,1)}</td><td class="n">${_fmt(o.red_t,1)}</td><td class="n"><b>${_fmt(o.emb_t,1)}</b></td>
+        <td class="n ${o.espera_min>180?'neg':''}">${esp}</td>
+        <td class="n">${_diaHora(o.ultima_caixa, o.dia)}</td>
+        <td class="n">${_diaHora(o.fechamento_status, o.dia)}</td></tr>`;
+    }).join('') + '</tbody>';
+}
+
+/* ── apontamento do efetivo ────────────────────────────────── */
+// O WMS registra quem separou e quem conferiu, não quem estava na casa — e o
+// apoio não aparece em relatório nenhum. Sem lista de presença (usuário,
+// 23/09/2026), o efetivo do dia é digitado aqui, e é ele que fecha o H-H.
+const APONT_FUNCOES = [['separador','Separação'],['conferente','Conferência'],['auxiliar','Apoio']];
+let _apont = null, _apontDia = '', _apontTurno = '';
+
+async function carregarApontamento(){
+  const cd = _cd(); if(!cd) return;
+  const q = new URLSearchParams({cd, turno:_turno,
+    de: document.getElementById('dt-de').value, ate: document.getElementById('dt-ate').value});
+  try{
+    const r = await fetch('/api/produtividade/apontamento?'+q).then(r=>r.json());
+    _apont = r && !r.error ? r : null;
+  }catch(e){ _apont = null; }
+  renderApontamento();
+}
+
+function _apontDoDia(dia, turno){
+  const m = {};
+  ((_apont && _apont.apontamentos) || []).forEach(a=>{
+    if(a.data===dia && a.turno===turno) m[a.funcao] = a;
+  });
+  return m;
+}
+
+function renderApontamento(){
+  const cx = document.getElementById('cx-apont');
+  if(!cx || !_dados) return;
+  const dias = (_dados.por_dia||[]).map(x=>x.dia);
+  if(!dias.length){ cx.classList.add('hidden'); return; }
+  cx.classList.remove('hidden');
+  if(!dias.includes(_apontDia)) _apontDia = dias[dias.length-1];
+  if(!_apontTurno) _apontTurno = _turno==='todos' ? 'noturno' : _turno;
+  const pode = !!(_apont && _apont.pode_editar);
+  const m = _apontDoDia(_apontDia, _apontTurno);
+  const dia = (_dados.por_dia||[]).find(x=>x.dia===_apontDia) || {};
+  const ap = dia.apontamento;
+
+  document.getElementById('apont-acoes').innerHTML =
+    `<select id="ap-dia" onchange="_apontDia=this.value;renderApontamento()">` +
+      dias.map(d=>`<option value="${d}" ${d===_apontDia?'selected':''}>${_dia(d)} · ${_dsem(d)}</option>`).join('') +
+    `</select>
+     <select id="ap-turno" onchange="_apontTurno=this.value;renderApontamento()" style="margin-left:6px">
+       <option value="noturno" ${_apontTurno==='noturno'?'selected':''}>Noturno</option>
+       <option value="diurno" ${_apontTurno==='diurno'?'selected':''}>Diurno</option>
+     </select>` +
+    (pode ? `<button class="btn-c pri" onclick="salvarApontamento()" id="ap-salvar" style="margin-left:8px">Salvar apontamento</button>` : '');
+
+  const val = (f, campo) => {
+    const a = m[f];
+    const v = a && a[campo] !== null && a[campo] !== undefined ? a[campo] : '';
+    return esc(String(v));
+  };
+  const linhaF = f => {
+    const info = (ap && ap.funcoes && ap.funcoes[f[0]]) || null;   // f = ['chave','Rótulo']
+    return `<tr>
+      <td><b>${f[1]}</b></td>
+      <td class="n"><input class="ap-in" id="ap-${f[0]}-previsto" value="${val(f[0],'previsto')}" ${pode?'':'disabled'} inputmode="numeric" placeholder="—"></td>
+      <td class="n"><input class="ap-in" id="ap-${f[0]}-presente" value="${val(f[0],'presente')}" ${pode?'':'disabled'} inputmode="numeric" placeholder="—"></td>
+      <td class="n"><input class="ap-in lg" id="ap-${f[0]}-entrada" value="${val(f[0],'entrada')}" ${pode?'':'disabled'} placeholder="HH:MM"></td>
+      <td class="n">${info ? _horas(info.jornada_h) : '—'}</td>
+      <td class="n"><b>${info ? _fmt(info.hh_total,1) : '—'}</b></td>
+      <td class="n fraco">${info ? _fmt(info.hh_liquida,1) : '—'}</td></tr>`;
+  };
+  document.getElementById('apont-form').innerHTML =
+    `<div class="tw"><table class="tb">
+      <thead><tr><th>Função</th><th class="n">Previsto</th><th class="n">Presente</th><th class="n">Entrada</th>
+        <th class="n">Jornada</th><th class="n">H-H totais</th><th class="n">H-H líquidas</th></tr></thead>
+      <tbody>${APONT_FUNCOES.map(linhaF).join('')}</tbody>
+      <tfoot><tr><td>Dia</td><td class="n">${ap?_fmt(ap.previsto,0):'—'}</td><td class="n">${ap?_fmt(ap.presente,0):'—'}</td>
+        <td class="n">${ap&&ap.absenteismo_pct!=null?`<span class="${ap.absenteismo_pct>0?'neg':''}">${_pct(ap.absenteismo_pct,0)} de falta</span>`:'—'}</td>
+        <td></td><td class="n"><b>${ap?_fmt(ap.hh_total,1):'—'}</b></td><td class="n">${ap?_fmt(ap.hh_liquida,1):'—'}</td></tr></tfoot>
+    </table></div>` +
+    (pode ? '' : '<div class="nota" style="margin-top:8px">O apontamento é preenchido por gerentes e administradores.</div>');
+
+  renderHh();
+}
+
+function renderHh(){
+  const dias = _dados.por_dia||[];
+  const hh = _dados.horas_homem || {};
+  const comAp = dias.filter(x=>x.apontamento);
+  const el = document.getElementById('tb-hh');
+  if(!comAp.length){
+    el.innerHTML = '<tbody><tr><td class="fraco">Nenhum dia apontado no período. Preencha o efetivo acima para o painel calcular o H-H.</td></tr></tbody>';
+    return;
+  }
+  el.innerHTML =
+    `<thead><tr><th>Dia</th><th class="n">Previsto</th><th class="n">Presente</th><th class="n">Falta</th>
+      <th class="n">H-H totais</th><th class="n">H-H líquidas</th><th class="n">Separado (t)</th>
+      <th class="n">t / H-H total</th><th class="n">t / H-H líquida</th></tr></thead><tbody>` +
+    comAp.map(x=>{
+      const a = x.apontamento;
+      return `<tr><td><b>${_dia(x.dia)}</b> <span class="fraco">${_dsem(x.dia)}</span></td>
+        <td class="n">${_fmt(a.previsto,0)}</td><td class="n">${_fmt(a.presente,0)}</td>
+        <td class="n ${a.absenteismo_pct>0?'neg':''}">${_pct(a.absenteismo_pct,0)}</td>
+        <td class="n"><b>${_fmt(a.hh_total,1)}</b></td><td class="n fraco">${_fmt(a.hh_liquida,1)}</td>
+        <td class="n">${_fmt(x.sep_t,1)}</td>
+        <td class="n"><b>${_fmt(x.t_por_hh,3)}</b></td><td class="n fraco">${_fmt(x.t_por_hh_liquida,3)}</td></tr>`;
+    }).join('') +
+    `</tbody><tfoot><tr><td>Período</td>
+      <td class="n">${_fmt(comAp.reduce((s,x)=>s+(x.apontamento.previsto||0),0),0)}</td>
+      <td class="n">${_fmt(comAp.reduce((s,x)=>s+(x.apontamento.presente||0),0),0)}</td><td></td>
+      <td class="n"><b>${_fmt(hh.hh_total,1)}</b></td><td class="n">${_fmt(hh.hh_liquida,1)}</td>
+      <td class="n">${_fmt(hh.sep_t,1)}</td>
+      <td class="n"><b>${_fmt(hh.t_por_hh,3)}</b></td><td class="n">${_fmt(hh.t_por_hh_liquida,3)}</td></tr></tfoot>`;
+  const falta = hh.dias_sem_apontamento || 0;
+  document.getElementById('nota-hh').innerHTML =
+    `<b>H-H totais</b>: efetivo presente × jornada do turno (quem entrou mais tarde entra com a jornada menor). ` +
+    `<b>H-H líquidas</b>: a mesma conta descontando refeição e pausa térmica — é a base do ritmo do painel, e fica ao lado para comparação. ` +
+    `A tonelada por H-H considera o <b>separado no CD</b>; o redespacho não passa pela equipe.` +
+    (falta ? ` <span class="neg">${_qt(falta,'dia','dias')} do período sem apontamento ${falta>1?'ficam':'fica'} fora dessa conta.</span>` : '');
+}
+
+async function salvarApontamento(){
+  const btn = document.getElementById('ap-salvar');
+  if(btn){ btn.disabled = true; btn.textContent = 'Salvando...'; }
+  const funcoes = {};
+  APONT_FUNCOES.forEach(f=>{
+    funcoes[f[0]] = {
+      previsto: document.getElementById('ap-'+f[0]+'-previsto').value.trim(),
+      presente: document.getElementById('ap-'+f[0]+'-presente').value.trim(),
+      entrada:  document.getElementById('ap-'+f[0]+'-entrada').value.trim(),
+    };
+  });
+  let r = null;
+  try{
+    r = await fetchPost('/api/produtividade/apontamento',
+      {cd:_cd(), data:_apontDia, turno:_apontTurno, funcoes}).then(x=>x.json());
+  }catch(e){ r = null; }
+  if(btn){ btn.disabled = false; btn.textContent = 'Salvar apontamento'; }
+  if(!r || r.error){ toast((r && r.error) || 'Não foi possível salvar o apontamento.', 'err', 5000); return; }
+  toast('Apontamento salvo', 'ok');
+  await recarregar();
+}
+
+/* ── projeção ──────────────────────────────────────────────── */
+let _pjTimer = null;
+function projetarDebounce(){ clearTimeout(_pjTimer); _pjTimer = setTimeout(projetar, 350); }
+async function projetar(){
+  if(!_cd() || !_dados) return;
+  const t = document.getElementById('pj-t').value;
+  const q = new URLSearchParams({cd:_cd(), turno:_turno, toneladas: t || '0',
+    redespacho: document.getElementById('pj-red').value || '',
+    caminhoes: document.getElementById('pj-cam').value || '',
+    de: document.getElementById('dt-de').value, ate: document.getElementById('dt-ate').value});
+  const meu = ++_pjSeq;
+  const r = await fetch('/api/produtividade/projecao?'+q).then(r=>r.json()).catch(()=>null);
+  if(meu !== _pjSeq) return;                 // resposta de uma digitação anterior
+  const res = document.getElementById('pj-res');
+  const mem = document.getElementById('pj-mem');
+  if(!r || r.error){
+    res.innerHTML = `<div class="bnr er"><div>${esc((r&&r.error)||'Não foi possível calcular a projeção.')}</div></div>`;
+    mem.innerHTML = '<li class="nota">—</li>';
+    return;
+  }
+  const b = r.base || {};
+  document.getElementById('pj-sub').textContent =
+    `Referências do período: ritmo de ${_fmt(b.ritmo_base,2)} t/h (base) e ${_fmt(b.ritmo_conservador,2)} t/h (conservador) · `
+    + `${_fmt(b.horas_liquidas_turno,2)} h líquidas por turno · ${_qt(b.dias||0,'dia','dias')} de referência`;
+  document.getElementById('pj-red-aj').textContent = b.red_pct!=null
+    ? `Em branco: ${_pct(b.red_pct)} do embarcado, proporção do período` : 'Em branco: sem redespacho';
+  document.getElementById('pj-cam-aj').textContent = b.carga_caminhao_t
+    ? `Em branco: ${_fmt(b.carga_caminhao_t,1)} t embarcadas por caminhão (mediana)`
+    : 'Em branco: sem carga embarcada no período para estimar; informe o número de caminhões';
+  renderBacktest(r.backtest || []);
+  if(!t || Number(t) <= 0){
+    res.innerHTML = '<div class="vazio-g">Informe as toneladas a separar para calcular.</div>';
+    mem.innerHTML = '<li class="nota">—</li>';
+    return;
+  }
+  if(r.separadores == null || r.separadores.base == null){
+    res.innerHTML = '<div class="bnr at"><div>Histórico insuficiente no período e turno selecionados para projetar.</div></div>';
+    mem.innerHTML = '<li class="nota">—</li>';
+    return;
+  }
+  const d = r.docas, c = r.caminhoes, cf = r.conferentes, pl = r.plano;
+  const capPct = d.ocupacao!=null ? Math.min(100, d.ocupacao) : 0;
+  const cpc = cf.caminhoes_por_conferente;
+  const cpcTxt = cpc==null ? '—' : _fmt(cpc, Number.isInteger(cpc) ? 0 : 1);
+  res.innerHTML = `
+    <div class="pj-res">
+      <div class="pj-card"><div class="rot">Separadores</div>
+        <div class="val">${r.separadores.base}<small>cenário base</small></div>
+        <div class="alt">${r.separadores.conservador} no cenário conservador</div></div>
+      <div class="pj-card"><div class="rot">Caminhões</div>
+        <div class="val">${c.valor ?? '—'}</div>
+        <div class="alt">${c.estimado ? 'Estimado' : 'Informado'} · ${_fmt(r.entrada.emb_t,1)} t a embarcar</div></div>
+      <div class="pj-card"><div class="rot">Docas</div>
+        <div class="val">${d.alocadas ?? '—'}<small>de ${d.disponiveis ?? '—'}</small></div>
+        <div class="cap" title="Ocupação da capacidade de docas no turno"><i class="${d.excedente?'exc':capPct>=80?'lim':''}" style="width:${capPct}%"></i></div>
+        <div class="alt">${d.excedente
+          ? `Necessárias: ${d.necessarias} · capacidade: ${_qt(d.capacidade_caminhoes,'caminhão','caminhões')}`
+          : d.ocupacao!=null ? `${_fmt(d.giros, Number.isInteger(d.giros)?0:1)} ${_pl(d.giros,'caminhão','caminhões')} por doca · ocupação de ${_pct(d.ocupacao,0)}`
+          : 'Capacidade não verificada'}</div></div>
+      <div class="pj-card"><div class="rot">Conferentes</div>
+        <div class="val">${cf.valor ?? '—'}</div>
+        <div class="alt">1 conferente a cada ${cpcTxt} ${_pl(cpc,'caminhão','caminhões')}${cf.limitado ? ' · limitado às docas em operação' : ''}</div></div>
+    </div>
+    ${pl ? `<div class="pj-plano">
+      <div class="rot">Plano dentro da capacidade do turno</div>
+      <div class="pj-plano-g">
+        <div><b>${_fmt(pl.t,1)} t</b><span>a separar</span></div>
+        <div><b>${pl.caminhoes}</b><span>${_pl(pl.caminhoes,'caminhão','caminhões')}</span></div>
+        <div><b>${pl.separadores_base ?? '—'}</b><span>separadores (cenário base)</span></div>
+        <div><b>${pl.separadores_conservador ?? '—'}</b><span>separadores (conservador)</span></div>
+        <div class="exc"><b>${_fmt(pl.t_excedente,1)} t</b><span>excedente em ${_qt(pl.caminhoes_excedentes,'caminhão','caminhões')}</span></div>
+      </div></div>` : ''}
+    ${(r.alertas||[]).map(a=>`<div class="bnr ${a.nivel==='erro'?'er':a.nivel==='info'?'in':'at'}" style="margin-top:12px"><div>${a.texto}</div></div>`).join('')}
+    <div class="nota" style="margin-top:12px">Entrada: ${_fmt(r.entrada.sep_t,1)} t a separar + ${_fmt(r.entrada.red_t,1)} t de redespacho
+      ${r.entrada.red_estimado ? '(proporção do período)' : '(informado)'}.</div>`;
+  mem.innerHTML = (r.memoria||[]).map(m=>`<li>${m}</li>`).join('') || '<li class="nota">—</li>';
+}
+
+function renderBacktest(bt){
+  const el = document.getElementById('tb-bt');
+  if(!bt.length){ el.innerHTML = '<tbody><tr><td class="fraco">Sem dias com separação no período.</td></tr></tbody>'; return; }
+  const c = (proj, real) => proj==null || real==null ? '' : proj > real ? 'neg' : '';
+  el.innerHTML = `<thead><tr><th>Dia</th><th class="n">Separado (t)</th>
+      <th class="n">Separadores<br><span class="fraco">real · proj.</span></th>
+      <th class="n">Caminhões<br><span class="fraco">real · proj.</span></th>
+      <th class="n">Docas<br><span class="fraco">real · proj.</span></th></tr></thead><tbody>` +
+    bt.map(x=>`<tr><td><b>${_dia(x.dia)}</b> <span class="fraco">${_dsem(x.dia)}</span></td>
+      <td class="n" ${x.sep_t_sem_separador > 0.0005 ? `title="${_fmt(x.sep_t_sem_separador,1)} t sem separador informado; os separadores projetados consideram as toneladas atribuídas"` : ''}>${_fmt(x.sep_t,1)}${x.sep_t_sem_separador > 0.0005 ? ' <span class="chip at">*</span>' : ''}</td>
+      <td class="n">${x.sep_real} · <b class="${c(x.sep_base, x.sep_real)}">${x.sep_base ?? '—'}</b></td>
+      <td class="n">${x.cam_real} · <b>${x.cam_proj ?? '—'}</b></td>
+      <td class="n">${x.docas_real || '—'} · <b class="${c(x.docas_proj, x.docas_real)}">${x.docas_proj ?? '—'}</b></td></tr>`).join('') + '</tbody>';
+}
+
+/* ── instruções ────────────────────────────────────────────── */
+function renderInstrucoes(){
+  if(!_dados) return;
+  let lst = _dados.instrucoes;
+  if(_dados.turno) lst = lst.filter(x=>x.turno===_dados.turno);
+  if(_filtroInst==='complexas') lst = lst.filter(x=>x.complexa);
+  else if(_filtroInst==='redespacho') lst = lst.filter(x=>x.red_t>0);
+  else if(_filtroInst==='expurgadas') lst = lst.filter(x=>x.expurgo);
+  const b = document.getElementById('busca-inst').value.trim().toUpperCase();
+  if(b) lst = lst.filter(x=>[x.instrucao,x.placa,x.separador,x.conferente,x.cidade,x.cliente]
+    .some(v=>String(v||'').toUpperCase().includes(b)));
+  const multi = _dados.empresas.length > 1;
+  const cols = 16 + (multi?1:0) + (_admin?1:0);
+  document.getElementById('tb-inst').innerHTML =
+    `<thead><tr><th>Dia</th>${multi?'<th>Empresa</th>':''}<th>Instrução</th><th>Placa</th><th>Cidade</th><th>Separador</th>
+      <th>Conferente</th><th class="n">SKU</th><th class="n">Escalas</th><th class="n">Entregas</th>
+      <th class="n">Separado (t)</th><th class="n">Redespacho (t)</th><th>Liberação</th><th>Separação</th><th>Embarque</th>
+      <th class="c">Doca</th><th>Classificação</th>${_admin?'<th class="c">Desconsiderar</th>':''}</tr></thead><tbody>` +
+    lst.map(x=>{
+      const manual = x.expurgo==='MANUAL';
+      const mc = x.marcacao;
+      const dicaManual = mc ? `Desconsiderada por ${mc.usuario || '—'} em ${_dia(mc.quando)} ${_hora(mc.quando)}${mc.motivo ? ' · Motivo: ' + mc.motivo : ''}` : '';
+      const chips = [
+        x.expurgo ? `<span class="chip exp" ${manual ? `title="${esc(dicaManual)}"` : ''}>${esc(x.expurgo_txt)}${manual && mc && mc.motivo ? ' · ' + esc(mc.motivo) : ''}</span>` : '',
+        x.complexa ? '<span class="chip cpx">Complexa</span>' : '',
+        x.so_redespacho ? '<span class="chip red">Redespacho integral</span>' : '',
+      ].join('');
+      const k = `${x.empresa}|${x.instrucao}`;
+      return `<tr class="${x.expurgo?'fora':''}"><td>${_dia(x.dia)}</td>${multi?`<td>${esc(x.empresa)}</td>`:''}
+        <td><b>${esc(x.instrucao)}</b></td><td>${esc(x.placa)||'—'}</td><td>${esc(x.cidade)||'—'}</td>
+        <td>${esc(x.separador)||'—'}</td><td class="${x.conferente?'':'neg'}">${esc(x.conferente)||'Não informado'}</td>
+        <td class="n">${_fmt(x.sku,0)}</td><td class="n">${_fmt(x.escalas,0)}</td><td class="n">${_fmt(x.entregas,0)}</td>
+        <td class="n">${_fmt(x.sep_t,2)}</td><td class="n">${x.red_t?_fmt(x.red_t,2):'—'}</td>
+        <td>${_hora(x.liberacao)}</td><td>${_hora(x.sep_ini)} – ${_hora(x.sep_fim)}</td><td>${_hora(x.emb_ini)} – ${_hora(x.emb_fim)}</td>
+        <td class="c">${esc(x.doca)||'—'}</td><td class="mant">${chips}</td>
+        ${_admin?`<td class="c mant">${!x.expurgo || manual
+          ? `<input type="checkbox" ${manual?'checked':''} data-k="${esc(k)}" onchange="alternarDesc(this)" title="${manual ? esc(dicaManual) : 'Desconsiderar esta instrução'}">`
+          : '<span class="fraco" title="Desconsiderada pela regra automática">regra</span>'}</td>`:''}</tr>`;
+    }).join('') + (lst.length ? '' : `<tr><td colspan="${cols}" class="fraco">Nenhuma instrução neste filtro.</td></tr>`) + '</tbody>';
+}
+
+function alternarDesc(chk){
+  const [empresa, ...resto] = chk.dataset.k.split('|');
+  const instrucao = resto.join('|');
+  if(chk.checked){
+    _descPend = {empresa, instrucao, chk};
+    document.getElementById('desc-tit').textContent = `Desconsiderar a instrução ${instrucao}`;
+    document.getElementById('desc-motivo').value = '';
+    abrirModal('ov-desc');
+    setTimeout(()=>document.getElementById('desc-motivo').focus(), 50);
+  } else {
+    gravarDesc(empresa, instrucao, false, '', chk);
+  }
+}
+function cancelarDesc(){ if(_descPend) _descPend.chk.checked = false; _descPend = null; fecharModal('ov-desc'); }
+function confirmarDesc(){
+  const p = _descPend; if(!p) return;
+  _descPend = null; fecharModal('ov-desc');
+  gravarDesc(p.empresa, p.instrucao, true, document.getElementById('desc-motivo').value.trim(), p.chk);
+}
+async function gravarDesc(empresa, instrucao, desconsiderar, motivo, chk){
+  chk.disabled = true;
+  const r = await fetchPost('/api/produtividade/desconsiderar', {empresa, instrucao, desconsiderar, motivo})
+    .then(r=>r.json()).catch(()=>null);
+  chk.disabled = false;
+  if(!r || !r.ok){ chk.checked = !desconsiderar; toast((r&&r.error)||'Não foi possível salvar.', 'err'); return; }
+  toast(desconsiderar ? `Instrução ${instrucao} desconsiderada.` : `Instrução ${instrucao} considerada novamente.`);
+  recarregar();
+}
+
+/* ── parâmetros ────────────────────────────────────────────── */
+async function abrirParametros(){
+  const cd = _cd();
+  const r = await fetch('/api/produtividade/parametros?cd='+encodeURIComponent(cd)).then(r=>r.json()).catch(()=>null);
+  if(!r || r.error){ toast((r&&r.error)||'Não foi possível carregar os parâmetros.', 'err'); return; }
+  const p = r.parametros, pd = r.padrao;
+  document.getElementById('param-cd').textContent = cd;
+  const tc = +p.trabalho_continuo_min, pt = +p.pausa_termica_min, frac = tc+pt>0 ? tc/(tc+pt) : 1;
+  // mesma regra do cálculo: refeição descontada de forma contínua acima de 4 h
+  const ref_h = Math.min(p.refeicao_min/60, Math.max(+p.turno_h - 4, 0));
+  const bruto = +p.turno_h - ref_h;
+  document.getElementById('param-corpo').innerHTML = PARAM_GRUPOS.map(([g, itens])=>
+    `<div class="grp-t">${g}</div>` + itens.filter(([k])=>k in p).map(([k, rot, uni])=>
+      `<div class="qtd-linha"><span>${rot}</span>
+        <input type="number" step="any" min="0" id="pm-${k}" value="${p[k]}" ${_admin?'':'disabled'}>
+        <span class="nota qtd-dica">${uni}${String(p[k])!==String(pd[k])?` · padrão: ${pd[k]}`:''}</span></div>`).join('')
+  ).join('') +
+    `<div class="bnr in" style="margin-top:14px"><div>Turno de ${_fmt(+p.turno_h,1)} h${+p.turno_h > 4 ? ` − ${_fmt(ref_h*60,0)} min de refeição` : ' (sem desconto de refeição em turnos de até 4 h)'} = ${_fmt(bruto,2)} h;
+      × ${tc}/(${tc}+${pt}) pela pausa térmica = <b>${_fmt(Math.max(0,bruto)*frac,2)} h líquidas</b> (${_horas(Math.max(0,bruto)*frac)}).
+      A pausa térmica é tempo remunerado (CLT art. 253), porém não produtivo — por isso sai do denominador da produtividade.</div></div>` +
+    (_admin ? '' : '<div class="nota" style="margin-top:10px">Alteração restrita a gerentes e administradores.</div>');
+  abrirModal('ov-param');
+}
+
+async function salvarParametros(){
+  const parametros = {};
+  PARAM_GRUPOS.forEach(([, itens])=>itens.forEach(([k])=>{
+    const el = document.getElementById('pm-'+k); if(el) parametros[k] = el.value;
+  }));
+  const r = await fetchPost('/api/produtividade/parametros', {cd:_cd(), parametros}).then(r=>r.json()).catch(()=>null);
+  if(!r || !r.ok){ toast((r&&r.error)||'Não foi possível salvar.', 'err'); return; }
+  fecharModal('ov-param'); toast('Parâmetros salvos. Indicadores recalculados.');
+  recarregar();
+}
+
+/* ── importação ────────────────────────────────────────────── */
+async function enviarArquivos(){
+  const inp = document.getElementById('f-arq');
+  if(!inp.files.length) return;
+  const fd = new FormData();
+  for(const f of inp.files) fd.append('arquivo', f);
+  toast(`Importando ${_qt(inp.files.length,'arquivo','arquivos')}…`, null, 60000);
+  const r = await fetch('/api/produtividade/upload', {method:'POST', headers:{'X-CSRF-Token':_csrf}, body:fd})
+    .then(r=>r.json()).catch(()=>null);
+  inp.value = '';
+  document.getElementById('toast').style.display = 'none';
+  if(!r){ toast('Não foi possível concluir a importação.', 'err'); return; }
+  if(r.error){ toast(r.error, 'err'); return; }
+  const nome = {painel:'Painel de produtividade', resumo:'Resumo do painel'};
+  let h = '';
+  if(r.arquivos.length) h += `<table class="tb"><thead><tr><th>Arquivo</th><th>Tipo</th><th class="n">Instruções</th><th>Dias</th></tr></thead><tbody>` +
+    r.arquivos.map(a=>`<tr><td>${esc(a.arquivo)}</td><td>${nome[a.tipo]||esc(a.tipo)}</td><td class="n">${a.instrucoes}</td>
+      <td>${a.de ? _dia(a.de) + (a.ate!==a.de ? ' a '+_dia(a.ate) : '') : '—'}</td></tr>`).join('') + '</tbody></table>';
+  if(r.erros.length) h += `<div class="bnr er" style="margin-top:12px"><div><b>${_pl(r.erros.length,'Arquivo não importado','Arquivos não importados')}</b><br>${r.erros.map(esc).join('<br>')}</div></div>`;
+  const pend = [];
+  if(r.sem_resumo) pend.push(`<b>${r.sem_resumo}</b> ${_pl(r.sem_resumo,'instrução aguardando','instruções aguardando')} o Resumo do painel — sem horário de liberação, entregas e cidade.`);
+  if(r.sem_painel) pend.push(`<b>${r.sem_painel}</b> ${_pl(r.sem_painel,'instrução aguardando','instruções aguardando')} o Painel de produtividade — sem separador e peso, fora dos indicadores até a importação.`);
+  if(pend.length) h += `<div class="bnr in" style="margin-top:12px"><div>${pend.join('<br>')}</div></div>`;
+  document.getElementById('envio-corpo').innerHTML = h;
+  abrirModal('ov-envio');
+  await carregarCDs();
+  recarregar();
+}
+
+let _rsz = null;
+window.addEventListener('resize', ()=>{ clearTimeout(_rsz); _rsz = setTimeout(()=>{ if(_dados && _dados.por_dia) renderGraficos(); }, 150); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ if(_descPend) cancelarDesc(); ['ov-param','ov-pessoa','ov-envio'].forEach(id=>fecharModal(id)); } });
+
+async function init(){
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  _csrf = me.csrf_token || '';
+  montarSidebar(me.modulos_permitidos, 'produtividade');
+  montarConfigSidebar(me.perfil, me.is_master);
+  const sb = document.querySelector('.sidebar-title');
+  if(sb) sb.textContent = me.cd_nome_exibicao || 'CDA';
+  _admin = me.perfil==='admin' || me.perfil==='master' || !!me.is_master;
+  document.querySelectorAll('.admin-only').forEach(el=>el.classList.toggle('hidden', !_admin));
+  const a = _lsGet('prod_aba');
+  if(a && document.getElementById('aba-'+a)) abrirAba(a);
+  await carregarCDs();
+  periodo(15);
+}
+init();
+</script>
+</body>
+</html>

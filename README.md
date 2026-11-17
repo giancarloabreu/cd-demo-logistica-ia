@@ -102,7 +102,7 @@ Para gerar só os arquivos de exemplo: `python demo/gerar_dados.py` (saem em `pl
 
 ## Publicar na Vercel
 
-1. Importe o repositório na Vercel (Framework: **Other**). O `vercel.json` já aponta tudo para `api/index.py`.
+1. Importe o repositório na Vercel. Ela detecta o Flask sozinha pelo `api/index.py`, que expõe a variável `app`: não há regra de reescrita, todas as rotas chegam direto na aplicação.
 2. Configure as variáveis de ambiente:
    - `SECRET_KEY`: qualquer texto longo e aleatório. Mantém a sessão válida entre instâncias.
    - `GEMINI_API_KEY`: chave do Google AI Studio (opcional, liga a conversa com IA).

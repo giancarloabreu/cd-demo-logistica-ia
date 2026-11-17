@@ -1,0 +1,762 @@
+/* Retaguarda — "vidro de câmara fria".
+   Vidro (liquid glass) só na moldura: cabeçalho, abas, diálogos, avisos e
+   cartões de informação. Tabela e lista de NF ficam opacas, como papel —
+   quem confere nota lê linha por linha, e fundo translúcido atrás de número
+   cansa a vista e esconde a coluna. Verde só na ação e no que está pronto;
+   âmbar no que pede atenção; vermelho no que é perigo. */
+
+/* ------------------------------------------------------------------ fontes */
+
+/* Embutidas no projeto: o PC do escritório pode não ter internet e o
+   servidor roda sem ela. As duas são variáveis — um arquivo cobre todos os
+   pesos. Subconjunto latin (tem os acentos do português); o que ficar fora
+   dele (setas, ✕, 🔒) cai para a fonte do sistema. Licença SIL OFL. */
+@font-face {
+  font-family: "Onest";
+  src: url("fontes/onest-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+                 U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                 U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fontes/jetbrains-mono-latin.woff2") format("woff2");
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+                 U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+                 U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  --chao: #e9f1f3;
+  --papel: #fff;
+  --tinta: #13232a;
+  --tinta-2: #4e5f66;
+  --tinta-3: #5d6f75;
+  --linha: #cbd7da;
+  --linha-fina: #e3eaec;
+  --linha-tabela: #edf2f3;
+
+  --verde: #14532d;
+  --verde-claro: #dcebe1;
+  --ambar: #8a6100;
+  --ambar-texto: #7a5600;
+  --ambar-claro: #fbefd4;
+  --ambar-borda: #ecd9a6;
+  --vermelho: #b3261e;
+  --vermelho-claro: #fbe4e1;
+  --ardosia: #2f4a64;
+  --ardosia-claro: #e3ebf3;
+
+  /* Vidro: branco translúcido sobre desfoque, borda clara, brilho interno no
+     topo e sombra suave. O reflexo diagonal vai como camada de fundo (e não
+     como ::after por cima) para não lavar o texto nem os campos. */
+  --vidro: rgba(255, 255, 255, .42);
+  --vidro-reflexo: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 42%);
+  --vidro-borda: rgba(255, 255, 255, .75);
+  --vidro-sombra:
+    inset 0 1px 0 rgba(255, 255, 255, .95),
+    inset 0 -1px 0 rgba(255, 255, 255, .3),
+    0 10px 24px -10px rgba(12, 42, 51, .28);
+  --vidro-desfoque: blur(22px) saturate(170%);
+
+  --papel-sombra: 0 10px 30px -18px rgba(12, 42, 51, .45);
+  --mola: cubic-bezier(.34, 1.56, .64, 1);
+
+  --f-texto: "Onest", system-ui, "Segoe UI", Roboto, sans-serif;
+  --f-codigo: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+/* Sem isto, qualquer regra de display (.centro usa grid) vence o display:none
+   que o atributo `hidden` traz do navegador, e a seção some do fluxo mas
+   continua visível. */
+[hidden] { display: none !important; }
+
+html { color-scheme: light; }
+
+/* As manchas de luz ficam presas à janela (fixed): é o que dá ao vidro algo
+   para desfocar enquanto a lista rola por baixo do cabeçalho. */
+body {
+  margin: 0;
+  min-height: 100vh;
+  font: 15px/1.5 var(--f-texto);
+  color: var(--tinta);
+  background-color: var(--chao);
+  background-image:
+    radial-gradient(max(52vw, 480px) max(40vw, 380px) at 0% 0%, rgba(157, 209, 220, .95), rgba(157, 209, 220, 0) 70%),
+    radial-gradient(max(46vw, 420px) max(38vw, 360px) at 100% 30%, rgba(146, 205, 169, .9), rgba(146, 205, 169, 0) 70%),
+    radial-gradient(max(44vw, 420px) max(28vw, 260px) at 50% 105%, rgba(241, 210, 142, .85), rgba(241, 210, 142, 0) 70%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: #cfe5d7; }
+
+/* Foco sempre visível: a retaguarda também é usada só no teclado. */
+:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- vidro */
+
+header,
+.cartao,
+.cartao-info,
+.filtros,
+dialog,
+#aviso {
+  background: var(--vidro-reflexo), var(--vidro);
+  -webkit-backdrop-filter: var(--vidro-desfoque);
+  backdrop-filter: var(--vidro-desfoque);
+  border: 1px solid var(--vidro-borda);
+  box-shadow: var(--vidro-sombra);
+}
+
+/* ------------------------------------------------------------------ layout */
+
+/* Cabeçalho flutuante: descolado das bordas e preso no topo, para a lista
+   passar desfocada por baixo dele. */
+header {
+  position: sticky; top: 12px; z-index: 5;
+  margin: 12px 18px 0; min-height: 58px; border-radius: 20px;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px;
+  padding: 8px 10px 8px 18px;
+}
+header > strong { font-size: 15px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+header nav {
+  display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; min-width: 0;
+  border-radius: 22px; background: rgba(255, 255, 255, .28);
+}
+header .direita {
+  margin-left: auto; display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: #2d4047;
+}
+
+main { max-width: 1180px; margin: 28px auto 72px; padding: 0 24px; }
+
+.centro { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+.cartao { border-radius: 24px; padding: 30px 28px; }
+.estreito { width: min(360px, 100%); }
+
+.barra { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+         margin-bottom: 16px; gap: 12px 16px; }
+.barra > div { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+h1 { font-size: 28px; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; margin: 0 0 24px; }
+h1 span { display: block; font-size: 13px; font-weight: 500; letter-spacing: 0; color: var(--tinta-2); margin-top: 6px; }
+h2 { font-size: 24px; font-weight: 700; line-height: 1.15; letter-spacing: -.01em; margin: 0;
+     display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+h3 { margin: 0 0 6px; font-size: 18px; font-weight: 700; line-height: 1.25; }
+
+/* ---------------------------------------------------------------- controles */
+
+label { display: block; margin-bottom: 14px; font-size: 13px; font-weight: 500; color: var(--tinta-2); }
+input, textarea, select {
+  display: block; width: 100%; margin-top: 6px; padding: 10px 12px;
+  border: 1px solid var(--linha); border-radius: 12px; font: inherit; font-size: 14px;
+  color: var(--tinta); background: var(--papel);
+  transition: border-color .15s, box-shadow .15s;
+}
+/* Anel verde em vez do contorno padrão; o outline transparente garante que o
+   foco continue aparecendo no modo de alto contraste do Windows. */
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid transparent;
+  border-color: var(--verde);
+  box-shadow: 0 0 0 3px rgba(20, 83, 45, .22);
+}
+input:disabled { background: #f1f5f6; color: var(--tinta-3); }
+input[type="checkbox"], input[type="radio"] {
+  display: inline-block; width: 18px; height: 18px; padding: 0; margin: 0;
+  accent-color: var(--verde); cursor: pointer; box-shadow: none;
+}
+input[type="checkbox"]:focus, input[type="radio"]:focus { box-shadow: none; }
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+input[type="file"] { padding: 7px; }
+input[type="file"]::file-selector-button {
+  font: 600 13px/1 var(--f-texto); color: var(--verde); background: var(--verde-claro);
+  border: 0; border-radius: 999px; padding: 8px 14px; margin-right: 10px; cursor: pointer;
+}
+.filtro { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; cursor: pointer; }
+.filtro input { width: auto; margin: 0; }
+
+/* Botões em pílula. O verde fica para a ação principal da tela. */
+button {
+  font: inherit; font-size: 14px; font-weight: 600; line-height: 1.1;
+  border-radius: 999px; border: 1px solid var(--linha); background: var(--papel); color: var(--tinta);
+  padding: 11px 18px; cursor: pointer;
+  transition: background-color .18s, box-shadow .18s, filter .18s, transform .14s var(--mola);
+}
+button:hover { background: #f1f6f7; }
+button:active:not(:disabled) { transform: scale(.97); }
+button.primario {
+  background: var(--verde); border-color: var(--verde); color: #fff;
+  box-shadow: 0 8px 18px -8px rgba(20, 83, 45, .7);
+}
+button.primario:hover { background: var(--verde); filter: brightness(1.18); }
+button.perigo {
+  background: var(--vermelho); border-color: var(--vermelho); color: #fff;
+  box-shadow: 0 8px 18px -8px rgba(179, 38, 30, .6);
+}
+button.perigo:hover { background: var(--vermelho); filter: brightness(1.1); }
+button.texto { border: none; background: none; padding: 7px 10px; color: var(--verde); box-shadow: none; }
+button.texto:hover { background: rgba(20, 83, 45, .08); }
+button.texto.excluir, td.acoes button.excluir { color: var(--vermelho); }
+button.texto.excluir:hover { background: rgba(179, 38, 30, .08); }
+button:disabled, button:disabled:hover { opacity: .45; cursor: default; box-shadow: none; filter: none; }
+
+#form-login button[type="submit"] { width: 100%; padding: 14px 18px; margin-top: 4px; }
+#sair { color: var(--vermelho); }
+#sair:hover { background: rgba(179, 38, 30, .08); }
+
+/* Abas do cabeçalho: pílulas sobre o vidro, a ativa em branco. */
+button.aba {
+  border: 0; background: transparent; color: #2d4047; box-shadow: none;
+  font-size: 13.5px; font-weight: 500; line-height: 1; padding: 9px 13px; white-space: nowrap;
+}
+button.aba:hover { background: rgba(255, 255, 255, .5); }
+button.aba.ativa {
+  background: rgba(255, 255, 255, .85); color: var(--tinta); font-weight: 600;
+  box-shadow: inset 0 1px 0 #fff, 0 4px 12px -6px rgba(12, 42, 51, .4);
+}
+
+/* -------------------------------------------------------------------- lista */
+
+/* Papel: quase opaco. border-collapse separado porque o colapsado ignora o
+   raio da borda. */
+table.lista {
+  width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px;
+  background: rgba(255, 255, 255, .96); border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 18px; overflow: hidden; box-shadow: var(--papel-sombra);
+}
+table.lista th {
+  text-align: left; font-size: 11px; font-weight: 600; line-height: 1.2; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--tinta-3); white-space: nowrap;
+  padding: 14px 16px 10px; border-bottom: 1px solid var(--linha-fina);
+}
+table.lista td { padding: 13px 16px; border-bottom: 1px solid var(--linha-tabela); vertical-align: middle; }
+table.lista tbody tr:last-child td { border-bottom: none; }
+table.lista tbody td { transition: background-color .15s; }
+table.lista tbody tr.clicavel,
+table.lista tbody tr[data-devolucao] { cursor: pointer; }
+table.lista tbody tr.clicavel:hover td,
+table.lista tbody tr[data-devolucao]:hover td { background: #f2f7f6; }
+table.lista td.acoes { white-space: nowrap; text-align: right; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Tabela larga rola dentro do próprio contêiner, nunca a página. O padding
+   com margem negativa dá espaço para a sombra do papel, que o overflow
+   cortaria, sem mudar o espaçamento da tela. */
+.rolagem,
+#conteudo-relatorio,
+#historico-expedicao,
+#lista-estoque,
+#lista-devolucoes,
+#detalhe-devolucao,
+#pendentes,
+#resultado-busca,
+#conteudo-repaletizar,
+#conteudo-retorno,
+#lista-retornos,
+#corpo-depara {
+  overflow-x: auto;
+  padding: 2px 2px 22px; margin: -2px -2px -22px;
+}
+
+/* Pílula de situação: a situação sai da pílula, não da cor da linha. */
+.marca {
+  display: inline-block; vertical-align: middle; white-space: nowrap;
+  font: 600 11px/1 var(--f-texto); letter-spacing: .04em; text-transform: uppercase;
+  padding: 6px 9px; border-radius: 999px; border: 0;
+  background: #eef2f3; color: var(--tinta-2);
+}
+.marca.aberta, .marca.separador { background: #eef2f3; color: var(--tinta-2); }
+.marca.separacao, .marca.supervisor { background: var(--ambar-claro); color: var(--ambar-texto); }
+.marca.concluida, .marca.admin { background: var(--verde-claro); color: var(--verde); }
+.marca.expedida, .marca.consulta { background: var(--ardosia-claro); color: var(--ardosia); }
+.marca.divergente { background: var(--vermelho-claro); color: var(--vermelho); }
+
+.barra-progresso { height: 6px; background: var(--linha-fina); border-radius: 6px; overflow: hidden; width: 150px; }
+.barra-progresso i { display: block; height: 100%; border-radius: 6px; background: var(--verde);
+                     transition: width .6s cubic-bezier(.22, 1, .36, 1); }
+.barra-progresso + small { display: block; margin-top: 6px; font-size: 12px; color: var(--tinta-3); }
+
+/* Códigos (RED-, P-RED-, NF, código de barras) em fonte mono: dígito com
+   largura fixa, e 0/O e 1/l não se confundem na hora de conferir. */
+.mono, code,
+#titulo-instrucao,
+table.lista td:first-child > strong,
+table.itens td > strong,
+.produto .cab b,
+.itens-pallet strong,
+.nivel .quem strong,
+.chip,
+div.pendente .codigo {
+  font-family: var(--f-codigo);
+}
+/* Código não quebra no hífen: "RED-" numa linha e "000004" na outra não se
+   lê de relance. Em tela estreita a tabela rola no contêiner. */
+table.lista td:first-child > strong { font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+div.pendente .codigo, .chip { white-space: nowrap; }
+#titulo-instrucao { font-size: .85em; font-weight: 700; display: inline-flex; align-items: center; gap: 10px; }
+
+/* Relatórios: o código fica solto na célula (sem <strong>) e fora da 1ª
+   coluna, então a regra acima não pega. Separador, instrução/data e NF são
+   curtos: não quebram, e a tabela rola no contêiner se faltar largura. As
+   três tabelas saem do mesmo #conteudo-relatorio sem classe própria, por
+   isso a de separação (9 colunas) e a de exclusões (7) são reconhecidas pela
+   contagem de colunas — a de produtividade (5) tem hora na 3ª, não NF. */
+#conteudo-relatorio tbody td:nth-child(-n+3) { white-space: nowrap; }
+#conteudo-relatorio table:has(th:nth-child(9)) tbody td:nth-child(2),
+#conteudo-relatorio table:has(th:nth-child(7)) tbody td:nth-child(3) {
+  font-family: var(--f-codigo); font-size: 13.5px;
+}
+/* Nome de impressora não é código. */
+#corpo-impressoras td:first-child > strong { font-family: var(--f-texto); font-size: 14px; }
+
+/* --------------------------------------------------------------- instrução */
+
+.resumo { color: var(--tinta-2); margin: 0 0 18px; }
+
+/* Perfil CONSULTA: esconde tudo que grava. A trava real é no servidor
+   (Rotas.autenticar recusa qualquer metodo diferente de GET); isto e so
+   para nao oferecer botao que vai dar erro. */
+body.so-leitura #nova-instrucao,
+body.so-leitura #importar-xml,
+body.so-leitura #excluir-instrucao,
+body.so-leitura #concluir-instrucao,
+body.so-leitura #solta,
+body.so-leitura #novo-usuario,
+body.so-leitura #nova-impressora,
+body.so-leitura [data-testar],
+body.so-leitura [data-vincular],
+body.so-leitura [data-descartar],
+body.so-leitura [data-add-codigo],
+body.so-leitura [data-remover-codigo],
+body.so-leitura [data-editar],
+body.so-leitura [data-senha],
+body.so-leitura [data-editar-imp] { display: none !important; }
+
+.nota-expedir {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; padding: 14px 16px;
+  font-size: 14px; color: var(--tinta); cursor: pointer;
+  background: rgba(255, 255, 255, .96); border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 16px; box-shadow: 0 8px 22px -16px rgba(12, 42, 51, .45);
+  transition: border-color .18s, background-color .18s;
+}
+.nota-expedir:has(input:checked) { border-color: #8fbf9f; background: #f3f8f5; }
+.nota-expedir input { width: auto; margin: 3px 0 0; }
+.nota-expedir .dados { flex: 1; }
+.nota-expedir .dados b { font-size: 16px; }
+.nota-expedir .alerta { color: var(--vermelho); font-size: 13px; font-weight: 600; margin: 4px 0 0; }
+.nota-expedir .marca { margin-left: 6px; }
+
+.previa-pallet { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--tinta-2); }
+
+body.so-leitura #expedir,
+body.so-leitura .nota-expedir input,
+body.so-leitura [data-estornar] { display: none !important; }
+
+.filtros {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+  border-radius: 20px; padding: 14px 16px; margin-bottom: 16px;
+}
+.filtros label { margin: 0; }
+.filtros input, .filtros select { min-width: 150px; }
+
+.abas-relatorio { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; }
+button.aba-rel {
+  border: 1px solid rgba(255, 255, 255, .7); background: rgba(255, 255, 255, .42); color: #2d4047;
+  font-size: 13.5px; font-weight: 500; line-height: 1; padding: 9px 16px; box-shadow: none;
+}
+button.aba-rel:hover { background: rgba(255, 255, 255, .7); }
+button.aba-rel.ativa {
+  background: rgba(255, 255, 255, .92); color: var(--tinta); font-weight: 600; border-color: #fff;
+  box-shadow: inset 0 1px 0 #fff, 0 4px 12px -6px rgba(12, 42, 51, .4);
+}
+#baixar-csv { margin-left: auto; }
+
+tfoot td { font-weight: 700; border-top: 2px solid var(--linha-fina) !important; border-bottom: none !important; }
+td.excluido { color: var(--vermelho); font-weight: 600; }
+td.liquido { font-weight: 700; }
+
+.tabela-transferir input { width: 90px; margin: 0; padding: 7px 10px; }
+.resumo-transferir {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 14px;
+  padding: 12px 16px; background: var(--verde-claro); border-radius: 16px;
+}
+.resumo-transferir strong { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------ juntar / repaletizar */
+
+/* Origem, destino e caixa crescem lado a lado e, em tela estreita, descem um
+   embaixo do outro — nada de largura fixa que corte o código. */
+.par-pallets label { flex: 1 1 200px; }
+.linha-caixa { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
+.linha-caixa label { flex: 1 1 240px; margin: 0; }
+.linha-caixa input { font-size: 16px; }
+.par-pallets input, .linha-caixa input { font-family: var(--f-codigo); }
+.par-pallets input::placeholder, .linha-caixa input::placeholder { font-family: var(--f-texto); }
+
+/* Leitura recusada: o campo fica vermelho por 2 s. Quem bipa olha para a
+   caixa, não para a tela — a cor pega no canto do olho. A que passou pisca
+   verde, mais curto. */
+#caixa-repaletizar.erro-leitura {
+  border-color: var(--vermelho); background: var(--vermelho-claro);
+  box-shadow: 0 0 0 3px rgba(179, 38, 30, .22);
+}
+#caixa-repaletizar.ok-leitura { border-color: var(--verde); background: var(--verde-claro); }
+
+#titulo-par b, .lado-par h3 b { font-family: var(--f-codigo); }
+#aviso-esvaziada { margin: 0 0 14px; }
+.sem-resposta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; margin: 12px 0 0; }
+.sem-resposta button { margin-left: auto; }
+.fila-caixas { margin: 10px 0 0; }
+
+/* Últimos bipes, o mais novo em cima. Com o leitor disparando, o aviso de
+   caixa recusada não pode sumir no bipe seguinte. */
+.bipes { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.bipes:empty { display: none; }
+.bipes li {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px;
+  padding: 6px 12px; border-radius: 10px; background: rgba(255, 255, 255, .7); color: var(--tinta-2);
+  overflow-wrap: anywhere;
+}
+.bipes li b { font-family: var(--f-codigo); font-weight: 600; color: var(--tinta); }
+.bipes li.passou { background: var(--verde-claro); color: var(--verde); }
+.bipes li.recusado { background: var(--vermelho-claro); color: var(--vermelho); font-weight: 600; }
+.bipes li.parado { background: var(--ambar-claro); color: var(--ambar-texto); font-weight: 600; }
+.bipes li.desfeito { background: var(--ardosia-claro); color: var(--ardosia); }
+
+.acoes-par { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+.acoes-par .primario { margin-left: auto; }
+
+/* A linha do produto que acabou de mexer, marcada nos dois pallets. */
+.lado-par tr.mexido td { background: var(--verde-claro); }
+
+.previa ul.cartoes-impressos { color: var(--tinta); }
+.cartoes-impressos .nao-saiu { color: var(--vermelho); font-weight: 600; }
+
+body.so-leitura #bloco-juntar,
+body.so-leitura #form-repaletizar,
+body.so-leitura .tabela-transferir input,
+body.so-leitura .tabela-transferir select,
+body.so-leitura #confirmar-transferencia,
+body.so-leitura #abrir-excluir-sep,
+body.so-leitura #nova-devolucao,
+body.so-leitura #abrir-baixa,
+body.so-leitura #form-retorno,
+body.so-leitura .marcar-retorno,
+body.so-leitura #recusa-total,
+body.so-leitura #abrir-retorno,
+body.so-leitura [data-retorno-completo],
+body.so-leitura [data-cancelar-retorno],
+body.so-leitura [data-tratativa-retorno],
+body.so-leitura [data-desfazer-tratativa],
+body.so-leitura [data-reabrir-pallet],
+body.so-leitura [data-reimprimir] { display: none !important; }
+
+/* ---------------------------------------------------------------- retornos */
+
+/* Título de seção com o filtro ao lado, na mesma linha de base. */
+.barra-secao { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap;
+               gap: 8px 16px; margin: 30px 0 12px; }
+.barra-secao .titulo-secao { margin: 0; }
+
+.marcar-todos { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+                gap: 4px 12px; margin-bottom: 10px; }
+.marcar-todos .dica { margin: 0; }
+
+/* Até três ações por linha. Empilhadas, a tabela cabe sem rolar de lado; em
+   linha, só os botões tomariam um terço da largura. */
+.tabela-retornos td.acoes button { display: block; margin-left: auto; }
+.tabela-retornos td:nth-child(3) { min-width: 160px; }
+
+/* Falta de caixa no retorno é âmbar, não vermelho: pede tratativa, mas já foi
+   justificada no fechamento do pallet. */
+.qtd-falta,
+.itens-pallet .qtd.qtd-falta,
+.pallet-retorno h4 .qtd-falta { color: var(--ambar-texto); font-weight: 600; }
+
+.pallet-retorno h4 { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.pallet-retorno h4 b { font-family: var(--f-codigo); }
+.pallet-retorno h4 .num { font-weight: 500; color: var(--tinta-2); }
+.pallet-retorno h4 button { margin-left: auto; }
+.pallet-retorno .itens-pallet { margin-top: 6px; }
+
+/* Aviso solto dentro de um bloco — o de item sem GTIN, por exemplo. */
+.alerta { color: var(--vermelho); font-size: 13px; font-weight: 600; margin: 10px 0 0; }
+
+.cartoes { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 16px; }
+.cartao-info {
+  position: relative; border-radius: 20px; padding: 20px 22px;
+  flex: 1; min-width: 300px; margin-bottom: 16px;
+}
+.cartoes .cartao-info { margin-bottom: 0; }
+.cartao-info h3 { margin-bottom: 10px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.cartao-info img { display: block; max-width: 100%; height: auto; border-radius: 14px;
+                   background: var(--papel); box-shadow: 0 6px 18px -12px rgba(12, 42, 51, .5); }
+/* overflow-wrap e não word-break: break-all — este quebra no meio de
+   qualquer palavra mesmo quando cabia inteira na linha (a URL do APK saía
+   partida no meio); aquele só quebra onde não há outro jeito. */
+.mono {
+  font-size: 13px; font-weight: 500; line-height: 1.5;
+  background: rgba(255, 255, 255, .75); border: 1px solid var(--linha); border-radius: 12px;
+  padding: 8px 12px; overflow-wrap: anywhere;
+}
+strong.mono { font-weight: 700; padding: 3px 9px; }
+.form-apk { margin-top: 14px; }
+.passos { margin: 12px 0 0; padding-left: 20px; line-height: 1.9; }
+.passos code, code { font-size: .9em; background: rgba(255, 255, 255, .7); padding: 1px 6px; border-radius: 6px; }
+
+/* Selo de fila na aba: âmbar, porque pede atenção mas não é erro. */
+.selo {
+  display: inline-block; margin-left: 7px; background: var(--ambar); color: #fff;
+  border-radius: 999px; padding: 3px 7px; font-size: 11px; font-weight: 700; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* `div.` porque `.pendente` também marca a quantidade que falta no item
+   (td.qtd.pendente) — sem o escopo, a célula virava cartão flex. */
+div.pendente {
+  border: 1px solid var(--ambar-borda); background: #fdf3dc; border-radius: 16px;
+  padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px;
+}
+div.pendente .codigo { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 15px; }
+div.pendente .quantas { background: var(--ambar); color: #fff; border-radius: 999px;
+                        padding: 4px 9px; font-size: 12px; font-weight: 700; line-height: 1; }
+div.pendente .quando { color: var(--tinta-2); font-size: 13px; }
+div.pendente .acoes { margin-left: auto; display: flex; gap: 8px; }
+
+.produto {
+  background: rgba(255, 255, 255, .96); border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 16px; padding: 12px 16px; margin-bottom: 8px;
+  box-shadow: 0 8px 22px -16px rgba(12, 42, 51, .45);
+}
+.produto .cab { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+.produto .cab b { font-size: 15px; }
+.produto .cab .un { margin-left: auto; color: var(--tinta-2); font-size: 13px; }
+.produto .barras { margin-top: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.chip {
+  border: 1px solid var(--linha); border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500;
+  font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; background: var(--papel);
+}
+.chip.confirmado { border-color: #8fbf9f; color: var(--verde); background: var(--verde-claro); }
+.chip.inativo { opacity: .5; text-decoration: line-through; }
+.chip button, .chip button:hover {
+  border: none; background: none; padding: 0 2px; color: var(--vermelho); cursor: pointer;
+  box-shadow: none; font-size: 12px;
+}
+
+.resultado-vinculo { max-height: 260px; overflow-y: auto; margin-top: 8px; border-radius: 14px; }
+.resultado-vinculo:has(.opcao) { background: var(--papel); border: 1px solid var(--linha-fina); }
+.resultado-vinculo .opcao { padding: 10px 14px; border-bottom: 1px solid var(--linha-tabela); cursor: pointer;
+                            transition: background-color .15s; }
+.resultado-vinculo .opcao:last-child { border-bottom: none; }
+.resultado-vinculo .opcao:hover { background: #f0f6f2; }
+
+.busca { display: flex; gap: 10px; margin-bottom: 18px; }
+.busca input { margin: 0; flex: 1; }
+.busca button { flex: none; }
+/* Dentro da .barra o form só teria a largura do conteúdo (~185 px) e o
+   placeholder saía cortado; aqui ele cresce até um limite legível. */
+#form-produtos { flex: 1 1 360px; max-width: 560px; margin-bottom: 0; }
+.titulo-secao {
+  margin: 30px 0 12px; font-size: 12px; font-weight: 600; line-height: 1.2;
+  text-transform: uppercase; letter-spacing: .12em; color: var(--tinta-2);
+}
+
+.niveis { display: flex; flex-direction: column; gap: 6px; max-width: 560px; }
+.nivel { display: flex; align-items: center; gap: 12px; border: 1px solid var(--linha);
+         border-radius: 12px; padding: 10px 14px; }
+.nivel.livre { background: var(--papel); }
+.nivel.ocupado { background: var(--ardosia-claro); border-color: #c3d3e2; }
+.nivel b { width: 70px; }
+.nivel .quem { font-variant-numeric: tabular-nums; }
+.nivel .vazio-nivel { color: var(--tinta-2); }
+
+.sem-endereco { color: var(--vermelho); font-weight: 600; }
+
+.faixa-alerta { background: var(--ambar-claro); border: 1px solid var(--ambar-borda); color: var(--ambar-texto);
+                padding: 12px 16px; border-radius: 16px; margin-bottom: 18px; font-size: 14px; }
+
+.inativo td { opacity: .55; }
+
+.solta {
+  border: 2px dashed rgba(78, 95, 102, .35); border-radius: 18px; padding: 24px;
+  text-align: center; color: var(--tinta-2); margin-bottom: 18px; cursor: pointer;
+  background: rgba(255, 255, 255, .3);
+  transition: border-color .2s, background-color .2s, color .2s, transform .3s var(--mola);
+}
+.solta:hover { background: rgba(255, 255, 255, .5); }
+.solta.sobre { border-color: var(--verde); background: rgba(220, 235, 225, .85); color: var(--verde);
+               transform: scale(1.01); }
+
+/* `div.` porque a pílula `.marca.divergente` usa o mesmo nome. */
+div.divergente { border-left: 4px solid var(--ambar); background: #fdf3dc;
+                 border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; font-size: 14px; }
+div.divergente strong { display: block; }
+div.divergente em { color: var(--ambar-texto); }
+
+.nota {
+  background: rgba(255, 255, 255, .96); border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 18px; margin-bottom: 14px; overflow-x: auto; box-shadow: var(--papel-sombra);
+}
+.nota > summary { padding: 14px 18px; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap;
+                  gap: 8px 14px; font-weight: 600; transition: background-color .15s; }
+.nota > summary:hover { background: #f5f9f9; }
+.nota > summary:focus-visible { outline-offset: -3px; border-radius: 18px; }
+.nota > summary::marker { color: var(--tinta-3); }
+.nota .cliente { font-weight: 400; color: var(--tinta-2); }
+.nota .contagem { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+table.itens { width: 100%; border-collapse: collapse; border-top: 1px solid var(--linha-fina); font-size: 14px; }
+table.itens th { text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+                 color: var(--tinta-3); padding: 10px 18px 8px; }
+table.itens td { padding: 11px 18px; border-top: 1px solid var(--linha-tabela); vertical-align: middle; }
+table.itens tr.fechado td { background: #f3f8f5; }
+table.itens .cadeado { font-size: 18px; width: 34px; }
+table.itens td > strong { font-size: 13.5px; }
+/* Coluna Produto (código + descrição). Sem piso, em tela estreita as ações
+   (nowrap) tomam a largura e a descrição vira uma tira de 4-6 linhas; com
+   ele, a tabela passa a rolar dentro da .nota. */
+table.itens td:nth-child(2) { min-width: 220px; }
+table.itens .qtd { font-variant-numeric: tabular-nums; font-weight: 600; width: 90px; }
+table.itens .qtd.ok { color: var(--verde); }
+table.itens .qtd.pendente { color: var(--vermelho); }
+table.itens .acoes { text-align: right; white-space: nowrap; }
+.justificativa { color: var(--ambar-texto); font-size: 13px; font-style: italic; }
+.separando { color: var(--verde); font-size: 12px; font-weight: 500; }
+
+/* -------------------------------------------------------------------- modal */
+
+/* Diálogo é vidro, mas mais denso que a moldura: tem formulário e texto
+   corrido, e fica por cima do fundo escurecido — a .42 viraria cinza. */
+dialog {
+  border-radius: 24px; padding: 26px; max-width: 720px; width: 92%; color: var(--tinta);
+  background: var(--vidro-reflexo), rgba(255, 255, 255, .74);
+  box-shadow: var(--vidro-sombra), 0 30px 60px -20px rgba(12, 42, 51, .45);
+}
+/* Diálogo com tabela dentro (desembarque): cabe mais coluna e rola sozinho. */
+dialog.largo { max-width: 920px; }
+dialog.largo table.lista { display: block; max-height: 48vh; overflow: auto; }
+
+dialog[open] { animation: surgir .38s var(--mola); }
+dialog::backdrop {
+  background: rgba(19, 35, 42, .26);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+dialog h3 { font-size: 20px; margin-bottom: 8px; }
+dialog footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.dica { color: var(--tinta-2); font-size: 13px; margin: 0 0 14px; }
+
+.previa {
+  background: var(--papel); border: 1px solid var(--linha-fina); border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 10px;
+}
+.previa.ok { border-left: 4px solid var(--verde); }
+.previa.aviso { border-left: 4px solid var(--ambar); }
+.previa.rejeitado { border-left: 4px solid var(--vermelho); background: var(--vermelho-claro); }
+.previa h4 { margin: 0 0 4px; font-size: 15px; }
+.previa ul { margin: 8px 0 0; padding-left: 18px; color: var(--ambar-texto); font-size: 13px; }
+
+/* ------------------------------------------------------------------ avisos */
+
+.erro { color: var(--vermelho); font-size: 13px; margin: 10px 0 0; }
+
+/* Caixas conferidas da devolução: marcar, pôr no pallet, excluir. */
+details.caixas-devolucao { margin-top: 16px; }
+details.caixas-devolucao summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.barra-caixas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; }
+.barra-caixas input { width: 11em; max-width: 100%; }
+.sem-pallet { color: var(--vermelho); }
+label.motivo-nf { display: block; margin: 12px 0; }
+label.motivo-nf select { display: block; width: 100%; max-width: 40em; }
+p.motivo-nf { margin: 6px 0 12px; }
+select.motivo-item { width: 14em; max-width: 100%; }
+.conteudo-devolucao td.acoes button + button { margin-left: 12px; }
+.vazio { color: var(--tinta-2); text-align: center; padding: 40px; }
+p.vazio { margin: 0; border: 1px dashed rgba(78, 95, 102, .3); border-radius: 18px; background: rgba(255, 255, 255, .3); }
+
+.linha-pallet { cursor: pointer; }
+table.lista tbody tr.linha-pallet:hover td { background: #eef6f1; }
+.conteudo-pallet td { background: #f4f8f9; }
+.itens-pallet { display: grid; gap: 4px; padding: 4px 0; font-size: 13px; }
+.itens-pallet .qtd { color: var(--tinta-2); font-variant-numeric: tabular-nums; }
+
+/* Aviso flutuante em vidro, com o sinal na frente: verde quando deu certo,
+   vermelho quando não. Entra com mola toda vez que reaparece. */
+#aviso {
+  position: fixed; right: 24px; bottom: 24px; z-index: 20;
+  display: flex; align-items: center; gap: 10px;
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 12px 18px 12px 14px; border-radius: 26px;
+  font-size: 13.5px; line-height: 1.35; color: var(--tinta);
+  box-shadow: var(--vidro-sombra), 0 18px 40px -18px rgba(12, 42, 51, .45);
+  animation: aviso-entra .45s var(--mola);
+}
+#aviso::before {
+  content: ""; flex: none; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--verde) center / 12px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+}
+#aviso.ruim { color: #7c1a14; border-color: rgba(179, 38, 30, .3); }
+#aviso.ruim::before {
+  background-color: var(--vermelho);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.2' stroke-linecap='round'%3E%3Cpath d='M12 5.5v8'/%3E%3Cpath d='M12 18.5v.01'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------- movimento */
+
+/* A seção que acabou de aparecer sobe de leve. Só dispara quando ela sai do
+   hidden — o redesenho de 5 em 5 segundos troca só o miolo e não repete. */
+main > section:not([hidden]) { animation: entrar .32s cubic-bezier(.22, 1, .36, 1); }
+.cartao { animation: surgir .5s var(--mola); }
+
+@keyframes entrar { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes surgir { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes aviso-entra { from { opacity: 0; transform: translateY(16px) scale(.94); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ------------------------------------------------------------ telas menores */
+
+/* O ADMIN vê dez abas; abaixo disto elas não cabem na mesma linha da marca e
+   do usuário. Em vez de deixar o "Sair" cair sozinho, a barra de abas desce
+   inteira para a segunda linha. */
+@media (max-width: 1480px) {
+  header nav { order: 3; flex-basis: 100%; justify-content: flex-start; }
+}
+
+@media (max-width: 900px) {
+  header { margin: 8px 8px 0; top: 8px; padding: 8px 10px 8px 14px; }
+  /* Com as dez abas do ADMIN quebrando em várias linhas, o cabeçalho sticky
+     chegava a ~230 px e cobria a lista na rolagem. Aqui as abas ficam numa
+     linha só que rola de lado, e o cabeçalho volta a ~110 px. */
+  header nav {
+    flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain;
+    scrollbar-width: thin; scrollbar-color: rgba(45, 64, 71, .3) transparent;
+  }
+  header nav::-webkit-scrollbar { height: 4px; }
+  header nav::-webkit-scrollbar-thumb { background: rgba(45, 64, 71, .3); border-radius: 4px; }
+  header nav .aba { flex: none; }
+  main { padding: 0 14px; margin-top: 20px; }
+  .cartao-info { min-width: 0; flex-basis: 100%; }
+  .filtros input, .filtros select { min-width: 0; }
+  .filtros label { flex: 1 1 140px; }
+}
+
+@media (max-width: 560px) {
+  h2 { font-size: 20px; }
+  .busca { flex-wrap: wrap; }
+  dialog { padding: 18px; border-radius: 20px; }
+  #aviso { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+  #baixar-csv { margin-left: 0; }
+}

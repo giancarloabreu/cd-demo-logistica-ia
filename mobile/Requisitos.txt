@@ -1,0 +1,83 @@
+Precisamos construir um App que funcione nos coletores de dados Zebra TC8300 (Android de 8.0 a 14 e superiores)
+
+O problema: o CD de origem envia produtos para o CD Demo, porem não há separação das caixas e nem código de barras único para cada caixa, são códigos fixo.
+
+A separação acontece de forma manual e tem gerado muitos erros, falta, sobra e inversão de caixas.
+
+As caixas possuem etiquetas com código de barras fixo.
+
+A infraestrutura: temos os coletores Zebra TC8300 que opera android a partir do 8.0
+coletores conectados via wifi
+Um servidor em rede, com uma unidade de rede chamada logística que possui varias pastas, vou criar um pasta com nome AppSeparaRedespacho onde vamos colocar os arquivos necessários
+impressoras Zebra ZT231 com IP Fixo
+
+A solução: 
+
+Criar um App para o coletor que opere da seguinte forma:
+
+Uma aplicação que rode no Windows e permita montar e editar instruções de separação.
+
+precisamos colocar coisas básicas nas instruções como data de criação, criar, adicionar e excluir notas da instrução, além de permitir excluir toda a instrução... deve permitir concluir a instrução, se nenhuma nota tiver dado divergência ele concluir sem problemas, se houver divergência ele informa que existe divergência e mostra quais notas e pergunta se deseja prosseguir, se sim ele pede a justificativa e segue com a conclusão da instrução)
+
+a partir dessa aplicação eu vou carregar os XMLs, e ele monta essa instrução com as informações (cliente, endereço do cliente, itens, quantidade de itens quantidade de caixas e etc)
+
+O sistema não deve permitir excluir uma NF ou a instrução se tiver caixas separadas
+
+o sistema deve ter uma tela para excluir separação de uma determinada instrução
+
+o sistema deve ter uma tela de cadastro do produto (código numérico, descrição e código de barras)
+
+o sistema deve ter uma tela de cadastro de usuários que permitirá logar no mobile, esse usuário será vinculado a separação ... nessa mesma tela cadastro do IP da impressora térmica (que os coletores vão utilizar para impressão de etiqueta pallet (etiqueta de separação), e etiqueta cartão pallet contendo numero do pallet, numero da instrução (nome RED-00001), numero da NF, quantidade de caixas, quais códigos e nomes possuem naquele pallet e a quantidade de cada um, data da separação e usuário de separação) ... permissão para iniciar a separação de um item sem finalizar o anterior (ele pode iniciar qualquer item, mas so pode iniciar outro quando o que ele iniciou anteriormente estiver finalizado, se essa opção estiver inativa ele pode iniciar separação de qualquer item sem necessariamente finalizar o que já tinha começado)
+
+o sistema deve ter uma tela onde eu consigo gerar um relatório de separação, quem separou, data e hora, quantidade separada.
+
+As instruções de redespacho serão identificadas pelo nome RED-00001 (sequencial não reaproveitável)
+instruções contem os itens que serão separados
+
+Ao acessar a instrução deve existir as notas fiscais com os itens e quantidades que devem ser separados (informativo)
+
+o sistema deverá ter uma tela de acompanhamento de separação, ao clicar na instrução ele abre uma tela estilo pop up com as notas fiscais e mostra a quantidade prevista, quantidade realizada e se está em separação ou concluída;
+
+cadastro de boxes: tela onde vamos cadastrar as camaras, os boxes e os níveis (mesmo anexo Boxes CDA)
+
+deve conter uma tela com "baixar NF expedida", que mostra todas as notas do sistema, pemite selecionar as notas e confirma expedição, retira do estoque e apaga do endereçamento.
+
+o app do Windows não pode exigir permissões de administrador para instalação
+
+no mobile
+
+tela de login
+ver um menu com opções:
+
+- ver instruções em aberto
+- tela criar pallet
+- endereçamento de pallets
+- sair no canto inferior
+
+
+o usuário informa a quantidade de pallets que quer criar (1, 5, 10) e clica em imprimir, que vai para a impressora zebra com o IP cadastrado no sistema (formato da etiqueta 50mm de altura e 80mm de largura, formato P-RED-000001 com code128 (etiqueta de separação), a etiqueta deve imprimir o código de barras e o nome do pallet e na parte inferior escrito Pallet Separação)
+
+ao acessar a instrução, ver as notas de separação
+ao acessar a nota ver os itens + cadeado (aberto ou fechado)
+ao acessar os itens ver a quantidade de caixas pedida (com base nos XMLs)
+antes de iniciar a separação o separador deve criar o pallet de separação (sequencial)
+para selecionar o pallet de separação (leitura via scanner)
+
+A separação so inicia se houver um pallet de separação selecionado (o sistema deve informar que nãoh há pallet de separação selecionado se o separador ler o código de barras de uma caixa sem selecionar um pallet de separação)
+
+o sistema não deve permitir misturar notas diferentes nos pallets, ou seja, o separador da NF X não pode usar o mesmo pallet da NF Y.
+
+Ao iniciar a separação, realizando a leitura pelo scanner, o sistema deve detectar o código de barras lido e acrescentar uma unidade a cada leitura se o código de barras cadastrado coincidir com o código solicitado, se não coincidir, ele deve abrir uma caixa de dialogo com um som e informar que o item lido não é o mesmo do item solicitado para separação)
+
+deverá existir um cadeado aberto na parte superior da tela que indica que o item ainda está em aberto, se o separador clicar em fechar o cadeado sem coletar a quantidade correta, o sistema deve informar que o item não foi totalmente coletado e impedir o fechamento do item, somente será permitido fechar se a quantidade coletada atender a quantidade pedida)
+
+uma NF é concluída quando todos os cadeados forem fechados
+
+na tela de separação no mobile o separador de ter um menu (acessado pelos 3 pontinhos no canto superior da tela), com as opções de:
+
+encerrar pallet: encerra o pallet e imprime a etiqueta cartão pallet (formato 220mm de altura e 80mm de largura)
+Trocar pallet de separação: encerra o pallet atual e habilita selecionar um novo pallet
+excluir separação: abre uma nova tela e pede para selecionar o pallet de separação, seleciona o pallet daquela NF e depois seleciona o item que quer excluir e informa a quantidade.
+
+endereçamento de pallets: realiza a leitura do pallet, realiza a leitura da etiqueta do box e mostra a quantidade de níveis, colorido de azul se já estiver endereçado e de branco se estiver disponível, clica no endereço e o sistema habilita um botão inferior "endereçar", ao clicar ele realiza o endereçamento.
+

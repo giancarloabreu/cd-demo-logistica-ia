@@ -246,6 +246,84 @@ def follow_up(alvo: _dt.date | None = None, semente: int = 11) -> bytes:
     return buf.getvalue()
 
 
+# ── painel do WMS da noite (acompanhamento da expedição) ──────────────
+SEPARADORES = ["ANDRE MOURA", "BRUNO TAVARES", "CARLA DIAS", "DIEGO PRADO", "EDUARDO LIMA",
+               "FABIO REIS", "GUSTAVO NERY", "HELENA COSTA", "IGOR SALES", "JULIO MATOS"]
+CONFERENTES = ["KAREN LOPES", "LEANDRO VAZ", "MARCIA FREITAS", "NELSON ROCHA"]
+
+PAINEL_COLUNAS = [
+    ("Empresa", "Nome"), ("Data Operação", "Atual"),
+    ("Separador", "Código"), ("Separador", "Nome"),
+    ("Escala", "Instrução"), ("Escala", "Terceiro"), ("Escala", "Escalas"), ("Escala", "SKU"),
+    ("Escala", "Prioridade"), ("Escala", "Tipo de Operação"), ("Escala", "Tipo de Carga"),
+    ("Escala", "Calcula Produtividade"),
+    ("Veículo", "Placa"), ("Veículo", "Tipo de Frete"), ("Veículo", "Temperatura"),
+    ("Previsto", "Peso Líquido"), ("Separado", "Peso Líquido"), ("Separado", "Volume"),
+    ("Embarcado", "Peso Líquido"), ("Embarcado", "Volume"), ("Embarcado", "Última Caixa"),
+    ("Doca", "Doca"), ("Conferente", "Código"), ("Conferente", "Nome"),
+    ("Separação", "Início"), ("Separação", "Fim"), ("Embarque", "Início"), ("Embarque", "Fim"),
+    ("Data", "Fechamento Status"), ("Status", "Operação"), ("Status", "Veículo"),
+]
+
+
+def painel_noite(data_op: _dt.date | None = None, semente: int = 23) -> bytes:
+    """Painel de produtividade do WMS de uma noite já encerrada (Excel com
+    cabeçalho em dois níveis: grupo > detalhe). A noite rotulada `data_op`
+    começa às 18h do dia anterior e termina de madrugada."""
+    import openpyxl
+    from openpyxl.styles import Font
+
+    data_op = data_op or _dt.date.today()
+    rnd = random.Random(semente + data_op.toordinal())
+    inicio_noite = _dt.datetime.combine(data_op - _dt.timedelta(days=1), _dt.time(18, 30))
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Painel"
+    ws.append(["Painel de Produtividade de Separação"])
+    grupos, detalhes, ultimo = [], [], None
+    for g, d in PAINEL_COLUNAS:
+        grupos.append(g if g != ultimo else "")
+        detalhes.append(d)
+        ultimo = g
+    ws.append(grupos)
+    ws.append(detalhes)
+    for c in ws[2] + ws[3]:
+        c.font = Font(bold=True)
+
+    livre = {s: inicio_noite + _dt.timedelta(minutes=rnd.randint(0, 40)) for s in SEPARADORES}
+    instr = 81200 + rnd.randint(0, 500)
+    for i in range(46):
+        instr += rnd.randint(1, 4)
+        temp = rnd.choice(["RESFRIADO", "CONGELADO"])
+        prev = round(rnd.uniform(1500, 9000), 3)
+        sep_kg = round(prev * rnd.uniform(0.96, 1.0), 3)
+        vol = int(sep_kg / rnd.uniform(14, 22))
+        sep = min(livre, key=livre.get)
+        ini = livre[sep] + _dt.timedelta(minutes=rnd.randint(2, 12))
+        # ritmo do separador: alguns mais rápidos, alguns mais lentos
+        ritmo = 2600 + 350 * (SEPARADORES.index(sep) % 4) + rnd.randint(-200, 200)   # kg/h
+        fim = ini + _dt.timedelta(minutes=int(sep_kg / ritmo * 60))
+        livre[sep] = fim
+        emb_ini = fim + _dt.timedelta(minutes=rnd.randint(5, 35))
+        emb_fim = emb_ini + _dt.timedelta(minutes=rnd.randint(18, 50))
+        ult = emb_fim - _dt.timedelta(minutes=rnd.randint(0, 6))
+        fech = emb_fim + _dt.timedelta(minutes=rnd.randint(5, 90))
+        conf = rnd.choice(CONFERENTES)
+        placa = "DEM" + str(rnd.randint(0, 9)) + rnd.choice("ABCDEFGHIJ") + f"{rnd.randint(0, 99):02d}"
+        ws.append([
+            EMPRESA, data_op, 1000 + SEPARADORES.index(sep), sep,
+            instr, rnd.choice(CLIENTES), rnd.randint(1, 6), rnd.randint(3, 28),
+            rnd.randint(1, 3), "VENDA", "PALETIZADA", "S",
+            placa, rnd.choice(["CIF", "FOB"]), temp,
+            prev, sep_kg, vol, sep_kg, vol, ult,
+            f"D{rnd.randint(1, 8):02d}", 2000 + CONFERENTES.index(conf), conf,
+            ini, fim, emb_ini, emb_fim, fech, "Faturado", "Em Viagem",
+        ])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def gravar(destino: Path | str = "planilhas_modelo", hoje: _dt.date | None = None) -> list[Path]:
     destino = Path(destino)
     destino.mkdir(parents=True, exist_ok=True)
@@ -253,6 +331,7 @@ def gravar(destino: Path | str = "planilhas_modelo", hoje: _dt.date | None = Non
     arquivos = {
         "produto_paletizado_ALFA.txt": produto_paletizado(hoje),
         "follow_up_pedidos.xlsx": follow_up(hoje + _dt.timedelta(days=1)),
+        "painel_wms_noite.xlsx": painel_noite(hoje),
     }
     saida = []
     for nome, conteudo in arquivos.items():

@@ -1,0 +1,1006 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Separação Redespacho</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<!-- ------------------------------------------------------------------ login -->
+<section id="tela-login" class="centro">
+  <form id="form-login" class="cartao estreito">
+    <h1>Separação<span>Redespacho · CD Demo</span></h1>
+    <label>Usuário<input id="login" autocomplete="username" required></label>
+    <label>Senha<input id="senha" type="password" inputmode="numeric" autocomplete="current-password" required></label>
+    <button class="primario" type="submit">Entrar</button>
+    <p id="erro-login" class="erro" hidden></p>
+  </form>
+</section>
+
+<!-- ------------------------------------------------------------------- app -->
+<div id="app" hidden>
+  <header>
+    <strong>Separação Redespacho</strong>
+    <nav>
+      <button data-ir="instrucoes" class="aba ativa">Instruções</button>
+      <button data-ir="usuarios" class="aba" id="aba-usuarios" hidden>Usuários</button>
+      <button data-ir="produtos" class="aba">Produtos<span id="selo-pendentes" class="selo" hidden></span></button>
+      <button data-ir="estoque" class="aba">Estoque</button>
+      <button data-ir="expedicao" class="aba">Expedição</button>
+      <button data-ir="devolucoes" class="aba">Devoluções<span id="selo-devolucoes" class="selo" hidden></span></button>
+      <button data-ir="relatorios" class="aba">Relatórios</button>
+      <button data-ir="enderecamento" class="aba">Endereçamento</button>
+      <button data-ir="enderecos" class="aba" id="aba-enderecos" hidden>Endereços</button>
+      <button data-ir="impressoras" class="aba" id="aba-impressoras" hidden>Impressoras</button>
+      <button data-ir="aparelhos" class="aba" id="aba-aparelhos" hidden>Coletores</button>
+    </nav>
+    <span class="direita">
+      <span id="quem"></span>
+      <button id="sair" class="texto">Sair</button>
+    </span>
+  </header>
+
+  <main>
+    <!-- Aviso da subida: banco restaurado do backup, ou dois bancos na pasta. -->
+    <div id="alerta-restauracao" class="faixa-alerta" hidden></div>
+
+    <div id="alerta-senha" class="faixa-alerta" hidden>
+      O usuário <strong>admin</strong> ainda está com a senha padrão <strong>0000</strong>.
+      Troque antes de colocar em produção.
+    </div>
+
+    <!-- lista de instruções -->
+    <section id="tela-instrucoes">
+      <div class="barra">
+        <h2>Instruções</h2>
+        <div>
+          <label class="filtro">
+            <input type="checkbox" id="mostrar-concluidas"> mostrar concluídas
+          </label>
+          <button id="nova-instrucao" class="primario">Nova instrução</button>
+        </div>
+      </div>
+      <div class="rolagem">
+      <table class="lista">
+        <thead>
+          <tr><th>Número</th><th>Status</th><th>Notas</th><th>Progresso</th><th>Criada em</th><th>Por</th></tr>
+        </thead>
+        <tbody id="corpo-instrucoes"></tbody>
+      </table>
+      </div>
+      <p id="vazio-instrucoes" class="vazio" hidden>Nenhuma instrução.</p>
+    </section>
+
+    <!-- usuários -->
+    <section id="tela-usuarios" hidden>
+      <div class="barra">
+        <h2>Usuários</h2>
+        <button id="novo-usuario" class="primario">Novo usuário</button>
+      </div>
+      <div class="rolagem">
+      <table class="lista">
+        <thead>
+          <tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Vários itens</th><th>Situação</th><th></th></tr>
+        </thead>
+        <tbody id="corpo-usuarios"></tbody>
+      </table>
+      </div>
+    </section>
+
+    <!-- coletores -->
+    <section id="tela-aparelhos" hidden>
+      <div class="barra"><h2>Coletores</h2></div>
+
+      <div class="cartao-info">
+        <h3>Endereço do servidor</h3>
+        <p class="dica">
+          Este é o endereço que os coletores usam. Detectado agora nesta máquina;
+          havendo mais de uma placa de rede, corrija e os QRs abaixo acompanham.
+        </p>
+        <p>IP desta máquina agora: <strong class="mono" id="ip-detectado">—</strong></p>
+        <form id="form-endereco" class="busca">
+          <input id="endereco-servidor" placeholder="192.168.0.10:8080" autocomplete="off">
+          <button class="primario" type="submit">Aplicar</button>
+        </form>
+        <p class="dica" id="aviso-localhost" hidden>
+          ⚠ O endereço está como <strong>localhost</strong>. Serve só nesta máquina —
+          troque pelo IP da rede antes de bipar no coletor.
+        </p>
+      </div>
+
+      <div class="cartoes">
+        <div class="cartao-info">
+          <h3>1. Instalar o app no coletor</h3>
+          <p class="dica">
+            Só na primeira vez, porque o coletor ainda não tem o app para se
+            atualizar. Abra o <strong>navegador do coletor</strong> e leia este QR:
+            ele baixa o APK direto para a pasta de downloads.
+          </p>
+          <img id="qr-apk" alt="QR para baixar o APK" width="240" height="240">
+          <p class="mono" id="url-apk-qr"></p>
+          <p class="dica">
+            O Android vai pedir para permitir "instalar apps desconhecidos" para o
+            navegador. É uma vez por aparelho.
+          </p>
+        </div>
+
+        <div class="cartao-info">
+          <h3>2. Configurar o coletor</h3>
+          <p class="dica">
+            Já com o app instalado, na tela de configuração <strong>bipe este QR</strong>
+            com o gatilho do coletor — evita digitar o IP em cada aparelho.
+          </p>
+          <img id="qr-servidor" alt="QR com o endereço do servidor" width="240" height="240">
+          <p class="mono" id="url-servidor"></p>
+        </div>
+
+        <div class="cartao-info">
+          <h3>Versão publicada</h3>
+          <div id="versao-app"></div>
+          <form id="form-apk" class="form-apk">
+            <label>Arquivo .apk<input type="file" id="arquivo-apk" accept=".apk"></label>
+            <label>Versão<input id="versao-apk" placeholder="0.2.0" autocomplete="off"></label>
+            <label class="filtro">
+              <input type="checkbox" id="apk-obrigatoria">
+              Atualização obrigatória
+            </label>
+            <button class="primario" type="submit">Publicar APK</button>
+          </form>
+        </div>
+      </div>
+
+      <h3 class="titulo-secao">Instalar pelo StageNow</h3>
+      <div class="cartao-info">
+        <p class="dica">
+          O StageNow baixa por HTTP — não por pasta de rede. Use este endereço no perfil:
+        </p>
+        <p class="mono" id="url-apk"></p>
+        <ol class="passos">
+          <li>No <strong>StageNow</strong> (PC), crie um perfil e adicione o Wi-Fi do CD.</li>
+          <li>Acrescente <strong>FileMgr</strong> → <em>Transfer/Copy File</em>, protocolo
+              <strong>HTTP</strong>, com o endereço acima. Destino: <code>/sdcard/Download/</code>.</li>
+          <li>Acrescente <strong>AppMgr</strong> → <em>Install</em> apontando para o arquivo baixado.</li>
+          <li>Gere o QR pelo StageNow, imprima e leia com o cliente StageNow do coletor.</li>
+        </ol>
+        <p class="dica">
+          O QR do StageNow é gerado pela ferramenta da Zebra, não por este sistema —
+          o formato é proprietário. Nosso papel é hospedar o APK num endereço fixo.
+        </p>
+      </div>
+    </section>
+
+    <!-- relatórios -->
+    <section id="tela-relatorios" hidden>
+      <div class="barra"><h2>Relatório de separação</h2></div>
+
+      <form id="filtros" class="filtros">
+        <label>De<input type="date" id="f-de"></label>
+        <label>Até<input type="date" id="f-ate"></label>
+        <label>Separador<select id="f-usuario"><option value="">todos</option></select></label>
+        <label>NF<input id="f-nota" placeholder="todas" autocomplete="off"></label>
+        <label>Produto<input id="f-produto" placeholder="todos" autocomplete="off"></label>
+        <button class="primario" type="submit">Aplicar</button>
+      </form>
+
+      <div class="abas-relatorio">
+        <button class="aba-rel ativa" data-rel="separacao">Separação</button>
+        <button class="aba-rel" data-rel="exclusoes">Exclusões</button>
+        <button class="aba-rel" data-rel="produtividade">Produtividade</button>
+        <button class="texto" id="baixar-csv">Baixar CSV</button>
+      </div>
+
+      <div id="conteudo-relatorio"></div>
+    </section>
+
+    <!-- expedição -->
+    <section id="tela-expedicao" hidden>
+      <div class="barra">
+        <h2>Baixar NF expedida</h2>
+        <button id="expedir" class="primario" disabled>Expedir selecionadas</button>
+      </div>
+      <p class="dica">
+        Marque as notas carregadas. Elas saem do estoque e os endereços ficam livres.
+      </p>
+      <div id="lista-expedir"></div>
+
+      <h3 class="titulo-secao">Retorno de mercadoria</h3>
+      <p class="dica">
+        Carga que saiu e o cliente <strong>não recebeu</strong> — recusou tudo
+        (atraso na entrega, por exemplo) ou alguns pallets voltaram para
+        reentrega. São três passos: <strong>registrar</strong> aqui os pallets
+        que voltaram; o coletor <strong>confere</strong> caixa a caixa contra o
+        que cada pallet levou; depois a <strong>tratativa</strong> — reentregar,
+        refaturar ou descartar. Enquanto o retorno está aberto a NF sai das
+        prontas para expedir. Os pallets voltam sem endereço (a posição antiga
+        já foi reaproveitada) e entram na fila de endereçamento do coletor.
+        Cliente que recebeu e devolveu parte da carga é <strong>devolução</strong>,
+        não retorno.
+      </p>
+      <form id="form-retorno" class="busca">
+        <input id="nf-retorno" placeholder="Número da NF expedida" autocomplete="off">
+        <button class="primario" type="submit">Abrir</button>
+      </form>
+      <div id="conteudo-retorno"></div>
+
+      <div class="barra-secao">
+        <h3 class="titulo-secao">Retornos</h3>
+        <label class="filtro">
+          <input type="checkbox" id="retornos-encerrados"> mostrar tratados e cancelados
+        </label>
+      </div>
+      <div id="lista-retornos"></div>
+
+      <h3 class="titulo-secao">Expedições recentes</h3>
+      <div id="historico-expedicao"></div>
+    </section>
+
+    <!-- estoque -->
+    <section id="tela-estoque" hidden>
+      <div class="barra">
+        <h2>Estoque</h2>
+        <span id="totais-estoque" class="dica"></span>
+      </div>
+
+      <form id="filtro-estoque" class="filtros">
+        <label>Situação
+          <select id="e-situacao">
+            <option value="EM_ESTOQUE">Em estoque</option>
+            <option value="EXPEDIDO">Já saiu</option>
+            <option value="TODOS">Todos</option>
+            <option value="FORA_DE_CIRCULACAO">Fundidos e esvaziados</option>
+          </select>
+        </label>
+        <label>Tipo
+          <select id="e-tipo">
+            <option value="">Todos</option>
+            <option value="SEPARACAO">Separação</option>
+            <option value="DEVOLUCAO">Devolução</option>
+          </select>
+        </label>
+        <label>NF <input id="e-nota" placeholder="952463" autocomplete="off"></label>
+        <label>Cliente <input id="e-cliente" placeholder="atacadao" autocomplete="off"></label>
+        <label>Box <input id="e-box" placeholder="C8-D28" autocomplete="off"></label>
+        <button class="primario" type="submit">Aplicar</button>
+        <button id="csv-estoque" class="texto" type="button">Baixar CSV</button>
+      </form>
+
+      <div id="lista-estoque"></div>
+    </section>
+
+    <!-- devoluções -->
+    <section id="tela-devolucoes" hidden>
+      <div class="barra">
+        <h2>Devoluções</h2>
+        <button id="abrir-motivos" class="texto" type="button">Motivos</button>
+        <button id="exportar-devolucoes" class="texto" type="button">Exportar Excel</button>
+        <button id="nova-sobra" class="texto" type="button" hidden>Conferência de estoque</button>
+        <button id="nova-devolucao" class="primario">Importar NF de devolução</button>
+        <input type="file" id="arquivo-devolucao" accept=".xml" hidden>
+      </div>
+      <form id="filtro-devolucoes" class="filtros">
+        <label>Mostrar
+          <select id="d-situacao">
+            <option value="ESTOQUE">No estoque</option>
+            <option value="BAIXADA">Já baixadas</option>
+            <option value="TODAS">Todas</option>
+          </select>
+        </label>
+      </form>
+      <p class="dica">
+        NF emitida pelo cliente para a mercadoria que ele recebeu, abriu e devolveu.
+        O XML sai do Consulta DANFE. A conferência é feita no coletor, em unidades.
+        A <strong>conferência de estoque</strong> é para a sobra: mercadoria que está aqui sem NF nenhuma.
+      </p>
+      <div id="lista-devolucoes"></div>
+      <div id="detalhe-devolucao" hidden></div>
+    </section>
+
+    <!-- produtos -->
+    <section id="tela-produtos" hidden>
+      <div class="barra">
+        <h2>Produtos</h2>
+        <form id="form-produtos" class="busca">
+          <input id="busca-produto" placeholder="Código, descrição ou código de barras (aceita bipe)"
+                 autocomplete="off">
+          <button class="primario" type="submit">Buscar</button>
+        </form>
+      </div>
+
+      <div id="bloco-pendentes"></div>
+
+      <h3 class="titulo-secao">Cadastro</h3>
+      <div id="lista-produtos"></div>
+    </section>
+
+    <!-- endereçamento -->
+    <section id="tela-enderecamento" hidden>
+      <div class="barra">
+        <h2>Endereçamento</h2>
+        <span id="total-boxes" class="dica"></span>
+      </div>
+
+      <form id="form-busca" class="busca">
+        <input id="busca" placeholder="Número da NF, código do pallet (P-RED-…) ou do box (C8-D28)" autocomplete="off">
+        <button class="primario" type="submit">Buscar</button>
+      </form>
+
+      <div id="resultado-busca"></div>
+
+      <h3 class="titulo-secao">Pallets aguardando endereço</h3>
+      <div id="pendentes"></div>
+
+      <!-- Mesmo fluxo do coletor, com o leitor USB do PC (ele digita o código
+           e dá Enter). Perfil CONSULTA não vê o bloco: tudo aqui grava. -->
+      <div id="bloco-juntar">
+        <div class="barra-secao">
+          <h3 class="titulo-secao">Juntar / repaletizar</h3>
+          <label class="filtro">
+            <input type="checkbox" id="juntar-inteiro" autocomplete="off"> Juntar o pallet inteiro
+          </label>
+        </div>
+        <p id="dica-caixa-a-caixa" class="dica">
+          Bipe o pallet de <strong>origem</strong>, o de <strong>destino</strong> e depois as
+          <strong>caixas</strong> que vão passar, uma a uma. Só entre pallets da
+          <strong>mesma NF</strong> — ou para um pallet novo, ainda sem caixa, que passa a ser
+          da NF da origem.
+        </p>
+        <p id="dica-inteiro" class="dica" hidden>
+          Bipe a <strong>origem</strong> e o <strong>destino</strong>: todas as caixas da origem
+          vão para o destino, a origem sai de circulação e o cartão do destino é reimpresso.
+          Só entre pallets da <strong>mesma NF</strong> (ou destino novo, ainda sem caixa).
+        </p>
+        <form id="form-par" class="filtros par-pallets">
+          <label>Origem
+            <input id="origem-juntar" placeholder="P-RED-…" autocomplete="off" spellcheck="false">
+          </label>
+          <label>Destino
+            <input id="destino-juntar" placeholder="P-RED-…" autocomplete="off" spellcheck="false">
+          </label>
+          <button id="abrir-par" class="primario" type="submit">Abrir</button>
+        </form>
+        <p id="erro-par" class="erro" hidden></p>
+        <div id="resultado-juntar"></div>
+
+        <div id="painel-par" hidden>
+          <div class="cartao-info painel-caixa">
+            <h3 id="titulo-par"></h3>
+            <p id="dica-par" class="dica"></p>
+            <p id="aviso-esvaziada" class="faixa-alerta" hidden></p>
+            <form id="form-caixa" class="linha-caixa">
+              <label>Caixa
+                <input id="caixa-repaletizar" placeholder="Bipe o código de barras da caixa"
+                       autocomplete="off" spellcheck="false">
+              </label>
+              <button type="submit">Passar</button>
+            </form>
+            <div id="sem-resposta" class="faixa-alerta sem-resposta" hidden>
+              <span id="texto-sem-resposta"></span>
+              <button id="reenviar-caixa" class="primario" type="button">Reenviar</button>
+            </div>
+            <div id="conferir-desfazer" class="faixa-alerta sem-resposta" hidden>
+              <span id="texto-conferir-desfazer"></span>
+              <button id="reconferir-par" type="button">Conferir de novo</button>
+            </div>
+            <p id="fila-caixas" class="dica fila-caixas" hidden></p>
+            <ul id="bipes" class="bipes"></ul>
+            <div class="acoes-par">
+              <button id="desfazer-caixa" type="button">Desfazer última</button>
+              <button id="trocar-par" class="texto" type="button">Trocar pallets</button>
+              <button id="concluir-par" class="primario" type="button">Concluir e imprimir cartões</button>
+            </div>
+          </div>
+          <div id="lados-par" class="cartoes"></div>
+        </div>
+      </div>
+
+      <h3 class="titulo-secao">Conteúdo do pallet — transferir por quantidade</h3>
+      <p class="dica">
+        Abra um pallet para <strong>transferir</strong> caixas, por quantidade, para um pallet
+        novo que o sistema cria (dividir pallet alto demais, isolar avaria, separar carga de
+        veículos diferentes) ou <strong>excluir</strong> caixas bipadas por engano.
+        Transferir não muda a quantidade separada; excluir muda. Para passar caixa a caixa
+        bipando, ou juntar dois pallets, use <strong>Juntar / repaletizar</strong>, acima.
+      </p>
+      <form id="form-repaletizar" class="busca">
+        <input id="pallet-repaletizar" placeholder="Código do pallet (P-RED-…)" autocomplete="off">
+        <button class="primario" type="submit">Abrir</button>
+      </form>
+      <div id="conteudo-repaletizar"></div>
+    </section>
+
+    <!-- cadastro de endereços (boxes) -->
+    <section id="tela-enderecos" hidden>
+      <div class="barra">
+        <h2>Endereços</h2>
+        <span id="totais-enderecos" class="dica"></span>
+      </div>
+
+      <div class="cartao-info">
+        <h3>Cadastro em lote pela planilha</h3>
+        <p class="dica">
+          Baixe o modelo (ou o cadastro atual, para corrigir), preencha no Excel e suba.
+          Antes de gravar, a tela mostra linha a linha o que vai mudar.
+        </p>
+        <div class="acoes-planilha">
+          <button id="baixar-modelo-enderecos" type="button">Baixar modelo</button>
+          <button id="baixar-atuais-enderecos" type="button">Baixar cadastro atual</button>
+          <button id="subir-planilha-enderecos" class="primario" type="button" hidden>Subir planilha</button>
+          <input type="file" id="arquivo-enderecos" accept=".xlsx,.csv" hidden>
+        </div>
+        <p id="so-admin-enderecos" class="dica aviso-perfil" hidden>
+          Subir e gravar a planilha é com o administrador.
+        </p>
+        <ul class="ajuda-planilha">
+          <li>Colunas do modelo: <strong>Depósito (código)</strong>, <strong>Depósito (nome)</strong>,
+            <strong>Rua</strong>, <strong>Box</strong>, <strong>Código de barras</strong> (em branco = o
+            próprio box), <strong>Tipo</strong> (ESTOCAGEM ou PICKING), <strong>Níveis</strong> (1 a 20) e
+            <strong>Ativo</strong> (SIM ou NÃO).</li>
+          <li>Box que não está na planilha <strong>não é apagado</strong>: a planilha acrescenta e corrige.</li>
+          <li>Reduzir níveis só vale se o nível retirado nunca teve pallet. Desativar box com pallet
+            endereçado é recusado.</li>
+          <li>Gravar é tudo ou nada: com qualquer linha com erro, nada muda.</li>
+        </ul>
+      </div>
+
+      <div id="previa-enderecos"></div>
+
+      <form id="filtro-enderecos" class="filtros">
+        <label>Depósito
+          <select id="en-deposito"><option value="">Todos</option></select>
+        </label>
+        <label>Rua
+          <select id="en-rua"><option value="">Todas</option></select>
+        </label>
+        <label>Box ou código de barras
+          <input id="en-texto" placeholder="C8-D28" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="filtro">
+          <input type="checkbox" id="en-ativos"> só ativos
+        </label>
+      </form>
+
+      <div id="lista-enderecos"></div>
+    </section>
+
+    <!-- impressoras -->
+    <section id="tela-impressoras" hidden>
+      <div class="barra">
+        <h2>Impressoras</h2>
+        <button id="nova-impressora" class="primario">Nova impressora</button>
+      </div>
+      <p class="dica">
+        A resolução é detectada pela própria impressora no teste — não precisa saber
+        se é 203 ou 300 dpi.
+      </p>
+      <div class="rolagem">
+      <table class="lista">
+        <thead>
+          <tr><th>Nome</th><th>Endereço</th><th>dpi</th><th>Último contato</th><th>Situação</th><th></th></tr>
+        </thead>
+        <tbody id="corpo-impressoras"></tbody>
+      </table>
+      </div>
+    </section>
+
+    <!-- detalhe da instrução -->
+    <section id="tela-instrucao" hidden>
+      <div class="barra">
+        <h2><button class="texto" id="voltar-instrucoes">← Instruções</button> <span id="titulo-instrucao"></span></h2>
+        <div>
+          <button id="excluir-instrucao" class="perigo">Excluir instrução</button>
+          <button id="concluir-instrucao">Concluir</button>
+          <button id="importar-xml" class="primario">Importar XMLs</button>
+          <input type="file" id="arquivos-xml" accept=".xml" multiple hidden>
+        </div>
+      </div>
+      <p id="resumo-instrucao" class="resumo"></p>
+
+      <div id="solta" class="solta">
+        Arraste os XMLs aqui, ou use <strong>Importar XMLs</strong>
+      </div>
+
+      <div id="notas"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ---------------------------------------------------------------- modais -->
+<dialog id="modal-previa">
+  <h3>Prévia da importação</h3>
+  <p class="dica">Nada é gravado até você confirmar.</p>
+  <div id="corpo-previa"></div>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-import" class="primario">Importar válidas</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-conclusao">
+  <h3>Concluir instrução</h3>
+  <p id="detalhe-conclusao" class="dica"></p>
+  <div id="corpo-divergencias"></div>
+  <footer>
+    <button class="texto" data-fechar>Voltar</button>
+    <button id="confirmar-conclusao" class="primario">Concluir mesmo assim</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-confirmar">
+  <h3 id="titulo-confirmar"></h3>
+  <p id="texto-confirmar" class="dica"></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-acao" class="perigo">Excluir</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-usuario">
+  <h3 id="titulo-usuario">Novo usuário</h3>
+  <form id="form-usuario">
+    <label>Login
+      <input id="u-login" autocomplete="off" placeholder="joao.silva">
+    </label>
+    <label>Nome
+      <input id="u-nome" autocomplete="off" placeholder="JOÃO SILVA">
+    </label>
+    <label id="campo-senha">Senha (somente números)
+      <input id="u-senha" inputmode="numeric" autocomplete="new-password" placeholder="4 dígitos ou mais">
+    </label>
+    <label>Perfil
+      <select id="u-perfil">
+        <option value="CONSULTA">Consulta — só enxerga, não altera nada</option>
+        <option value="SEPARADOR">Separador — opera o coletor</option>
+        <option value="SUPERVISOR">Supervisor — divergência, expedição, retaguarda</option>
+        <option value="ADMIN">Administrador — cadastros</option>
+      </select>
+    </label>
+    <label class="filtro">
+      <input type="checkbox" id="u-multi-item">
+      Pode iniciar um item sem fechar o anterior
+    </label>
+    <label class="filtro" id="campo-ativo" hidden>
+      <input type="checkbox" id="u-ativo" checked>
+      Ativo
+    </label>
+    <p class="dica" id="dica-usuario"></p>
+  </form>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="salvar-usuario" class="primario">Salvar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-nova-senha">
+  <h3>Redefinir senha</h3>
+  <p id="detalhe-senha" class="dica"></p>
+  <label>Nova senha (somente números)
+    <input id="nova-senha" inputmode="numeric" autocomplete="new-password">
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="salvar-senha" class="primario">Redefinir</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-impressora">
+  <h3 id="titulo-impressora">Nova impressora</h3>
+  <label>Nome
+    <input id="i-nome" autocomplete="off" placeholder="ZEBRA CAMARA 4">
+  </label>
+  <label>IP
+    <input id="i-ip" autocomplete="off" placeholder="192.168.1.50">
+  </label>
+  <label>Porta
+    <input id="i-porta" inputmode="numeric" value="9100">
+  </label>
+  <label class="filtro" id="campo-imp-ativo" hidden>
+    <input type="checkbox" id="i-ativo" checked> Ativa
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="salvar-impressora" class="primario">Salvar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-expedir">
+  <h3 id="titulo-expedir">Confirmar expedição</h3>
+  <div id="corpo-expedir"></div>
+  <label>Observação (opcional)
+    <input id="obs-expedicao" placeholder="Ex.: caminhão ABC-1234" autocomplete="off">
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-expedicao" class="primario">Confirmar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-depara">
+  <h3 id="titulo-depara">Itens da devolução</h3>
+  <p class="dica">
+    O código do produto no XML é o do cliente. O vínculo sai pelo GTIN da caixa;
+    onde não houver GTIN, escolha o produto à mão. Só lança com tudo vinculado.
+  </p>
+  <div id="corpo-depara"></div>
+  <p id="erro-depara" class="erro" role="alert" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-depara" class="primario">Lançar para conferência</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-motivo">
+  <h3 id="titulo-motivo">Motivo da devolução</h3>
+  <p id="texto-motivo" class="dica"></p>
+  <label>Motivo
+    <select id="escolha-motivo"></select>
+  </label>
+  <p class="dica">Falta um motivo? Cadastre em <strong>Motivos</strong>, no alto da tela de devoluções.</p>
+  <p id="erro-motivo" class="erro" role="alert" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-motivo" class="primario">Gravar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-motivos">
+  <h3>Motivos de devolução</h3>
+  <p class="dica">A lista para escolher o motivo. Desativar tira da lista; o que já foi gravado nas
+    devoluções fica como está.</p>
+  <table class="lista"><tbody id="lista-motivos"></tbody></table>
+  <label>Novo motivo
+    <input id="novo-motivo" maxlength="80" autocomplete="off" placeholder="Ex.: Avaria no transporte">
+  </label>
+  <p id="erro-motivos" class="erro" role="alert" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Fechar</button>
+    <button id="adicionar-motivo" class="primario">Adicionar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-etiqueta-produto">
+  <h3>Etiqueta 2ª via</h3>
+  <p id="texto-etiqueta-produto" class="dica"></p>
+  <label>Quantas etiquetas (uma por caixa)
+    <input type="number" id="copias-etiqueta" min="1" max="200" step="1" value="1">
+  </label>
+  <label>Impressora
+    <select id="impressora-etiqueta"></select>
+  </label>
+  <p id="erro-etiqueta" class="erro" role="alert" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-etiqueta" class="primario">Imprimir</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-encerrar-item">
+  <h3>Encerrar item</h3>
+  <p id="texto-encerrar-item" class="dica"></p>
+  <label id="campo-justificativa-encerrar">Justificativa da falta
+    <textarea id="justificativa-encerrar" rows="2"
+              placeholder="Ex.: o cliente devolveu 9 das 12 unidades"></textarea>
+  </label>
+  <p id="erro-encerrar" class="erro" role="alert" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-encerrar" class="primario">Encerrar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-excluir-caixas">
+  <h3>Excluir caixas da devolução</h3>
+  <p id="texto-excluir-caixas" class="dica"></p>
+  <label>Justificativa
+    <textarea id="justificativa-excluir-caixas" rows="2"
+              placeholder="Ex.: caixa bipada na NF errada"></textarea>
+  </label>
+  <p id="erro-excluir-caixas" class="erro" role="alert" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-excluir-caixas" class="primario">Excluir caixas</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-troca-devolucao">
+  <h3>Produto trocado</h3>
+  <p id="texto-troca-devolucao" class="dica"></p>
+  <label>Produto que veio
+    <select id="produto-troca"></select>
+  </label>
+  <label>Quantidade que veio
+    <input type="number" id="qtd-troca" min="1" step="1" value="1">
+  </label>
+  <label>Em
+    <select id="unidade-troca">
+      <option value="CX">caixas</option>
+      <option value="UN">unidades</option>
+    </select>
+  </label>
+  <p id="equivalente-troca" class="dica"></p>
+  <label><input type="checkbox" id="item-todo-troca" checked>
+    Veio só o produto trocado: nada do produto da NF</label>
+  <label><input type="checkbox" id="etiqueta-troca" checked>
+    Imprimir a etiqueta 2ª via das caixas que vieram, para bipar</label>
+  <label>Justificativa
+    <textarea id="justificativa-troca" rows="2"
+              placeholder="Ex.: o cliente mandou salsicha no lugar da carne"></textarea>
+  </label>
+  <p id="erro-troca" class="erro" role="alert" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-troca" class="primario">Registrar troca</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-apagar-devolucao">
+  <h3>Excluir devolução</h3>
+  <p id="texto-apagar-devolucao" class="dica"></p>
+  <div id="bloco-conferencia-apagar" class="faixa-alerta" hidden>
+    <p id="texto-conferencia-apagar"></p>
+    <label><input type="checkbox" id="apagar-conferencia-junto"> Excluir também a conferência</label>
+  </div>
+  <label>Justificativa
+    <textarea id="justificativa-apagar-devolucao" rows="2"
+              placeholder="Ex.: lançada com o XML de outra devolução"></textarea>
+  </label>
+  <p id="erro-apagar-devolucao" class="erro" role="alert" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-apagar-devolucao" class="perigo">Excluir devolução</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-baixa-devolucao">
+  <h3>Baixar devolução</h3>
+  <p id="detalhe-baixa" class="dica"></p>
+  <label>Destino
+    <select id="tipo-baixa">
+      <option value="DESCARTE">Descarte — mercadoria imprópria</option>
+      <option value="REVENDA">Revenda — volta a estoque vendável</option>
+    </select>
+  </label>
+  <label id="campo-nf-revenda" hidden>NF de revenda (opcional)
+    <input id="nf-revenda" autocomplete="off" placeholder="número da NF emitida">
+  </label>
+  <label>Observação
+    <input id="obs-baixa" autocomplete="off" placeholder="opcional">
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-baixa" class="primario">Baixar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-baixa-sobra">
+  <h3>Baixar caixas da sobra</h3>
+  <p id="detalhe-baixa-sobra" class="dica"></p>
+  <label>Quantas caixas saem
+    <input id="caixas-baixa-sobra" type="number" min="1" step="1" inputmode="numeric">
+  </label>
+  <label>Destino
+    <select id="tipo-baixa-sobra">
+      <option value="DESCARTE">Descarte — mercadoria imprópria</option>
+      <option value="REVENDA">Revenda — volta a estoque vendável</option>
+    </select>
+  </label>
+  <label id="campo-nf-revenda-sobra" hidden>NF de revenda (opcional)
+    <input id="nf-revenda-sobra" autocomplete="off" placeholder="número da NF emitida">
+  </label>
+  <label>Observação
+    <input id="obs-baixa-sobra" autocomplete="off" placeholder="opcional">
+  </label>
+  <p id="erro-baixa-sobra" class="alerta" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-baixa-sobra" class="primario">Baixar caixas</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-retorno">
+  <h3 id="titulo-retorno">Registrar retorno</h3>
+  <div id="corpo-retorno"></div>
+  <p class="dica">
+    O retorno abre em conferência: o coletor bipa as caixas de cada pallet e
+    compara com o que ele levou na expedição. A tratativa vem depois.
+  </p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-retorno" class="primario">Registrar retorno</button>
+  </footer>
+</dialog>
+
+<!-- Retorno completo, cancelar retorno e desfazer tratativa: todas pedem um
+     texto e confirmam; muda o que se explica e se o texto é obrigatório. -->
+<dialog id="modal-acao-retorno">
+  <h3 id="titulo-acao-retorno"></h3>
+  <p id="texto-acao-retorno" class="dica"></p>
+  <p id="aviso-acao-retorno" class="faixa-alerta" hidden></p>
+  <label><span id="rotulo-acao-retorno">Justificativa</span>
+    <textarea id="campo-acao-retorno" rows="2"></textarea>
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Voltar</button>
+    <button id="confirmar-acao-retorno" class="primario">Confirmar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-tratativa">
+  <h3 id="titulo-tratativa">Tratativa do retorno</h3>
+  <p id="detalhe-tratativa" class="dica"></p>
+  <p id="aviso-tratativa" class="faixa-alerta" hidden></p>
+  <label class="nota-expedir">
+    <input type="radio" name="tipo-tratativa" value="REENTREGA" checked>
+    <span class="dados"><b>Reentregar</b>
+      <div class="previa-pallet">Os pallets ficam no estoque e a NF volta para as prontas para expedir.</div>
+    </span>
+  </label>
+  <label class="nota-expedir">
+    <input type="radio" name="tipo-tratativa" value="REFATURAMENTO">
+    <span class="dados"><b>Refaturar</b>
+      <div class="previa-pallet">A mercadoria sai em NF nova. Os pallets retornados saem do estoque
+        agora; a separação para as NFs novas segue o fluxo normal.</div>
+    </span>
+  </label>
+  <label id="campo-nfs-refaturamento" hidden>NFs novas (separe por vírgula ou espaço)
+    <input id="nfs-refaturamento" autocomplete="off" placeholder="952501, 952502">
+  </label>
+  <label class="nota-expedir">
+    <input type="radio" name="tipo-tratativa" value="DESCARTE">
+    <span class="dados"><b>Descartar</b>
+      <div class="previa-pallet">Mercadoria imprópria. Os pallets saem do estoque.</div>
+    </span>
+  </label>
+  <label><span id="rotulo-obs-tratativa">Observação (opcional)</span>
+    <input id="obs-tratativa" autocomplete="off">
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-tratativa" class="primario">Aplicar tratativa</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-conferencia-retorno">
+  <h3 id="titulo-conferencia-retorno">Conferência do retorno</h3>
+  <div id="corpo-conferencia-retorno"></div>
+  <footer>
+    <button class="texto" data-fechar>Fechar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-desembarque" class="largo">
+  <h3 id="titulo-desembarque">Desembarque</h3>
+  <p id="detalhe-desembarque" class="dica"></p>
+
+  <div id="abrir-desembarque">
+    <p class="dica">
+      A carreta é descarregada de uma vez: o pallet é montado aqui, por quantidade, em vez de
+      caixa a caixa no coletor. O nome escolhido é quem desembarcou — é ele que aparece
+      em <strong>Montado por</strong>, no Estoque.
+    </p>
+    <label>Quem desembarcou
+      <select id="responsavel-desembarque"></select>
+    </label>
+    <p class="dica">Ao iniciar, o sistema cria o pallet e manda a etiqueta para a impressora.</p>
+  </div>
+
+  <div id="painel-desembarque" hidden>
+    <table class="lista">
+      <thead><tr><th>Item</th><th>Produto</th><th class="num">NF</th><th class="num">Já lançado</th>
+        <th class="num">Neste pallet</th></tr></thead>
+      <tbody id="itens-desembarque"></tbody>
+    </table>
+    <p class="dica">
+      O número é o total deste pallet, não o acréscimo: digitar 8 onde havia 10 tira duas caixas.
+      O máximo de cada linha é o que ainda falta na NF.
+    </p>
+  </div>
+
+  <p id="erro-desembarque" class="alerta" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Fechar</button>
+    <button id="cancelar-desembarque" class="texto excluir" type="button" hidden>Cancelar desembarque</button>
+    <button id="salvar-desembarque" class="texto" type="button" hidden>Salvar caixas</button>
+    <button id="iniciar-desembarque" class="primario" type="button">Iniciar desembarque</button>
+    <button id="encerrar-desembarque" class="primario" type="button" hidden>Encerrar pallet</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-estornar-baixa">
+  <h3>Estornar a baixa</h3>
+  <p id="detalhe-estornar-baixa" class="dica"></p>
+  <p class="dica">
+    A mercadoria volta ao estoque: os pallets saem de expedidos e retomam o endereço, se a
+    posição ainda estiver livre — senão voltam sem endereço, para o coletor endereçar de novo.
+    Caixa que já tinha saído na baixa por caixa não volta.
+  </p>
+  <label>Motivo
+    <input id="motivo-estornar-baixa" autocomplete="off" placeholder="baixada por engano">
+  </label>
+  <p id="erro-estornar-baixa" class="alerta" hidden></p>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-estornar-baixa" class="perigo">Estornar baixa</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-excluir-item">
+  <h3>Excluir caixas separadas</h3>
+  <p id="detalhe-excluir-item" class="dica"></p>
+  <p class="dica">
+    Reduz a quantidade separada e reabre o cadeado se estava fechado. É para
+    caixa bipada por engano — para mudar caixa de pallet, use a repaletização.
+  </p>
+  <label>De qual pallet
+    <select id="pallet-excluir-item"></select>
+  </label>
+  <label>Quantidade
+    <input id="qtd-excluir-item" type="number" min="1" value="1">
+  </label>
+  <label>Justificativa
+    <input id="just-excluir-item" autocomplete="off" placeholder="bipada em duplicidade">
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-excluir-item" class="perigo">Excluir</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-excluir-separacao">
+  <h3>Excluir caixas separadas</h3>
+  <p id="detalhe-excluir-sep" class="dica"></p>
+  <p class="dica">
+    Isto <strong>reduz a quantidade separada</strong> — use só para caixa bipada
+    por engano. Para mover caixa de pallet, use Transferir.
+  </p>
+  <label>Justificativa
+    <input id="justificativa-excluir-sep" autocomplete="off" placeholder="bipada em duplicidade">
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-excluir-sep" class="perigo">Excluir</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-estorno">
+  <h3>Estornar expedição</h3>
+  <p id="detalhe-estorno" class="dica"></p>
+  <label>Motivo
+    <input id="motivo-estorno" placeholder="Ex.: baixei a nota errada" autocomplete="off">
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-estorno" class="perigo">Estornar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-vincular">
+  <h3>Vincular código de barras</h3>
+  <p id="detalhe-vincular" class="dica"></p>
+  <label>Produto
+    <input id="busca-vinculo" placeholder="Digite o código ou parte da descrição" autocomplete="off">
+  </label>
+  <div id="resultado-vinculo" class="resultado-vinculo"></div>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+  </footer>
+</dialog>
+
+<dialog id="modal-divergencia">
+  <h3>Fechar item com divergência</h3>
+  <p id="detalhe-divergencia" class="dica"></p>
+  <label>Justificativa
+    <textarea id="justificativa" rows="3" placeholder="Ex.: sem saldo em estoque, conferido com o Rodrigo"></textarea>
+  </label>
+  <footer>
+    <button class="texto" data-fechar>Cancelar</button>
+    <button id="confirmar-divergencia" class="perigo">Fechar item</button>
+  </footer>
+</dialog>
+
+<div id="aviso" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

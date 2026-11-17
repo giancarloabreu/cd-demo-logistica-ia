@@ -1,0 +1,24 @@
+# Configuração do servidor Separação Redespacho.
+# Edite este arquivo e reinicie o serviço para valer.
+
+# Porta HTTP. Precisa estar liberada no firewall para os coletores chegarem.
+PORTA=8080
+
+# Banco de dados, em disco LOCAL desta máquina.
+# Nunca aponte para unidade de rede: SQLite em SMB corrompe.
+BANCO=dados\redespacho.db
+
+# Pasta de logs (rotaciona diariamente, guarda 30 dias).
+LOGS=logs
+
+# Cópia automática do banco para a pasta de rede.
+#
+# É BACKUP, não sincronização: o banco continua existindo só nesta máquina.
+# Rodar o servidor em duas máquinas apontando para a mesma pasta produz bancos
+# divergentes e números de instrução repetidos, sem conserto possível.
+#
+# Deixe em branco para desativar.
+BACKUP=\\SERVIDOR\Logistica\AppSeparaRedespacho\backup
+
+# De quantos em quantos minutos copiar.
+BACKUP_MIN=15

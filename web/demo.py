@@ -153,6 +153,10 @@ def _semear(app):
     for nome in ("CD DEMO RESFRIADO", "CD DEMO CONGELADO"):
         ok(cli.post("/api/armazem/locais/classificar", json={"nome": nome, "classificacao": "varejo"},
                     headers=h), "classificar local")
+    ok(cli.post("/api/armazem/capacidade", headers=h,
+                json={"RESFRIADO": 140, "CONGELADO": 130, "AMBIENTE": 0,
+                      "vigente_desde": _hoje().replace(day=1).isoformat()}),
+       "capacidade das câmaras")
     ok(cli.post("/api/armazem/upload", headers=h, content_type="multipart/form-data",
                 data={"arquivo": (io.BytesIO(txt), "produto_paletizado_ALFA.txt")}),
        "upload do armazém")
@@ -166,7 +170,7 @@ def _semear(app):
                                                          qtd_max, peso_max, completo)
                           VALUES(?,?,?,?,?,?,1)
                           ON CONFLICT DO NOTHING""",
-                       ("", cod, nome, temp, cheio, round(cheio * kg * 1.08, 1)))
+                       ("", cod, nome, temp, cheio, round(cheio * (kg * 1.04 + 0.8) + 1, 1)))
     ok(cli.post("/api/adensamento/processar", headers=h, content_type="multipart/form-data",
                 data={"relatorio": (io.BytesIO(txt), "produto_paletizado_ALFA.txt")}),
        "adensamento")
@@ -179,6 +183,20 @@ def _semear(app):
                       "data": amanha}),
        "plano do picking")
 
+    # 4. Expedito, acompanhamento da noite: o painel do WMS da noite que
+    #    acabou de terminar (é o que a conversa com a IA analisa). Na demo a
+    #    tela fica sempre nessa noite, sem virar para a seguinte às 18h.
+    import json as _json
+    with get_db() as db:
+        db.execute("""INSERT INTO expedito_parametros(cd, dados) VALUES(?, ?)
+                      ON CONFLICT(cd) DO UPDATE SET dados=excluded.dados""",
+                   (USUARIO, _json.dumps({"hora_abertura_operacao": 24})))
+    painel = arqs["painel_wms_noite.xlsx"].read_bytes()
+    ok(cli.post("/api/expedito/noite", headers=h, content_type="multipart/form-data",
+                data={"painel": (io.BytesIO(painel), "painel_wms_noite.xlsx"),
+                      "turno": "noturno", "data": _hoje().isoformat()}),
+       "painel da noite")
+
 
 # ── integração com a aplicação ───────────────────────────────────────
 def instalar(app):
@@ -190,11 +208,22 @@ def instalar(app):
     @app.before_request
     def _demo_antes():
         caminho = request.path or "/"
-        if caminho == "/" or caminho == "/login":
+        if caminho in ("/", "/login", "/api/index", "/api/index.py"):
             return redirect("/demo")
+        # Espelhar outro usuário não faz sentido na demo (só existe o
+        # visitante): a lista volta vazia em vez de erro
+        if caminho == "/api/espelho/usuarios":
+            return jsonify({"usuarios": []})
+        if caminho.startswith("/api/espelho/"):
+            return jsonify({"ok": True})
+        # A exportação em imagem usa um navegador headless (Playwright),
+        # que não existe na hospedagem da demo
+        if caminho == "/api/armazem/exportar":
+            return jsonify({"error": "A exportação em imagem não está disponível na demonstração. "
+                                     "Use Imprimir ou o Excel."}), 400
         if not caminho.startswith(_LIBERADOS):
             if caminho.startswith("/api/"):
-                return jsonify({"error": "Indisponível na demonstração."}), 404
+                return jsonify({"error": "Esta função não faz parte da demonstração."}), 404
             return redirect("/demo")
         if caminho.startswith("/static") or caminho.startswith("/demo/status"):
             return None
@@ -220,6 +249,7 @@ def instalar(app):
 
 
 _FAIXA = """
+<style>#btn-espelhar,#btn-exportar,[onclick^="abrirEspelho"]{display:none!important}</style>
 <a id="demo-faixa" href="/demo" title="Sobre esta demonstração"
    style="position:fixed;right:14px;bottom:14px;z-index:99999;background:#111827;color:#fff;
           padding:8px 14px;border-radius:999px;font:600 12.5px system-ui,sans-serif;

@@ -1,0 +1,362 @@
+SEPARACAO REDESPACHO
+====================
+
+O QUE E ESTA PASTA
+  Tudo que o sistema precisa: servidor, banco, o Java para rodar e o APK do
+  coletor. Nao instala nada e nao pede privilegio de administrador.
+
+  jre\ ......... Java embutido. Nao precisa instalar Java na maquina.
+  lib\ ......... o servidor.
+  coletor\ ..... o aplicativo do coletor (.apk).
+  dados\ ....... criada na primeira execucao: banco e o APK publicado.
+  logs\ ........ criada na primeira execucao: o que o servidor fez.
+
+
+PRIMEIRA VEZ, PASSO A PASSO
+  1. Copie a pasta SeparacaoRedespacho inteira para o disco LOCAL da maquina
+     que vai hospedar (ex.: C:\SeparacaoRedespacho). Nao rode de dentro do
+     pendrive nem de unidade de rede.
+
+  2. Clique em iniciar.bat. Uma janela mostra "Servidor no ar em http://..."
+     e fecha sozinha em alguns segundos.
+
+     O SERVIDOR FICA NA BANDEJA DO WINDOWS, perto do relogio (icone verde
+     com R). Nao ha janela para deixar aberta.
+       duplo clique no icone ...... abre a retaguarda
+       botao direito .............. Abrir retaguarda / Abrir pasta de logs /
+                                    Parar servidor
+     Se o icone nao aparecer, olhe na setinha "^" ao lado do relogio.
+
+  3. Na primeira subida foi criado o configuracao.txt. Confira nele:
+       PORTA    8080 serve; so mude se ja estiver ocupada.
+       BACKUP   pasta de rede para a copia do banco. Deixe em branco para
+                desativar. NAO e sincronizacao: o banco continua so aqui.
+     Mudou alguma coisa? Pare o servidor e clique em iniciar.bat de novo.
+
+  4. No navegador desta maquina: http://localhost:8080
+     Entre com  admin / 0000  e TROQUE A SENHA em Usuarios.
+
+  5. Anote o IP desta maquina (ipconfig). E o endereco que os coletores usam.
+     Peca ao TI um IP fixo ou reserva de DHCP: se o IP mudar, todo coletor
+     precisa ser reconfigurado um a um.
+
+  6. Libere a porta 8080 no firewall do Windows para os coletores chegarem.
+     Sem isso o servidor funciona na maquina e nenhum coletor conecta.
+
+
+ATUALIZANDO PARA UMA VERSAO NOVA - SEM PERDER DADOS
+  1. Pare o servidor: botao direito no icone da bandeja > Parar servidor.
+     (A 0.5.0 ainda abre janela preta: nela, feche a janela.)
+  2. Por garantia, copie a pasta dados\ inteira para outro lugar.
+  3. Extraia o ZIP novo POR CIMA da pasta atual (ex.: em C:\) e responda
+     "Substituir" para tudo. O ZIP nao traz dados\ nem configuracao.txt:
+     o banco e as suas configuracoes ficam como estao.
+  4. Clique em iniciar.bat.
+  O banco e atualizado sozinho na subida, so acrescentando o que a versao
+  nova precisa. Nenhum dado e apagado.
+
+
+TROCANDO O SERVIDOR DE MAQUINA
+  1. Na maquina antiga, pare o servidor (botao direito > Parar servidor):
+     ao sair ele grava a ultima copia de backup.
+  2. Na maquina nova, extraia o ZIP no disco local e clique em iniciar.bat.
+     Sem banco nesta maquina, ele RESTAURA SOZINHO a copia mais adiantada da
+     pasta de backup e avisa na tela e na bandeja.
+  Voltando depois para a maquina antiga: ela percebe que a outra trabalhou (a
+  copia na rede esta mais adiantada que o banco dela) e restaura tambem.
+  O banco que estava na maquina nunca e apagado: fica em dados\substituidos\.
+  So funciona com a pasta de BACKUP configurada e acessivel na subida. Se a
+  rede nao responder na subida, o servidor sobe mesmo assim e AVISA que a
+  restauracao nao foi conferida.
+
+  AVISO DE "BIFURCACAO": aparece quando as duas maquinas trabalharam sem uma
+  ver a outra (ex.: a antiga caiu sem parar direito e a nova comecou de uma
+  copia anterior). Cada lado tem operacoes que o outro nao tem, e o sistema
+  NAO escolhe sozinho. Pare e chame o suporte antes de seguir operando.
+
+
+AVISOS NA RETAGUARDA (faixa no alto da tela)
+  "Banco restaurado do backup ..." ... normal depois de trocar de maquina.
+  "O backup nao esta chegando ..." ... a copia para a rede esta falhando;
+                                       ele tenta de novo sozinho. Confira a
+                                       rede - enquanto isso nao ha copia.
+  "BIFURCACAO" / "OUTRO banco" ....... pare e chame o suporte.
+
+
+COLOCANDO O APP NO COLETOR
+  Abra a aba COLETORES na retaguarda. Ela mostra o IP desta maquina e dois QRs,
+  na ordem de uso. Confira o endereco no campo antes: se estiver "localhost",
+  a propria tela avisa - localhost so funciona nesta maquina.
+
+  1) INSTALAR - so na primeira vez, porque o coletor ainda nao tem o app.
+     Abra o NAVEGADOR DO COLETOR e leia o QR "Instalar o app no coletor".
+     Ele baixa o APK para a pasta de downloads; toque no arquivo para instalar.
+     O Android pede para permitir "instalar apps desconhecidos" para o
+     navegador - uma vez por aparelho.
+
+     Alternativa: mandar coletor\separacao-redespacho.apk por Bluetooth do PC.
+
+  2) CONFIGURAR - abra o app e, na tela de configuracao, BIPE o QR
+     "Configurar o coletor" com o gatilho do coletor. Ele preenche IP e porta
+     e ja testa a conexao. Nao precisa digitar nada.
+
+  Atualizacoes depois disso: o ZIP novo traz o APK novo e o servidor o publica
+  sozinho ao subir, sempre que ele for mais novo que o publicado (nunca volta
+  para uma versao mais antiga). Os coletores avisam e baixam no login
+  seguinte.
+
+  COLETOR NAO OFERECEU A ATUALIZACAO? Abra a aba COLETORES e veja a versao
+  publicada. Se estiver antiga, publique a mao: escolha o arquivo
+  coletor\separacao-redespacho.apk desta pasta e digite a versao que esta em
+  coletor\versao.txt. (Servidores ate a 0.7.0 so publicavam o APK do pacote
+  na primeira instalacao - por isso o coletor parava na versao instalada.)
+
+  SE O IP DA MAQUINA MUDAR: os coletores param de achar o servidor. A correcao
+  e bipar de novo o QR "Configurar o coletor" em cada aparelho - poucos
+  segundos cada. Por isso vale confirmar com o TI que o IP e fixo ou tem
+  reserva de DHCP.
+
+
+NO DIA A DIA
+  iniciar.bat ....... sobe o servidor. Se ja houver um no ar na rede, abre o
+                      navegador nele em vez de subir um segundo.
+  parar.bat ......... encerra pelo caminho normal (com a ultima copia de
+                      backup). E o mesmo que Parar servidor na bandeja.
+                      So para o servidor DESTA pasta.
+  logs\servidor.log . o que aconteceu (um arquivo por dia, guarda 30).
+
+  Para subir sozinho a cada logon, execute uma vez no PowerShell:
+      .\instalar-inicializacao.ps1
+
+
+RETORNO DE MERCADORIA (recusa, reentrega)
+  Carga que saiu e o cliente NAO recebeu: recusou tudo (atraso na entrega,
+  por exemplo) ou alguns pallets voltaram para entregar de novo. Cliente que
+  recebeu e devolveu parte, com NF dele, e DEVOLUCAO - outro caminho.
+
+  1) REGISTRAR - supervisor ou admin, na retaguarda:
+     aba Expedicao > "Retorno de mercadoria". Digite o numero da NF, marque
+     os pallets que voltaram ("Recusa total" marca todos), informe o motivo e
+     confirme. Os pallets voltam SEM ENDERECO e entram na fila de
+     enderecamento do coletor. A NF sai das prontas para expedir ate a
+     tratativa. Cartao perdido no caminho: "Reimprimir cartao" ali mesmo.
+
+  2) CONFERIR - qualquer usuario, no coletor: menu "Conferir", secao
+     Retornos. Bipe a etiqueta do pallet e depois caixa por caixa; o coletor
+     compara com o que o pallet levou. Faltou caixa, ou o pallet nem voltou:
+     toque no cadeado e escolha o motivo. Voltou lacrado e foi contado na
+     doca? Na retaguarda, "Retorno completo" fecha sem bipar (fica registrado
+     como manual, com o seu usuario).
+
+  3) TRATATIVA - supervisor, na lista "Retornos" da aba Expedicao, quando o
+     retorno estiver "aguardando tratativa":
+       Reentregar ..... a NF volta para as prontas para expedir. Se faltou
+                        caixa, ela sai com o que voltou e o cliente emite
+                        NF de devolucao da falta (a tela lista o que faltou,
+                        produto a produto). Pallet que nao voltou nada sai
+                        de circulacao.
+       Refaturar ...... informe as NFs novas. Os pallets retornados saem do
+                        estoque e liberam o endereco; a mercadoria e separada
+                        de novo para as NFs novas, pelo fluxo normal.
+       Descartar ...... com justificativa. Os pallets saem do estoque.
+
+  ERROU? Desfazer e cancelar pedem justificativa; tudo fica registrado.
+       Desfazer tratativa .. volta para "aguardando tratativa". Recusado se a
+                             NF ja saiu de novo, se o pallet mudou ou se as
+                             NFs do refaturamento ja tem caixa separada
+                             (duplicaria o estoque).
+       Cancelar retorno .... registrado por engano: os pallets voltam a
+                             constar como expedidos. So antes da tratativa.
+       Reabrir pallet ...... em "Ver conferencia", para bipar de novo. So
+                             antes da tratativa.
+       Pallet de retorno em aberto nao aceita juntar, transferir nem excluir
+       caixa; e a expedicao de onde ele voltou nao pode ser estornada.
+
+
+REPALETIZACAO (JUNTAR OU PASSAR CAIXA DE UM PALLET PARA OUTRO)
+  No coletor, menu "Repaletizacao". Na retaguarda, aba Enderecamento, bloco
+  "Juntar / repaletizar". So entre pallets da MESMA NF - ou para um pallet
+  novo, ainda sem uso, que passa a ser da NF da origem.
+    Interruptor "Juntar o pallet inteiro" LIGADO: bipe a origem e o destino;
+      todas as caixas passam e a origem sai de circulacao.
+    DESLIGADO: bipe a origem, o destino e depois as caixas, uma a uma.
+      "Desfazer ultima" volta a ultima caixa bipada. "Concluir" imprime os
+      cartoes dos dois pallets - sem concluir, o cartao velho mente sobre a
+      quantidade.
+  Sem resposta do servidor numa caixa: nao bipe de novo; o coletor reenvia
+  sozinho a mesma leitura, sem contar duas vezes.
+
+CONSULTAR PALLET (COLETOR)
+  Menu "Consultar pallet": bipe a etiqueta e veja de qual NF ele e, quantas
+  caixas tem e o que tem. Toque em "Outros pallets da NF" para ver onde estao
+  os demais (box e nivel) e abrir o conteudo de cada um.
+
+CONFERENCIA DE BOX (COLETOR)
+  Menu "Conferencia de box": bipe a etiqueta do box e veja cada nivel do
+  predio, de cima para baixo: pallet, caixas, NF e cliente. Nivel vazio
+  aparece em branco. Bipando a etiqueta de um pallet, abre o box onde ele
+  esta, com o pallet marcado.
+
+CADASTRO DE ENDERECOS (RETAGUARDA, ABA ENDERECOS)
+  Para incluir ou corrigir boxes de uma vez:
+    1. "Baixar modelo" (planilha vazia) ou "Baixar cadastro atual" (para
+       editar o que ja existe).
+    2. Preencha no Excel: deposito (codigo e nome), rua, box, codigo de
+       barras (em branco = o proprio box), tipo ESTOCAGEM ou PICKING,
+       niveis (1 a 20) e ativo SIM ou NAO.
+    3. "Subir planilha": a tela mostra o que vai entrar, o que muda e as
+       linhas com erro (pelo numero da linha do Excel).
+    4. Sem erro, "Gravar". Com qualquer erro nada e gravado.
+  A planilha nunca apaga: box que nao esta nela fica como esta. Reduzir
+  niveis so vale se o nivel nunca teve pallet; box com pallet nao desativa.
+  Gravar e so do admin.
+
+DEVOLUCAO - NF DE ORIGEM
+  Ao lancar a devolucao, a NF de venda de origem pode ser:
+    escolhida entre as NFs do sistema (busca pelo numero);
+    o XML da NF de venda (quando ela nao passou pelo sistema);
+    ou so o numero, digitado.
+  Se o XML da devolucao ja citar a NF de venda, a tela ja traz ela marcada.
+  A mesma NF de venda pode ter mais de uma devolucao (a tela avisa).
+
+  Ao lancar, cada item tem a quantidade (vem a do XML, pode corrigir) e a
+  escolha CAIXAS ou UNIDADES. Em caixas, a tela mostra quantas unidades da.
+
+  Na lista, clique na devolucao para abrir; clique de novo para fechar.
+
+  Lancou errado? No detalhe, botao "Excluir" ao lado da NF (supervisor ou
+  admin, com justificativa):
+    sem conferencia ......... apaga direto;
+    com conferencia iniciada  so apagando a conferencia junto: os pallets de
+                              devolucao voltam livres para conferir de novo;
+    ja baixada .............. nao pode apagar.
+
+  Veio produto trocado? No detalhe, botao "Produto trocado" no item da NF
+  (supervisor ou admin): informe o produto que veio, a quantidade (caixas ou
+  unidades) e a justificativa. O produto que veio vira um item novo, que o
+  conferente ve no coletor como "NO LUGAR DO ITEM n" e confere normalmente.
+    veio so o trocado ...... o item da NF fecha com a justificativa da troca;
+    veio parte de cada ..... o item da NF segue aberto para conferir.
+  Registrou errado? "Desfazer troca", enquanto ninguem conferiu o item novo.
+
+  Etiqueta 2a via: botao "Etiqueta 2a via" no item. Sai o codigo de barras
+  do produto - ou, se ele nao tiver um que o coletor leia, um codigo interno
+  criado e gravado no produto. Cole na caixa e o conferente bipa normalmente.
+  Na troca de produto a etiqueta ja sai junto (caixa marcada no dialogo).
+
+  CONFERENCIA NO COLETOR: agora e preciso bipar o pallet P-DEV antes da
+  primeira caixa (coletor 0.7.3). Caixa conferida sem pallet nao aparece no
+  estoque.
+
+  Caixas conferidas sem pallet (de antes desta versao) ou espalhadas: no
+  detalhe da NF, "Caixas conferidas". Marque ("Marcar todas" ou "Marcar as
+  sem pallet"), digite o pallet P-DEV e "Por no pallet" - junta tudo num
+  pallet so; o que ficar vazio volta livre. "Excluir caixas" tira a caixa
+  conferida por engano (com justificativa); o item reabre para encerrar.
+
+  No coletor, a Repaletizacao com o interruptor ligado tambem junta dois
+  pallets de devolucao da mesma NF de uma vez.
+
+  Item faltando: no coletor, pelo cadeado; ou na retaguarda, "Encerrar" no
+  item (ou "Encerrar itens em aberto"), com a justificativa da falta.
+
+  BAIXA DA DEVOLUCAO: no detalhe da NF (aba DEVOLUCOES), botao "Baixar
+  devolucao" no rodape - libera quando todos os itens estao encerrados.
+  Nao fica na Expedicao.
+
+  A tela de devolucoes se atualiza sozinha a cada 5 segundos.
+
+  MOTIVO DA DEVOLUCAO: ao lancar, o campo "Motivo da devolucao" preenche
+  todos os itens; mude so o item que tiver outro motivo. Depois, "Alterar"
+  na NF ou "alterar" no item. "Exportar Excel" no detalhe da NF baixa a
+  planilha com todos os itens, para mandar por e-mail.
+  "Exportar Excel" no alto da lista baixa TODAS as devolucoes de uma vez.
+  Na lista aparecem o cliente (com bairro e cidade) e os motivos, sem abrir.
+  Devolucao total (NF emitida pela empresa): o cliente e o destinatario.
+  MOTIVOS: botao "Motivos" no alto das devolucoes cadastra a lista padrao.
+  "definir" na linha da NF escolhe o motivo sem abrir a nota.
+  DEPOIS DE ATUALIZAR PARA A 0.8.0: aperte Ctrl+F5 uma vez no navegador da
+  retaguarda. Dai em diante cada versao nova aparece sozinha.
+
+  FILTRO DA LISTA (0.8.2): a aba DEVOLUCOES abre mostrando so o que ainda
+  esta no estoque. Em "Mostrar" escolha "Ja baixadas" para o historico ou
+  "Todas".
+
+CONFERENCIA DE ESTOQUE - A SOBRA (0.8.2)
+  Mercadoria que esta aqui sem nota nenhuma (nem de venda, nem de
+  devolucao).
+  1. Na aba DEVOLUCOES, botao "Conferencia de estoque" (supervisor ou
+     admin). Abre a SOBRA-000001, que fica na mesma lista, marcada
+     "sobra de estoque".
+  2. No coletor, em CONFERIR, ela aparece junto das devolucoes. O separador
+     bipa primeiro a etiqueta do pallet P-DEV e depois QUALQUER caixa: cada
+     bipe conta 1 caixa. Para varias caixas do mesmo produto, toque no
+     produto na lista e digite quantas.
+  3. A baixa e na retaguarda, de dois jeitos:
+     "Baixar caixas" na linha do produto - so as caixas que sairam
+     (descarte ou revenda); o resto continua no pallet;
+     "Baixar tudo" no rodape - sai tudo de uma vez.
+  A sobra entra na mesma planilha do "Exportar Excel".
+  Produto sem cadastro nao entra: cadastre o codigo de barras antes.
+
+DESEMBARQUE - MONTAR O PALLET POR QUANTIDADE (so admin, 0.8.3)
+  Para quando a carreta e descarregada de uma vez, sem bipar caixa a caixa.
+  Na aba INSTRUCOES, abra a instrucao e clique em "Desembarcar" na linha da NF:
+  1. Escolha QUEM DESEMBARCOU (vem do cadastro de usuarios). E esse nome que
+     aparece em "Montado por", no Estoque.
+  2. "Iniciar desembarque" cria o pallet e manda a etiqueta para a impressora.
+  3. Digite, em cada linha, quantas caixas daquele produto vao NESTE pallet.
+     O numero e o total do pallet: digitar 8 onde havia 10 tira duas caixas.
+     Nao passa do que a NF pede - o maximo ja desconta o que o coletor bipou.
+  4. "Salvar caixas" grava. "Encerrar pallet" fecha, imprime o cartao e o
+     pallet entra na fila de enderecamento do coletor. Em seguida o diálogo
+     volta ao comeco, para o proximo pallet da mesma NF.
+  Lancou errado? "Cancelar desembarque" (pede o motivo) tira tudo e o pallet
+  sai de circulacao. Item que completa a quantidade da NF fecha sozinho.
+
+ENCERRAR A CONFERENCIA DE ESTOQUE (sobra)
+  No rodape da conferencia, "Encerrar conferencia": ela sai do coletor e a
+  sobra continua no estoque, esperando a baixa. Apareceu mais sobra depois?
+  "Reabrir conferencia".
+
+REABRIR A CONFERENCIA DE UMA DEVOLUCAO (0.8.4)
+  Esqueceu de dar entrada numa caixa? No rodape da devolucao, "Reabrir
+  conferencia": os itens voltam a aceitar bipe e a NF reaparece no coletor,
+  em CONFERIR. Bipe a caixa que faltou, no mesmo pallet, e encerre de novo.
+  Se o item tinha sido fechado com divergencia, a justificativa da falta sai -
+  a contagem esta sendo refeita.
+  Devolucao ja baixada nao reabre: estorne a baixa antes.
+
+ESTORNAR A BAIXA DE UMA DEVOLUCAO (so admin)
+  Baixou por engano? Abra a devolucao (filtro "Ja baixadas") e clique em
+  "Estornar baixa", informando o motivo. A mercadoria volta ao estoque: os
+  pallets saem de expedidos e retomam o endereco, se a posicao ainda estiver
+  livre; senao voltam sem endereco e entram na fila do coletor.
+  Caixa que ja tinha saido na baixa por caixa NAO volta - o aviso diz quantas.
+
+REIMPRIMIR ETIQUETA DE PRODUTO (so o usuario admin)
+  Aba PRODUTOS, busque o produto e "Reimprimir etiqueta": sai a etiqueta
+  80x50 com o codigo de barras e "ETIQUETA 2a VIA" embaixo. O botao so
+  aparece para quem entra com o login admin.
+
+
+AVISOS QUE VALEM DINHEIRO
+  UM SERVIDOR SO. Rodar em duas maquinas cria dois bancos, com numeros de
+  instrucao repetidos e sem conserto. As outras maquinas so abrem o navegador
+  no endereco do servidor - use criar-atalho-rede.ps1 para deixar o atalho na
+  pasta de rede.
+
+  O BANCO FICA NO DISCO LOCAL. Nunca aponte BANCO para unidade de rede:
+  SQLite em compartilhamento SMB corrompe.
+
+  O ICONE NA BANDEJA E O SERVIDOR. "Parar servidor" deixa os coletores sem
+  conexao. Pode bloquear a tela e trocar de usuario - so nao deixe a maquina
+  suspender nem desligar.
+
+
+QUANDO ALGUEM DISSER QUE O COLETOR NAO CONECTA
+  1. Nesta maquina, abra http://localhost:8080/api/v1/saude
+     Respondeu? O servidor esta de pe; o problema e rede.
+     Nao respondeu? Veja se o icone esta na bandeja; se nao, iniciar.bat.
+  2. No coletor, use "Testar conexao" na tela de configuracao.
+  3. Confira o firewall e se o IP desta maquina mudou.

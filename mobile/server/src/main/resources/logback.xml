@@ -1,0 +1,41 @@
+<configuration>
+    <property name="PASTA_LOG" value="${REDESPACHO_LOGS:-logs}"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{24} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Serviço rodando sozinho precisa deixar rastro em arquivo: quando
+         alguém diz que "o sistema caiu ontem", o console já se foi. -->
+    <appender name="ARQUIVO" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${PASTA_LOG}/servidor.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${PASTA_LOG}/servidor-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>300MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Rodando pelo iniciar.bat (javaw, sem janela) não há console para
+         ler: REDESPACHO_CONSOLE=NADA manda a saída do console para lugar
+         nenhum, e o log fica só no arquivo. No desenvolvimento, console. -->
+    <appender name="NADA" class="ch.qos.logback.core.helpers.NOPAppender"/>
+
+    <root level="INFO">
+        <appender-ref ref="${REDESPACHO_CONSOLE:-CONSOLE}"/>
+        <appender-ref ref="ARQUIVO"/>
+    </root>
+
+    <!-- Netty e SQLite em DEBUG enchem o log de detalhe que não diagnostica nada. -->
+    <logger name="io.netty" level="WARN"/>
+    <logger name="io.ktor.server.engine" level="INFO"/>
+    <logger name="org.sqlite" level="WARN"/>
+</configuration>

@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Câmaras frias — CD Demo</title>
+<style>
+:root{
+  --glass:rgba(255,255,255,0.62); --glass-b:rgba(255,255,255,0.28);
+  --text:#1a1a2e; --text-s:rgba(26,26,46,0.58);
+  --accent:#007AFF; --accent-l:rgba(0,122,255,0.10);
+  --ok:#28a745; --warn:#ff9500; --danger:#ff3b30;
+  --radius:16px; --rsm:10px; --shadow:0 4px 24px rgba(0,0,0,0.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Inter,sans-serif;
+  font-size:13px;color:var(--text);
+  background:linear-gradient(135deg,#eef2f7 0%,#e6ecf5 60%,#eaf0f8 100%)}
+.wrap{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 18px;height:52px;flex-shrink:0;
+  background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);border-bottom:1px solid var(--glass-b)}
+.topbar a.back{text-decoration:none;color:var(--accent);font-weight:600;font-size:13px}
+.topbar-logo{font-size:22px}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.topbar-sub{font-size:12px;color:var(--text-s)}
+.spacer{flex:1}
+.btn{border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-family:inherit;
+  cursor:pointer;font-weight:600;background:var(--accent);color:#fff;transition:.15s}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:rgba(0,0,0,.05);color:var(--text)}
+.btn.ok{background:var(--ok)} .btn.sm{padding:5px 10px;font-size:12px}
+.btn.danger{background:var(--danger)}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* ── SIDEBAR DE MÓDULOS (padrão idêntico aos outros módulos) ── */
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);
+  z-index:998;opacity:0;pointer-events:none;transition:opacity .2s}
+.sidebar-overlay.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:999;
+  background:var(--glass);backdrop-filter:blur(20px) saturate(1.6);
+  border-right:1px solid var(--glass-b);box-shadow:4px 0 24px rgba(0,0,0,.15);
+  transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;padding:14px 0}
+.sidebar.show{transform:translateX(0)}
+.sidebar-header{display:flex;align-items:center;gap:8px;padding:0 16px 14px;
+  border-bottom:1px solid var(--glass-b);margin-bottom:8px}
+.sidebar-header .sidebar-logo{font-size:20px}
+.sidebar-header .sidebar-title{font-size:14px;font-weight:700;flex:1}
+.sidebar-close{background:none;border:none;font-size:16px;color:var(--text-s);cursor:pointer;padding:4px;line-height:1}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  text-decoration:none;color:var(--text);font-size:13px;font-weight:500;transition:.15s}
+.sidebar-link:hover{background:rgba(0,122,255,.08)}
+.sidebar-spacer{flex:1}
+.sidebar-config{border-top:1px solid var(--glass-b);padding:8px 10px 4px}
+.sidebar-config-toggle{width:100%;background:none;border:none;text-align:left;padding:10px 12px;
+  border-radius:10px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;gap:10px;font-family:inherit}
+.sidebar-config-toggle:hover{background:rgba(0,122,255,.08)}
+.sidebar-config-toggle .arrow{margin-left:auto;font-size:11px;color:var(--text-s);transition:transform .15s}
+.sidebar-config-toggle.open .arrow{transform:rotate(90deg)}
+.sidebar-config-sub{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px 10px}
+.sidebar-sublink{display:block;padding:8px 12px;border-radius:8px;text-decoration:none;
+  color:var(--text-s);font-size:12.5px}
+.sidebar-sublink:hover{background:rgba(0,122,255,.08);color:var(--text)}
+.sidebar-link.active{background:var(--accent-l);color:var(--accent);font-weight:700}
+
+.body{flex:1;overflow:auto;padding:16px 18px 40px}
+.card{background:var(--glass);backdrop-filter:blur(14px) saturate(1.5);
+  border:1px solid var(--glass-b);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px 16px;margin-bottom:14px}
+.card h3{margin:0 0 10px;font-size:13px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:.4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hidden{display:none}
+.muted{color:var(--text-s)}
+input,select{border:1px solid var(--glass-b);background:rgba(255,255,255,.75);border-radius:8px;
+  padding:6px 9px;font-size:12px;font-family:inherit;color:var(--text)}
+input:focus,select:focus{outline:1.5px solid var(--accent)}
+
+.banner{display:none;border-radius:var(--rsm);padding:10px 14px;margin-bottom:14px;align-items:center;gap:10px}
+.banner.show{display:flex}
+.banner.info{background:rgba(0,122,255,.1);border:1px solid rgba(0,122,255,.3);color:#0055cc}
+
+/* grid, não flex — com flex+flex-grow, uma última linha parcial (ex.: 1
+   card sobrando depois de filtrar) esticava pra preencher a linha toda;
+   grid mantém a largura da coluna fixa mesmo com menos itens na última
+   linha (achado ao vivo 29/08/2026, filtro "Só fora da faixa ideal"). */
+.cam-grid{display:grid;grid-template-columns:repeat(var(--xsense-cpl, 5), minmax(170px, 1fr));gap:14px}
+.local-header{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin:4px 0 -2px;
+  font-size:12.5px;font-weight:800;color:var(--text-s);letter-spacing:.3px}
+.local-header .linha{flex:1;height:1px;background:rgba(128,128,128,.25)}
+.cam-card{position:relative;overflow:hidden}
+.cam-card .top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cam-card .nome{font-weight:700;font-size:13.5px;flex:1}
+.badge{font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;letter-spacing:.3px;text-transform:uppercase}
+.badge.NORMAL{background:rgba(34,197,94,.15);color:#15803d}
+.badge.EM_OBSERVACAO{background:rgba(255,149,0,.18);color:#8a5200}
+.badge.ALERTANDO{background:rgba(255,59,48,.16);color:#b91c1c}
+.badge.RECUPERADO{background:rgba(0,122,255,.14);color:#0055cc}
+.cam-card.st-EM_OBSERVACAO{box-shadow:0 0 0 1.5px rgba(255,149,0,.4),var(--shadow)}
+.cam-card.st-ALERTANDO{box-shadow:0 0 0 2px #ff3b30,var(--shadow);animation:cam-blink 1s ease-in-out infinite}
+@keyframes cam-blink{0%,100%{background:var(--glass)}50%{background:rgba(255,59,48,.22)}}
+.badge.ALERTANDO{animation:badge-blink 1s ease-in-out infinite}
+@keyframes badge-blink{0%,100%{opacity:1}50%{opacity:.45}}
+.cam-valor{font-size:26px;font-weight:800;letter-spacing:-.5px}
+.cam-valor .unid{font-size:14px;font-weight:600;color:var(--text-s);margin-left:2px}
+.cam-faixa{font-size:11px;color:var(--text-s);margin-top:2px}
+.cam-ts{font-size:10.5px;color:var(--text-s);margin-top:6px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.sinal-tag{font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap}
+.sinal-tag.sinal-ok{background:rgba(0,0,0,.05);color:var(--text-s)}
+.sinal-tag.sinal-ruim{background:rgba(255,59,48,.15);color:#b91c1c}
+.local-tag{font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:6px;letter-spacing:.3px}
+.spark-wrap{position:relative;margin-top:10px}
+.spark{width:100%;height:90px;display:block}
+.cam-actions{display:flex;gap:6px;margin-top:10px}
+.sem-leitura{color:var(--text-s);font-style:italic;padding:10px 0}
+.cam-card.inativa{opacity:.55}
+.badge.INATIVA{background:rgba(0,0,0,.08);color:var(--text-s)}
+.badge.SEM_ALERTA{background:rgba(0,0,0,.06);color:var(--text-s)}
+
+.hist-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+.hist-range-btns{display:flex;gap:6px;flex-wrap:wrap}
+.hist-range-btns button.active{background:var(--accent);color:#fff}
+.hist-chart-title{font-size:11px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 4px}
+.hist-chart{width:100%;height:200px;display:block}
+.hist-vazio{color:var(--text-s);font-style:italic;padding:20px 0;text-align:center}
+
+/* Modal (mesmo padrão de armazem.html/adensamento.html) */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:50}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius);box-shadow:0 10px 50px rgba(0,0,0,.3);
+  width:min(640px,94vw);max-height:88vh;display:flex;flex-direction:column}
+.modal h2{margin:0;padding:16px 20px;border-bottom:1px solid #eee;font-size:16px;display:flex;align-items:center;gap:10px}
+.modal .mbody{padding:16px 20px;overflow:auto}
+.modal .mfoot{padding:12px 20px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end}
+.f-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:12px}
+.f-field label{display:block;font-size:11px;color:var(--text-s);margin-bottom:3px}
+.f-field input,.f-field select{width:100%}
+.list-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--glass-b);margin-bottom:6px}
+.espelho-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--rsm);
+  border:1px solid var(--glass-b)}
+.espelho-avatar{width:32px;height:32px;border-radius:50%;background:rgba(0,122,255,.12);
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.espelho-info{flex:1;min-width:0}
+.espelho-nome{font-size:13px;font-weight:600}
+.espelho-ts{font-size:10px;color:var(--text-s);margin-top:2px}
+.list-item .nome{flex:1;font-weight:600;font-size:12.5px}
+.list-item .meta{font-size:11px;color:var(--text-s)}
+.cd-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 9px;
+  border-radius:20px;border:1px solid var(--glass-b);background:rgba(0,0,0,.03);cursor:pointer;user-select:none}
+.cd-chip input{margin:0}
+.cd-chip.on{background:rgba(52,199,89,.15);border-color:rgba(52,199,89,.4);font-weight:600}
+.cd-chip.disabled{opacity:.55;cursor:not-allowed}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;
+  padding:10px 18px;border-radius:10px;font-size:12.5px;z-index:200;opacity:0;pointer-events:none;transition:.25s}
+.toast.show{opacity:1}
+.ev-table{width:100%;border-collapse:collapse;font-size:11.5px}
+.ev-table th{text-align:left;padding:5px 8px;border-bottom:2px solid var(--glass-b);white-space:nowrap}
+.ev-table td{padding:5px 8px;border-bottom:1px solid rgba(0,0,0,.05);white-space:nowrap}
+.sev-tag{font-size:9.5px;padding:1px 6px;border-radius:8px;font-weight:800}
+.sev-tag.HIGH{background:rgba(255,59,48,.16);color:#b91c1c}
+.sev-tag.MEDIUM{background:rgba(255,149,0,.18);color:#8a5200}
+.sev-tag.LOW,.sev-tag.INFO{background:rgba(0,122,255,.12);color:#0055cc}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR DE MÓDULOS -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Sensores</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm icon" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/">‹ Painel</a>
+    <span class="topbar-logo">🌡️</span>
+    <span class="topbar-title">Câmaras frias</span>
+    <span class="topbar-sub">Temperatura em tempo real, alertas de excursão e oscilação</span>
+    <span class="spacer"></span>
+    <a class="btn ghost sm" href="/xsense/dashboard-mensal" style="text-decoration:none;display:inline-flex;align-items:center">📊 Dashboard Mensal</a>
+    <button class="btn ghost sm" onclick="abrirEventos()">📜 Eventos</button>
+    <button class="btn ghost sm hidden" id="btn-destinatarios" onclick="abrirDestinatarios()">👥 Destinatários</button>
+    <button class="btn ghost sm hidden" id="btn-sincronizar" onclick="abrirSincronizar()">🔄 Sincronizar</button>
+    <button class="btn ghost sm hidden" id="btn-coletar-agora" onclick="coletarAgora()">🔄 Atualizar agora</button>
+    <button class="btn ghost sm hidden" id="btn-importar-historico-todas" onclick="importarHistoricoTodas()">📥 Importar histórico</button>
+    <button class="btn ghost sm hidden" id="btn-nova-camara" onclick="abrirModalCamara()">➕ Câmara</button>
+    <button class="btn ghost sm" id="btn-espelhar" onclick="abrirEspelho()" style="display:none">👁 Espelhar</button>
+    <button class="btn sm danger" id="btn-sair-espelho" onclick="sairEspelho()" style="display:none">✕ Sair do espelho</button>
+    <span id="badge-espelhado" style="display:none;font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;background:rgba(255,149,0,.18);color:#7c4700" title="Seu painel está sendo visualizado">👁 Sendo espelhado</span>
+  </div>
+
+  <div class="body">
+    <div class="banner" id="banner-espelho" style="background:rgba(0,122,255,.1);border:1px solid rgba(0,122,255,.3);color:#0055cc">
+      👁 Você está visualizando o painel de <strong id="banner-espelho-nome"></strong> — somente leitura
+      <button class="btn sm danger" onclick="sairEspelho()">✕ Sair do espelho</button>
+    </div>
+
+    <div class="banner warn" id="banner-coleta">
+      ⚠️ Nenhuma câmara ativa recebeu leitura nos últimos 50 minutos — a coleta automática (cron a cada
+      5 min) pode não estar rodando, ou as credenciais do portal de sensores em Configurações podem ter expirado.
+    </div>
+
+    <div id="sem-camaras" class="card hidden">
+      <p class="muted" style="margin:0">Nenhuma câmara cadastrada ainda. Use <b>➕ Câmara</b> pra cadastrar a primeira
+        (limites de temperatura, sensibilidade de alerta).</p>
+    </div>
+
+    <div class="row" style="margin-bottom:12px;gap:12px">
+      <select id="filtro-status" onchange="aplicarFiltros()">
+        <option value="">Todas</option>
+        <option value="alerta">🔴 Só com alerta</option>
+        <option value="sem_alerta">🟢 Só sem alerta</option>
+      </select>
+      <select id="filtro-tipo" onchange="aplicarFiltros()">
+        <option value="">🌡️ Todas as categorias</option>
+        <option value="congelada">❄️ Congelada</option>
+        <option value="resfriada">🌡️ Resfriada</option>
+        <option value="antecamara">🚪 Antecâmara</option>
+        <option value="ambiente">🌿 Ambiente</option>
+      </select>
+      <select id="filtro-local" onchange="aplicarFiltros()">
+        <option value="">📍 Todos os locais</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+        <input type="checkbox" id="filtro-fora-faixa" onchange="aplicarFiltros()" style="width:auto">
+        Fora da faixa ideal
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+        <input type="checkbox" id="filtro-sem-sinal" onchange="aplicarFiltros()" style="width:auto">
+        Sem sinal
+      </label>
+      <span class="spacer"></span>
+      <span class="muted" style="font-size:12px">Cards/linha:</span>
+      <select id="cards-por-linha" onchange="alterarCardsPorLinha()" style="min-width:60px">
+        <option value="5" selected>5</option>
+        <option value="10">10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+      </select>
+    </div>
+
+    <div class="cam-grid" id="cam-grid"></div>
+
+    <div id="inativas-toggle-wrap" class="hidden" style="margin-top:14px">
+      <button class="btn ghost sm" id="btn-toggle-inativas" onclick="toggleInativas()"></button>
+    </div>
+    <div class="cam-grid hidden" id="cam-grid-inativas" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- MODAL: CÂMARA (criar/editar) -->
+<div class="modal-bg" id="modal-camara">
+  <div class="modal">
+    <h2><span id="camara-modal-titulo">➕ Nova Câmara</span><span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-camara')">✕</button></h2>
+    <div class="mbody">
+      <div class="f-grid">
+        <div class="f-field">
+          <label>ID (curto, sem espaço — ex.: CR1)</label>
+          <input type="text" id="cam-id" placeholder="CR1">
+        </div>
+        <div class="f-field">
+          <label>Nome (como está no portal de sensores)</label>
+          <input type="text" id="cam-nome" placeholder="Câmara Resfriado 1">
+        </div>
+      </div>
+      <div class="f-grid">
+        <div class="f-field">
+          <label>Rótulo (apelido de exibição — opcional)</label>
+          <input type="text" id="cam-rotulo" placeholder="ex.: Antecâmara (em vez de &quot;Antecâmara 2/1&quot;)">
+        </div>
+        <div class="f-field">
+          <label>Categoria (filtro do painel)</label>
+          <select id="cam-tipo">
+            <option value="">— não definida —</option>
+            <option value="congelada">❄️ Congelada</option>
+            <option value="resfriada">🌡️ Resfriada</option>
+            <option value="antecamara">🚪 Antecâmara</option>
+            <option value="ambiente">🌿 Ambiente</option>
+          </select>
+        </div>
+        <div class="f-field">
+          <label>Local (instalação/CD — filtro do painel)</label>
+          <input type="text" id="cam-local" placeholder="ex.: CDA - Cidade - UF">
+        </div>
+      </div>
+      <div class="f-grid">
+        <div class="f-field"><label>Temp. mínima (°C)</label><input type="number" step="0.1" id="cam-min"></div>
+        <div class="f-field"><label>Temp. máxima (°C)</label><input type="number" step="0.1" id="cam-max"></div>
+        <div class="f-field"><label>Limite crítico (opcional)</label><input type="number" step="0.1" id="cam-limite-duro" placeholder="ex.: 6"></div>
+      </div>
+      <div class="f-field" style="margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="cam-ativo" checked style="width:auto">
+          Câmara ativa (desmarque pra parar de monitorar sem excluir — ex.: câmara desligada)
+        </label>
+      </div>
+      <div class="f-field" style="margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="cam-alertas-ativos" checked style="width:auto">
+          Gerar alertas (desmarque pra continuar vendo temperatura/histórico normalmente, sem nunca entrar
+          em estado de alerta — ex.: câmaras que variam mais e não merecem push, como antecâmaras)
+        </label>
+      </div>
+      <p class="muted" style="margin:0 0 8px">Sensibilidade do alerta — os padrões da spec servem pra maioria das câmaras.</p>
+      <div class="f-grid">
+        <div class="f-field"><label>Leituras fora seguidas p/ excursão</label><input type="number" id="cam-n-sustentado" value="2"></div>
+        <div class="f-field"><label>Cruzamentos p/ oscilação</label><input type="number" id="cam-k-oscilacao" value="4"></div>
+        <div class="f-field"><label>Janela de oscilação (min)</label><input type="number" id="cam-w-janela" value="120"></div>
+        <div class="f-field"><label>Cooldown entre alertas (min)</label><input type="number" id="cam-cooldown" value="60"></div>
+        <div class="f-field"><label>Leituras dentro p/ recuperar</label><input type="number" id="cam-m-recuperacao" value="2"></div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn danger hidden" id="btn-excluir-camara" onclick="excluirCamaraAtual()">Excluir</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" onclick="fecharModal('modal-camara')">Cancelar</button>
+      <button class="btn ok" onclick="salvarCamara()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DESTINATÁRIOS -->
+<div class="modal-bg" id="modal-destinatarios">
+  <div class="modal">
+    <h2>👥 Destinatários de Alerta <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-destinatarios')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin:0 0 10px">
+        Alerta sai por <b>Telegram</b> por enquanto (WhatsApp Business API ainda travado —
+        sem CNPJ pra verificação de empresa).
+      </p>
+
+      <h3 style="margin:0 0 8px;font-size:13px">⏳ Pendentes<span class="muted" id="pend-resumo"></span></h3>
+      <div id="lista-pendentes"></div>
+
+      <hr style="margin:16px 0;border:none;border-top:1px solid var(--glass-b)">
+
+      <h3 style="margin:0 0 8px;font-size:13px">👥 Destinatários — CDs que cada um recebe</h3>
+      <div class="muted" style="font-size:11.5px;margin:0 0 8px">
+        Marque/desmarque o CD pra ligar/desligar o alerta daquele local pra pessoa — cada
+        coordenador/analista só mexe na coluna do próprio CD; gerente mexe em qualquer uma.
+      </div>
+      <div id="lista-destinatarios"></div>
+
+      <div id="bloco-admin-destinatarios" class="hidden">
+        <hr style="margin:16px 0;border:none;border-top:1px solid var(--glass-b)">
+        <p class="muted" style="margin:0 0 8px"><b>📋 Resumo de 8 em 8 horas</b> — enviado às 06h, 14h e 22h
+          com a situação de cada câmara. Gerentes recebem todos os locais; os demais, os CDs marcados acima.</p>
+        <button class="btn ghost sm" onclick="verPreviaResumo()">Ver prévia das últimas 8 horas</button>
+        <div id="resumo-previa" style="margin:8px 0"></div>
+        <hr style="margin:16px 0;border:none;border-top:1px solid var(--glass-b)">
+        <p class="muted" style="margin:0 0 8px"><b>➕ Cadastro manual</b> (uso avançado — o fluxo
+          normal é a pessoa mandar /start no bot e ser aprovada acima).</p>
+        <button class="btn ghost sm" onclick="verContatosPendentes()">📨 Ver quem mandou /start</button>
+        <div id="contatos-pendentes-body" style="margin:8px 0"></div>
+        <div class="f-grid">
+          <div class="f-field"><label>Nome</label><input type="text" id="dest-nome"></div>
+          <div class="f-field">
+            <label>Chat ID do Telegram</label>
+            <input type="text" id="dest-telegram" placeholder="ex.: 123456789">
+          </div>
+          <div class="f-field"><label>WhatsApp (com DDI/DDD, opcional por enquanto)</label><input type="text" id="dest-whatsapp" placeholder="5511999999999"></div>
+          <div class="f-field">
+            <label>Severidade mínima</label>
+            <select id="dest-severidade">
+              <option value="LOW">Baixa (recebe tudo)</option>
+              <option value="MEDIUM" selected>Média (oscilação/excursão)</option>
+              <option value="HIGH">Alta (só excursão)</option>
+            </select>
+          </div>
+        </div>
+        <div class="muted" style="font-size:11.5px;margin:6px 0 0">
+          Não sabe o Chat ID? Peça pra pessoa mandar <b>/start</b> pro bot no Telegram
+          (<a href="#" id="link-bot-telegram" target="_blank">abrir bot</a>).
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ok sm" onclick="salvarDestinatario()">Adicionar</button>
+        </div>
+
+        <hr style="margin:16px 0;border:none;border-top:1px solid var(--glass-b)">
+        <p class="muted" style="margin:0 0 8px">
+          <b>📢 Aviso geral</b> — manda uma mensagem avulsa pra todos os destinatários ativos
+          (ex.: aviso de atualização do sistema), sem passar pelo motor de alerta.
+        </p>
+        <textarea id="broadcast-texto" rows="3" style="width:100%;resize:vertical;border:1px solid var(--glass-b);
+          background:rgba(255,255,255,.75);border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;
+          color:var(--text)" placeholder="Digite o aviso... (aceita &lt;b&gt;negrito&lt;/b&gt;)"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost sm" onclick="enviarBroadcast()">📤 Enviar pra todos</button>
+          <span id="broadcast-result" style="font-size:12px"></span>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <span class="spacer"></span>
+      <button class="btn ghost" onclick="fecharModal('modal-destinatarios')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: SINCRONIZAR COM XSENSE -->
+<div class="modal-bg" id="modal-sincronizar">
+  <div class="modal">
+    <h2>🔄 Sincronizar com o portal de sensores <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-sincronizar')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin:0 0 10px">
+        Consulta a lista de câmaras direto no portal (login salvo em Configurações). As que já estão
+        importadas aqui aparecem marcadas. Marque as caixinhas das novas e clique em
+        <b>Importar selecionadas</b> — vem tudo pré-preenchido (faixa, categoria, local), sem precisar
+        confirmar uma por uma; se quiser ajustar rótulo ou algo mais, edita depois pelo card.
+        Só clique em <b>Importar</b> (individual) se quiser revisar antes de salvar. Câmaras importadas
+        antes do campo Local existir ficam com <b>Atualizar locais</b> disponível — atualiza só o local
+        das já importadas, sem mexer em faixa/sensibilidade configurada.
+      </p>
+      <div id="sincronizar-body">Clique em "Consultar portal" pra começar.</div>
+    </div>
+    <div class="mfoot">
+      <span class="muted" id="sincronizar-selecionadas-info" style="font-size:12px"></span>
+      <span class="spacer"></span>
+      <button class="btn ghost" onclick="fecharModal('modal-sincronizar')">Fechar</button>
+      <button class="btn ok" onclick="consultarPortalSensores()">🔎 Consultar portal</button>
+      <button class="btn ghost" id="btn-atualizar-locais" onclick="atualizarLocaisImportados()" style="display:none">📍 Atualizar locais/instalação</button>
+      <button class="btn ok" id="btn-importar-selecionadas" onclick="importarSelecionados()" style="display:none">📥 Importar selecionadas</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: HISTÓRICO -->
+<div class="modal-bg" id="modal-historico">
+  <div class="modal" style="width:min(760px,94vw)">
+    <h2>📈 Histórico — <span id="hist-camara-nome"></span><span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-historico')">✕</button></h2>
+    <div class="mbody">
+      <div class="hist-toolbar">
+        <div class="hist-range-btns" id="hist-range-btns"></div>
+        <span class="spacer"></span>
+        <span class="muted" id="hist-import-wrap">
+          <button class="btn ghost sm" id="btn-importar-historico" onclick="importarHistoricoSensores()">
+            🔄 Importar histórico do portal de sensores (90 dias)
+          </button>
+        </span>
+      </div>
+      <div id="hist-import-msg" class="muted" style="font-size:11.5px;margin-bottom:8px"></div>
+      <div id="hist-corpo">Carregando…</div>
+    </div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-historico')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL: EVENTOS -->
+<div class="modal-bg" id="modal-eventos">
+  <div class="modal">
+    <h2>📜 Histórico de Eventos <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-eventos')">✕</button></h2>
+    <div class="mbody" id="eventos-body">Carregando…</div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-eventos')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL: ESPELHAR -->
+<div class="modal-bg" id="modal-espelho">
+  <div class="modal" style="width:min(480px,94vw)">
+    <h2>👁 Espelhar painel de... <span class="spacer"></span>
+      <button class="btn ghost sm" onclick="fecharModal('modal-espelho')">✕</button></h2>
+    <div class="mbody">
+      <p class="muted" style="margin:0 0 12px">Selecione um usuário para ver o painel dele em modo somente leitura. O usuário será notificado que você está visualizando.</p>
+      <div id="lista-espelho" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div class="mfoot"><button class="btn ghost" onclick="fecharModal('modal-espelho')">Fechar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SIDEBAR DE MÓDULOS ─────────────────────────────────
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Câmaras frias', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebar-overlay').classList.add('show');}
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebar-overlay').classList.remove('show');}
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+function montarConfigSidebar(perfil, isMaster){
+  // admin e master unificados (29/08/2026) — mesmo nível de acesso, sem
+  // distinção de sublinks nenhuma mais (isMaster/'master' mantidos só
+  // como fallback pra sessão antiga em cache até relogar).
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+}
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  // módulo com telas (SLAs, 27/10/2026): o nome abre a lista das telas
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+function abrirModal(id){ document.getElementById(id).classList.add('show'); }
+function fecharModal(id){ document.getElementById(id).classList.remove('show'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ fecharSidebar();
+  ['modal-camara','modal-destinatarios','modal-sincronizar','modal-historico','modal-eventos','modal-espelho'].forEach(fecharModal); } });
+
+let _csrf='', _isAdmin=false, _camaras=[], _podeGerenciarDestinatarios=false, _meuCd='';
+const _post=(url,body)=>fetch(url,{method:'POST',
+  headers:{'Content-Type':'application/json','X-CSRF-Token':_csrf}, body:JSON.stringify(body)});
+const _del=(url)=>fetch(url,{method:'DELETE', headers:{'X-CSRF-Token':_csrf}});
+
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+function escHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtTs(ts){ if(!ts) return '–'; const [d,h]=ts.split(' '); const [y,m,dd]=d.split('-'); return `${dd}/${m} ${h?h.slice(0,5):''}`; }
+
+async function init(){
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  _csrf = me.csrf_token || '';
+  _isAdmin = me.perfil==='admin' || me.perfil==='master';
+  // Coordenador/Analista também gerenciam destinatários agora (26/08/2026),
+  // mas só a coluna do próprio CD — câmara em si continua admin/master-only.
+  _podeGerenciarDestinatarios = _isAdmin || ['coordenador','analista'].includes(me.perfil);
+  _meuCd = (me.unidades_permitidas && me.unidades_permitidas[0]) || '';
+  if(_isAdmin){
+    document.getElementById('btn-sincronizar').classList.remove('hidden');
+    document.getElementById('btn-coletar-agora').classList.remove('hidden');
+    document.getElementById('btn-importar-historico-todas').classList.remove('hidden');
+    document.getElementById('btn-nova-camara').classList.remove('hidden');
+  }
+  if(_podeGerenciarDestinatarios){
+    document.getElementById('btn-destinatarios').classList.remove('hidden');
+  }
+  montarSidebar(me.modulos_permitidos, 'xsense');
+  montarConfigSidebar(me.perfil, me.is_master);
+  _atualizarBadgeEspelhado(me.observadores || []);
+  const cdNome = me.cd_nome_exibicao || 'CDA';
+  document.title = 'Câmaras frias — ' + cdNome;
+  const sbTitle = document.querySelector('.sidebar-title');
+  if(sbTitle) sbTitle.textContent = cdNome;
+  if(me.perfil==='admin' || me.perfil==='master' || (me.unidades_extras_espelho&&me.unidades_extras_espelho.length)){
+    document.getElementById('btn-espelhar').style.display = '';
+  }
+  if(me.espelhando){
+    _entrarModoEspelho(me.espelhando);
+    iniciarHeartbeatEspelho();
+  }
+  iniciarPollingEspelhado();
+  const cplSalvo = localStorage.getItem('xsenseCardsPorLinha');
+  if(cplSalvo){ document.getElementById('cards-por-linha').value = cplSalvo; alterarCardsPorLinha(); }
+  await carregarDashboard();
+  setInterval(carregarDashboard, 30000);
+}
+
+// ── ESPELHAMENTO ─────────────────────────────────────────
+// As câmaras do portal de sensores são compartilhadas (não há dado por usuário), então
+// espelhar não muda o que aparece na tela — mas o banner/estado segue o
+// usuário ao navegar entre módulos, e as ações de escrita (Câmara,
+// Sincronizar, Destinatários) ficam ocultas por consistência com o resto
+// do app (pedido do usuário 24/08/2026: trazer espelho pro Sensores também).
+function _entrarModoEspelho(usuario){
+  window._espelhando = true;
+  document.getElementById('banner-espelho-nome').textContent = usuario;
+  document.getElementById('banner-espelho').classList.add('show');
+  document.getElementById('btn-sair-espelho').style.display = '';
+  document.getElementById('btn-espelhar').style.display = 'none';
+  document.getElementById('btn-destinatarios').classList.add('hidden');
+  document.getElementById('btn-sincronizar').classList.add('hidden');
+  document.getElementById('btn-coletar-agora').classList.add('hidden');
+  document.getElementById('btn-importar-historico-todas').classList.add('hidden');
+  document.getElementById('btn-nova-camara').classList.add('hidden');
+}
+function _sairModoEspelho(){
+  window._espelhando = false;
+  document.getElementById('banner-espelho').classList.remove('show');
+  document.getElementById('btn-sair-espelho').style.display = 'none';
+  document.getElementById('btn-espelhar').style.display = '';
+  if(_isAdmin){
+    document.getElementById('btn-sincronizar').classList.remove('hidden');
+    document.getElementById('btn-coletar-agora').classList.remove('hidden');
+    document.getElementById('btn-importar-historico-todas').classList.remove('hidden');
+    document.getElementById('btn-nova-camara').classList.remove('hidden');
+  }
+  if(_podeGerenciarDestinatarios){
+    document.getElementById('btn-destinatarios').classList.remove('hidden');
+  }
+}
+
+async function abrirEspelho(){
+  const res = await fetch('/api/espelho/usuarios');
+  const data = await res.json();
+  const lista = document.getElementById('lista-espelho');
+  const usuarios = data.usuarios || [];
+  if(!usuarios.length){
+    lista.innerHTML = '<div class="muted" style="font-size:12px">Nenhum usuário com dados disponíveis.</div>';
+  } else {
+    lista.innerHTML = '';
+    usuarios.forEach(u=>{
+      const ts = u.atualizado ? new Date(u.atualizado).toLocaleString('pt-BR') : '';
+      const card = document.createElement('div');
+      card.className = 'espelho-card';
+      card.innerHTML = `
+        <div class="espelho-avatar">👤</div>
+        <div class="espelho-info">
+          <div class="espelho-nome">${escHtml(u.usuario)}</div>
+          <div class="espelho-ts">${ts ? 'Atualizado: '+escHtml(ts) : ''}</div>
+        </div>
+        <button class="btn sm">👁 Espelhar</button>`;
+      card.querySelector('button').onclick = () => iniciarEspelho(u.usuario);
+      lista.appendChild(card);
+    });
+  }
+  abrirModal('modal-espelho');
+}
+
+let _espelhoHeartbeatTimer = null;
+function iniciarHeartbeatEspelho(){
+  if(_espelhoHeartbeatTimer) clearInterval(_espelhoHeartbeatTimer);
+  _espelhoHeartbeatTimer = setInterval(()=>{ _post('/api/espelho/heartbeat', {}).catch(()=>{}); }, 20000);
+}
+function pararHeartbeatEspelho(){
+  if(_espelhoHeartbeatTimer){ clearInterval(_espelhoHeartbeatTimer); _espelhoHeartbeatTimer = null; }
+}
+
+async function iniciarEspelho(usuario){
+  const res = await _post('/api/espelho/iniciar', {usuario});
+  const d = await res.json();
+  if(!d.ok){ toast(d.error || 'Erro'); return; }
+  fecharModal('modal-espelho');
+  _entrarModoEspelho(usuario);
+  iniciarHeartbeatEspelho();
+}
+
+async function sairEspelho(){
+  await _post('/api/espelho/sair', {});
+  pararHeartbeatEspelho();
+  _sairModoEspelho();
+}
+
+function _atualizarBadgeEspelhado(observadores){
+  const el = document.getElementById('badge-espelhado');
+  if(!el) return;
+  if(observadores && observadores.length){
+    el.style.display = '';
+    const nomes = observadores.join(', ');
+    el.title = 'Sendo visualizado por: ' + nomes;
+    el.textContent = '👁 Sendo espelhado por ' + (observadores.length > 1 ? observadores.length + ' usuários' : nomes);
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+let _espelhadoPollTimer = null;
+function iniciarPollingEspelhado(){
+  if(_espelhadoPollTimer) clearInterval(_espelhadoPollTimer);
+  _espelhadoPollTimer = setInterval(async ()=>{
+    try{
+      const d = await fetch('/api/me').then(r=>r.json());
+      _atualizarBadgeEspelhado(d.observadores || []);
+    }catch(e){}
+  }, 15000);
+}
+
+function sparklineSvg(leituras, minimo, maximo, camaraId){
+  if(!leituras || leituras.length<2) return '';
+  const vals = leituras.map(l=>l.valor);
+  const temFaixa = minimo!=null && maximo!=null;
+  const lo = Math.min(...vals, temFaixa?minimo:vals[0]), hi = Math.max(...vals, temFaixa?maximo:vals[0]);
+  const faixa = (hi-lo)||1;
+  const w=260, h=90, padL=26, padB=14, plotW=w-padL-2, plotH=h-padB;
+  const n = vals.length;
+  const yOf = v => padB + plotH - ((v-lo)/faixa)*plotH;
+  const xOf = i => n===1 ? padL+plotW/2 : padL + (i/(n-1))*plotW;
+  const pts = vals.map((v,i)=>`${xOf(i).toFixed(1)},${yOf(v).toFixed(1)}`).join(' ');
+  const faixaRect = temFaixa
+    ? `<rect x="${padL}" y="${yOf(maximo).toFixed(1)}" width="${plotW}" height="${(yOf(minimo)-yOf(maximo)).toFixed(1)}" fill="rgba(34,197,94,.12)"/>
+       <line x1="${padL}" y1="${yOf(minimo).toFixed(1)}" x2="${w-2}" y2="${yOf(minimo).toFixed(1)}" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,3"/>
+       <line x1="${padL}" y1="${yOf(maximo).toFixed(1)}" x2="${w-2}" y2="${yOf(maximo).toFixed(1)}" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,3"/>`
+    : '';
+  const rotulosY = `<text x="0" y="${(padB+3).toFixed(1)}" font-size="8.5" fill="#8a8a9a">${hi.toFixed(1)}</text>
+    <text x="0" y="${(padB+plotH).toFixed(1)}" font-size="8.5" fill="#8a8a9a">${lo.toFixed(1)}</text>`;
+  const rotulosX = `<text x="${padL}" y="${h-2}" font-size="8.5" fill="#8a8a9a">${fmtTs(leituras[0].ts)}</text>
+    <text x="${w-2}" y="${h-2}" font-size="8.5" fill="#8a8a9a" text-anchor="end">${fmtTs(leituras[n-1].ts)}</text>`;
+  const passo = Math.max(1, Math.ceil(n/40));
+  const hitAreas = vals.map((v,i)=>(i%passo===0||i===n-1)
+    ? `<circle class="spark-pt" data-cam="${camaraId}" data-i="${i}" cx="${xOf(i).toFixed(1)}" cy="${yOf(v).toFixed(1)}" r="9" fill="transparent" style="cursor:crosshair"/>`
+    : '').join('');
+  return `<div class="spark-wrap" id="spark-wrap-${camaraId}">
+    <svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      ${faixaRect}
+      <polyline points="${pts}" fill="none" stroke="#007AFF" stroke-width="2"/>
+      ${rotulosY}${rotulosX}${hitAreas}
+    </svg>
+    <div id="spark-tooltip-${camaraId}" style="position:absolute;display:none;pointer-events:none;background:rgba(20,20,30,.92);
+      color:#fff;font-size:11px;line-height:1.5;padding:4px 8px;border-radius:8px;z-index:20;white-space:nowrap;
+      box-shadow:0 4px 14px rgba(0,0,0,.25)"></div>
+  </div>`;
+}
+
+function _attachSparkTooltip(camaraId, leituras){
+  const wrap = document.getElementById('spark-wrap-'+camaraId);
+  const tooltip = document.getElementById('spark-tooltip-'+camaraId);
+  if(!wrap || !tooltip) return;
+  const posicionar = e=>{
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+    const ttW = tooltip.offsetWidth;
+    const left = (mx+10+ttW>rect.width) ? Math.max(0,mx-10-ttW) : mx+10;
+    tooltip.style.left = left+'px';
+    tooltip.style.top = Math.max(0,my-10)+'px';
+  };
+  wrap.querySelectorAll(`.spark-pt[data-cam="${camaraId}"]`).forEach(circ=>{
+    const p = leituras[parseInt(circ.dataset.i)];
+    circ.addEventListener('mouseenter', e=>{
+      tooltip.innerHTML = `<b>${p.valor.toFixed(1)}°C</b><br>${fmtTs(p.ts)}`;
+      tooltip.style.display = 'block';
+      posicionar(e);
+    });
+    circ.addEventListener('mousemove', posicionar);
+    circ.addEventListener('mouseleave', ()=>{ tooltip.style.display = 'none'; });
+  });
+}
+
+function nomeExibicao(cam){ return cam ? (cam.rotulo || cam.nome || '') : ''; }
+
+// Cor estável por CD (hash do nome completo do local, não só a sigla) —
+// cada CD sempre cai na mesma cor entre sessões/telas, sem precisar manter
+// uma lista manual (pedido do usuário 26/08/2026: hoje tava tudo azul).
+function corParaLocal(local){
+  if(!local) return {bg:'rgba(0,122,255,.12)', fg:'#0055cc'};
+  let hash = 0;
+  for(let i=0;i<local.length;i++) hash = (hash*31 + local.charCodeAt(i)) >>> 0;
+  const hue = hash % 360;
+  return {bg:`hsla(${hue},70%,50%,.16)`, fg:`hsl(${hue},65%,32%)`};
+}
+
+function _minutosDesde(ts){
+  if(!ts) return Infinity;
+  const [data, hora] = ts.split(' ');
+  const [y,m,d] = data.split('-'); const [hh,mm,ss] = (hora||'0:0:0').split(':');
+  const dt = new Date(y,m-1,d,hh,mm,ss).getTime();
+  return (Date.now() - dt) / 60000;
+}
+function _fmtDuracao(min){
+  if(min < 60) return `${Math.round(min)} min`;
+  const h = Math.floor(min/60), m = Math.round(min%60);
+  return `${h}h${m>0?m+'min':''}`;
+}
+const SINAL_LIMITE_MIN = 50; // mesmo limiar do banner-coleta
+
+function _camCardHtml(cam){
+  const inativa = !cam.ativo;
+  const semAlerta = !inativa && !cam.alertas_ativos;
+  const est = cam.estado_temperatura || {};
+  const estado = inativa ? 'INATIVA' : (semAlerta ? 'SEM_ALERTA' : (est.estado || 'NORMAL'));
+  const ultimas = cam.ultimas_leituras || [];
+  const ultima = ultimas[ultimas.length-1];
+  const minsDesde = ultima ? _minutosDesde(ultima.ts) : Infinity;
+  const semSinal = !inativa && minsDesde > SINAL_LIMITE_MIN;
+  const sinalHtml = inativa ? '' : (semSinal
+    ? `<span class="sinal-tag sinal-ruim" title="Sem leitura nova há ${_fmtDuracao(minsDesde)}">📡❌ sem sinal</span>`
+    : `<span class="sinal-tag sinal-ok" title="Comunicação normal">📡 ok</span>`);
+  const corLocal = corParaLocal(cam.local);
+  const localTag = cam.local ? `<span class="local-tag" title="${escHtml(cam.local)}" style="background:${corLocal.bg};color:${corLocal.fg}">${escHtml(cam.local.slice(0,3).toUpperCase())}</span>` : '';
+  const corpo = inativa
+    ? `<div class="sem-leitura">Câmara inativa — monitoramento pausado.</div>
+       <div class="cam-faixa">Faixa: ${cam.temp_min}°C a ${cam.temp_max}°C</div>`
+    : (ultima ? `
+      <div class="cam-valor">${ultima.valor.toFixed(1)}<span class="unid">°C</span></div>
+      <div class="cam-faixa">Faixa: ${cam.temp_min}°C a ${cam.temp_max}°C${cam.temp_limite_duro!=null?` · crítico ${cam.temp_limite_duro}°C`:''}</div>
+      <div class="cam-ts">${semSinal?`⚠️ Sem sinal há ${_fmtDuracao(minsDesde)} `:'Última leitura: '}${fmtTs(ultima.ts)} ${sinalHtml}</div>
+      ${sparklineSvg(ultimas, cam.temp_min, cam.temp_max, cam.id)}
+    ` : `<div class="sem-leitura">Sem leituras ainda</div>
+      <div class="cam-faixa">Faixa: ${cam.temp_min}°C a ${cam.temp_max}°C</div>`);
+  return `<div class="card cam-card ${inativa?'inativa':'st-'+estado}">
+      <div class="top">
+        <span class="nome">${escHtml(nomeExibicao(cam))}</span>
+        ${localTag}
+        <span class="badge ${estado}">${estado==='SEM_ALERTA' ? '🔕 SEM ALERTA' : estado.replace('_',' ')}</span>
+      </div>
+      ${corpo}
+      <div class="cam-actions">
+        <button class="btn ghost sm" onclick="abrirHistorico('${cam.id}')">📈 Histórico</button>
+        <button class="btn ghost sm" onclick="abrirEventos('${cam.id}')">📜 Eventos</button>
+        ${_isAdmin?`<button class="btn ghost sm" onclick="abrirModalCamara('${cam.id}')">✏️ Editar</button>`:''}
+      </div>
+    </div>`;
+}
+
+let _inativasAbertas = false, _ultimaContagemInativas = 0;
+function _atualizarLabelInativas(n){
+  if(n!=null) _ultimaContagemInativas = n;
+  const total = _ultimaContagemInativas;
+  document.getElementById('btn-toggle-inativas').textContent =
+    (_inativasAbertas ? '▲ Ocultar' : '▼ Mostrar') + ` ${total} câmara${total===1?'':'s'} inativa${total===1?'':'s'}`;
+}
+function toggleInativas(){
+  _inativasAbertas = !_inativasAbertas;
+  document.getElementById('cam-grid-inativas').classList.toggle('hidden', !_inativasAbertas);
+  _atualizarLabelInativas();
+}
+
+function renderCamaras(itens){
+  _camaras = itens;
+  aplicarFiltros();
+}
+
+function _camaraForaDaFaixa(cam){
+  const ultimas = cam.ultimas_leituras || [];
+  const ultima = ultimas[ultimas.length-1];
+  if(!ultima || cam.temp_min==null || cam.temp_max==null) return false;
+  return ultima.valor < cam.temp_min || ultima.valor > cam.temp_max;
+}
+
+// Mesmo critério do card (_camCardHtml): sem leitura nova há mais de
+// SINAL_LIMITE_MIN (30 min) — pedido do usuário 29/08/2026: filtro pra
+// achar rápido câmaras com sensor/coleta travada, igual já existe pra
+// "fora da faixa".
+function _camaraSemSinal(cam){
+  const ultimas = cam.ultimas_leituras || [];
+  const ultima = ultimas[ultimas.length-1];
+  const minsDesde = ultima ? _minutosDesde(ultima.ts) : Infinity;
+  return minsDesde > SINAL_LIMITE_MIN;
+}
+
+function _atualizarOpcoesLocal(todos){
+  const sel = document.getElementById('filtro-local');
+  const atual = sel.value;
+  const locais = [...new Set(todos.map(c=>c.local).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">📍 Todos os locais</option>' +
+    locais.map(l=>`<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  if(locais.includes(atual)) sel.value = atual;
+}
+
+// Agrupa/ordena os cards por CD, com um cabeçalho por grupo (pedido do
+// usuário 26/08/2026: "um CD por linha") — se só sobrar 1 CD depois do
+// filtro, não faz sentido mostrar cabeçalho pra um grupo só, então pula.
+function _agruparPorLocalHtml(camaras){
+  if(!camaras.length) return '';
+  const grupos = new Map();
+  camaras.slice()
+    .sort((a,b)=>(a.local||'').localeCompare(b.local||'') || (nomeExibicao(a)||'').localeCompare(nomeExibicao(b)||''))
+    .forEach(c=>{
+      const chave = c.local || '(sem local)';
+      if(!grupos.has(chave)) grupos.set(chave, []);
+      grupos.get(chave).push(c);
+    });
+  if(grupos.size <= 1) return camaras.map(_camCardHtml).join('');
+  let html = '';
+  for(const [local, itens] of grupos){
+    const cor = corParaLocal(local === '(sem local)' ? '' : local);
+    html += `<div class="local-header"><span class="local-tag" style="background:${cor.bg};color:${cor.fg}">${escHtml(local)}</span><span class="linha"></span></div>`;
+    html += itens.map(_camCardHtml).join('');
+  }
+  return html;
+}
+
+function aplicarFiltros(){
+  const todos = _camaras || [];
+  document.getElementById('sem-camaras').classList.toggle('hidden', todos.length>0);
+  _atualizarOpcoesLocal(todos);
+
+  const statusF = document.getElementById('filtro-status').value;
+  const tipoF = document.getElementById('filtro-tipo').value;
+  const localF = document.getElementById('filtro-local').value;
+  const foraFaixa = document.getElementById('filtro-fora-faixa').checked;
+  const semSinalF = document.getElementById('filtro-sem-sinal').checked;
+
+  const passaTipoELocal = cam => (!tipoF || cam.tipo === tipoF) && (!localF || cam.local === localF);
+  const passaStatusEFaixa = cam => {
+    const emAlerta = (cam.estado_temperatura || {}).estado === 'ALERTANDO';
+    if(statusF==='alerta' && !emAlerta) return false;
+    if(statusF==='sem_alerta' && emAlerta) return false;
+    if(foraFaixa && !_camaraForaDaFaixa(cam)) return false;
+    if(semSinalF && !_camaraSemSinal(cam)) return false;
+    return true;
+  };
+
+  const ativas = todos.filter(c=>c.ativo && passaTipoELocal(c) && passaStatusEFaixa(c));
+  const inativas = todos.filter(c=>!c.ativo && passaTipoELocal(c));
+
+  document.getElementById('cam-grid').innerHTML = _agruparPorLocalHtml(ativas);
+  document.getElementById('cam-grid-inativas').innerHTML = _agruparPorLocalHtml(inativas);
+  document.getElementById('inativas-toggle-wrap').classList.toggle('hidden', inativas.length===0);
+  _atualizarLabelInativas(inativas.length);
+  ativas.concat(inativas).forEach(cam=>{
+    if(cam.ultimas_leituras && cam.ultimas_leituras.length>=2) _attachSparkTooltip(cam.id, cam.ultimas_leituras);
+  });
+}
+
+function alterarCardsPorLinha(){
+  const v = document.getElementById('cards-por-linha').value;
+  document.documentElement.style.setProperty('--xsense-cpl', v);
+  localStorage.setItem('xsenseCardsPorLinha', v);
+}
+
+async function carregarDashboard(){
+  const r = await fetch('/api/xsense/dashboard').then(r=>r.json()).catch(()=>({camaras:[]}));
+  const camaras = r.camaras || [];
+  renderCamaras(camaras);
+
+  const ativas = camaras.filter(c=>c.ativo);
+  const limiteMs = SINAL_LIMITE_MIN*60*1000;
+  const agora = Date.now();
+  const algumaRecente = ativas.some(c=>{
+    const ts = c.estado_temperatura && c.estado_temperatura.ultima_leitura_ts;
+    if(!ts) return false;
+    const [data, hora] = ts.split(' ');
+    const [y,m,d] = data.split('-'); const [hh,mm,ss] = (hora||'0:0:0').split(':');
+    const dt = new Date(y,m-1,d,hh,mm,ss).getTime();
+    return (agora - dt) < limiteMs;
+  });
+  document.getElementById('banner-coleta').classList.toggle('show', ativas.length>0 && !algumaRecente);
+}
+
+// ── CÂMARA (criar/editar/excluir) ──────────────────────
+function abrirModalCamara(id, pre){
+  const cam = id ? _camaras.find(c=>c.id===id) : null;
+  const p = pre || {};
+  document.getElementById('camara-modal-titulo').textContent = cam ? `✏️ ${nomeExibicao(cam)}` : '➕ Nova Câmara';
+  document.getElementById('cam-id').value = cam ? cam.id : (p.id || '');
+  document.getElementById('cam-id').disabled = !!cam || !!p.id;
+  document.getElementById('cam-nome').value = cam ? cam.nome : (p.nome || '');
+  document.getElementById('cam-rotulo').value = cam ? (cam.rotulo || '') : (p.rotulo || '');
+  document.getElementById('cam-tipo').value = cam ? (cam.tipo || '') : (p.tipo || '');
+  document.getElementById('cam-local').value = cam ? (cam.local || '') : (p.local || '');
+  document.getElementById('cam-min').value = cam ? cam.temp_min : (p.temp_min ?? '');
+  document.getElementById('cam-max').value = cam ? cam.temp_max : (p.temp_max ?? '');
+  document.getElementById('cam-limite-duro').value = cam && cam.temp_limite_duro!=null ? cam.temp_limite_duro : '';
+  document.getElementById('cam-n-sustentado').value = cam ? cam.n_sustentado : 2;
+  document.getElementById('cam-k-oscilacao').value = cam ? cam.k_oscilacao : 4;
+  document.getElementById('cam-w-janela').value = cam ? cam.w_janela_min : 120;
+  document.getElementById('cam-cooldown').value = cam ? cam.cooldown_min : 60;
+  document.getElementById('cam-m-recuperacao').value = cam ? cam.m_recuperacao : 2;
+  document.getElementById('cam-ativo').checked = cam ? !!cam.ativo : true;
+  document.getElementById('cam-alertas-ativos').checked = cam ? !!cam.alertas_ativos : true;
+  document.getElementById('cam-id').dataset.provider = cam ? (cam.provider||'') : (p.provider || '');
+  document.getElementById('cam-id').dataset.providerRef = cam ? (cam.provider_ref||'') : (p.provider_ref || '');
+  document.getElementById('cam-id').dataset.nodeId = cam ? (cam.node_id||'') : (p.node_id || '');
+  document.getElementById('btn-excluir-camara').classList.toggle('hidden', !cam);
+  document.getElementById('btn-excluir-camara').dataset.id = cam ? cam.id : '';
+  abrirModal('modal-camara');
+}
+async function salvarCamara(){
+  const idEl = document.getElementById('cam-id');
+  const body = {
+    id: idEl.value.trim(),
+    nome: document.getElementById('cam-nome').value.trim(),
+    rotulo: document.getElementById('cam-rotulo').value.trim(),
+    tipo: document.getElementById('cam-tipo').value,
+    local: document.getElementById('cam-local').value.trim(),
+    temp_min: document.getElementById('cam-min').value,
+    temp_max: document.getElementById('cam-max').value,
+    temp_limite_duro: document.getElementById('cam-limite-duro').value || null,
+    n_sustentado: document.getElementById('cam-n-sustentado').value,
+    k_oscilacao: document.getElementById('cam-k-oscilacao').value,
+    w_janela_min: document.getElementById('cam-w-janela').value,
+    cooldown_min: document.getElementById('cam-cooldown').value,
+    m_recuperacao: document.getElementById('cam-m-recuperacao').value,
+    provider: idEl.dataset.provider || 'manual',
+    provider_ref: idEl.dataset.providerRef || null,
+    node_id: idEl.dataset.nodeId || '',
+    ativo: document.getElementById('cam-ativo').checked,
+    alertas_ativos: document.getElementById('cam-alertas-ativos').checked,
+  };
+  const r = await _post('/api/xsense/camaras', body).then(r=>r.json());
+  if(r.error){ toast('❌ '+r.error); return; }
+  fecharModal('modal-camara'); toast('✅ Câmara salva.'); await carregarDashboard();
+}
+async function excluirCamaraAtual(){
+  const id = document.getElementById('btn-excluir-camara').dataset.id;
+  if(!id || !confirm('Excluir esta câmara? O histórico de leituras e eventos permanece no banco.')) return;
+  await _del('/api/xsense/camaras/'+encodeURIComponent(id));
+  fecharModal('modal-camara'); toast('🗑️ Câmara excluída.'); await carregarDashboard();
+}
+
+// ── ATUALIZAR AGORA (coleta ao vivo, sem esperar o cron) ──
+// Roda o mesmo ciclo que o cron faz a cada 5 min, mas na hora — atualiza
+// o "Última leitura"/temperatura atual do card E roda o motor de
+// detecção (dispara alerta na hora se alguma câmara estiver em
+// excursão). Diferente de "Importar histórico" abaixo, que só popula o
+// gráfico e nunca mexe no card.
+async function coletarAgora(){
+  const btn = document.getElementById('btn-coletar-agora');
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Atualizando...';
+  try{
+    const r = await _post('/api/xsense/coletar_agora', {}).then(r=>r.json());
+    if(r.error){ toast('❌ ' + r.error); return; }
+    toast(`✅ ${r.camaras_atualizadas} câmara(s) atualizada(s), ${r.leituras_processadas} leitura(s) nova(s)` +
+          (r.alertas_disparados ? `, ${r.alertas_disparados} alerta(s) disparado(s)` : '') + '.');
+    await carregarDashboard();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+}
+
+// ── IMPORTAR HISTÓRICO (backfill de todas as câmaras) ────
+// Pedido do usuário 29/08/2026: "importar o histórico de todas as
+// câmaras pra mostrar os gráficos preenchidos" — backfill de 90 dias
+// pra todas de uma vez, sem precisar abrir câmara por câmara em
+// "Importar histórico do portal de sensores" (que já existe, só que uma de cada vez).
+// Só popula o gráfico — não mexe no card (ver coletarAgora acima).
+async function importarHistoricoTodas(){
+  const btn = document.getElementById('btn-importar-historico-todas');
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Importando...';
+  try{
+    const r = await _post('/api/xsense/importar_historico_todas', {dias: 90}).then(r=>r.json());
+    if(r.error){ toast('❌ ' + r.error); return; }
+    toast(`✅ ${r.camaras_atualizadas} câmara(s) atualizada(s), ${r.leituras_processadas} leitura(s) nova(s) ` +
+          `(últimos ${r.dias} dias).`);
+    await carregarDashboard();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
+}
+
+// ── SINCRONIZAR COM XSENSE ──────────────────────────────
+let _syncItens = [];
+function abrirSincronizar(){
+  document.getElementById('sincronizar-body').textContent = 'Clique em "Consultar portal" pra começar.';
+  abrirModal('modal-sincronizar');
+}
+async function consultarPortalSensores(){
+  const body = document.getElementById('sincronizar-body');
+  body.textContent = 'Consultando o portal (pode levar alguns segundos)…';
+  document.getElementById('btn-importar-selecionadas').style.display = 'none';
+  const r = await _post('/api/xsense/sincronizar', {}).then(r=>r.json());
+  if(r.error){ body.innerHTML = `<p class="muted">❌ ${escHtml(r.error)}</p>`; return; }
+  _syncItens = r.itens || [];
+  if(r.rotulos_atualizados){
+    // câmaras já importadas sem rótulo salvo ganharam "Nome - Nome do
+    // grupo" agora (ver sincronizar() no backend) — atualiza os cards já
+    // abertos na tela pra refletir sem precisar recarregar a página
+    toast(`🏷 ${r.rotulos_atualizados} rótulo(s) preenchido(s) automaticamente.`);
+    await carregarDashboard();
+  }
+  if(!_syncItens.length){ body.innerHTML = '<p class="muted">Nenhuma câmara encontrada na instalação.</p>'; return; }
+  body.innerHTML = _syncItens.map((it, i)=>`
+    <div class="list-item">
+      ${it.ja_importada ? '' : `<input type="checkbox" class="sync-check" data-i="${i}" onchange="_atualizarContagemSelecionadas()" style="width:auto">`}
+      <span class="nome">${escHtml(it.nome)} <span class="meta">(${escHtml(it.tipo||'')})</span>
+        ${it.local?`<span class="local-tag" style="margin-left:4px">${escHtml(it.local.slice(0,3).toUpperCase())}</span>`:''}</span>
+      <span class="meta">${it.temp_min!=null?`${it.temp_min}°C a ${it.temp_max}°C`:'faixa não detectada'}${it.tem_leituras?'':' · sem leituras no portal'}</span>
+      ${it.ja_importada
+        ? '<span class="pill ok" style="background:rgba(34,197,94,.15);color:#15803d;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700">✓ Importada</span>'
+        : `<button class="btn ghost sm" onclick="importarItemSync(${i})">Importar</button>`}
+    </div>`).join('');
+  const podeImportar = _syncItens.some(it=>!it.ja_importada);
+  document.getElementById('btn-importar-selecionadas').style.display = podeImportar ? '' : 'none';
+  const podeAtualizarLocal = _syncItens.some(it=>{
+    if(!it.ja_importada) return false;
+    const existente = _camaras.find(c=>c.provider_ref === it.provider_ref);
+    if(!existente) return false;
+    // node_id diferente = câmara importada ANTES da correção de
+    // multi-instalação (26/08/2026), presa lendo a instalação errada — a
+    // coleta automática nunca vai achar leitura dela até isso ser
+    // corrigido (achado ao vivo 29/08/2026: só o CDA recebia leitura,
+    // as demais câmaras ficavam pra sempre "sem leituras").
+    return (it.local && existente.local !== it.local) || (it.node_id && existente.node_id !== it.node_id);
+  });
+  document.getElementById('btn-atualizar-locais').style.display = podeAtualizarLocal ? '' : 'none';
+  _atualizarContagemSelecionadas();
+}
+async function atualizarLocaisImportados(){
+  const btn = document.getElementById('btn-atualizar-locais');
+  btn.disabled = true; btn.textContent = 'Atualizando...';
+  let atualizados = 0, falhas = 0, nodeIdCorrigido = 0;
+  for(const it of _syncItens){
+    if(!it.ja_importada) continue;
+    const existente = _camaras.find(c=>c.provider_ref === it.provider_ref);
+    if(!existente) continue;
+    const localMudou = it.local && existente.local !== it.local;
+    const nodeIdMudou = it.node_id && existente.node_id !== it.node_id;
+    if(!localMudou && !nodeIdMudou) continue;
+    const body = {
+      id: existente.id, nome: existente.nome, rotulo: existente.rotulo||'',
+      tipo: existente.tipo||'', local: it.local || existente.local,
+      node_id: it.node_id || existente.node_id,
+      temp_min: existente.temp_min, temp_max: existente.temp_max,
+      temp_limite_duro: existente.temp_limite_duro,
+      umid_min: existente.umid_min, umid_max: existente.umid_max,
+      n_sustentado: existente.n_sustentado, k_oscilacao: existente.k_oscilacao,
+      w_janela_min: existente.w_janela_min, cooldown_min: existente.cooldown_min,
+      m_recuperacao: existente.m_recuperacao,
+      provider: existente.provider, provider_ref: existente.provider_ref,
+      ativo: !!existente.ativo, alertas_ativos: !!existente.alertas_ativos,
+    };
+    const r = await _post('/api/xsense/camaras', body).then(r=>r.json());
+    if(r.error) falhas++; else { atualizados++; if(nodeIdMudou) nodeIdCorrigido++; }
+  }
+  btn.disabled = false; btn.textContent = '📍 Atualizar locais/instalação';
+  const partes = [];
+  if(atualizados) partes.push(`✅ ${atualizados} câmara(s) atualizada(s)`);
+  if(nodeIdCorrigido) partes.push(`🔧 ${nodeIdCorrigido} com instalação (node) corrigida — devem voltar a coletar sozinhas`);
+  if(falhas) partes.push(`❌ ${falhas} falharam`);
+  toast(partes.length ? partes.join(' · ') : 'Nada pra atualizar.');
+  await carregarDashboard();
+  await consultarPortalSensores();
+}
+function _atualizarContagemSelecionadas(){
+  const n = document.querySelectorAll('.sync-check:checked').length;
+  document.getElementById('sincronizar-selecionadas-info').textContent = n>0 ? `${n} selecionada(s)` : '';
+}
+async function importarSelecionados(){
+  const idxs = [...document.querySelectorAll('.sync-check:checked')].map(el=>parseInt(el.dataset.i));
+  if(!idxs.length){ toast('Marque pelo menos uma câmara pra importar.'); return; }
+  const btn = document.getElementById('btn-importar-selecionadas');
+  btn.disabled = true; btn.textContent = 'Importando...';
+  let ok = 0, falhas = 0;
+  for(const i of idxs){
+    const it = _syncItens[i];
+    const body = {
+      id: it.provider_ref,
+      nome: it.nome,
+      tipo: _inferirTipoSensores(it.tipo, it.descricao),
+      local: it.local || '',
+      node_id: it.node_id || '',
+      temp_min: it.temp_min,
+      temp_max: it.temp_max,
+      provider: 'xsense',
+      provider_ref: it.provider_ref,
+    };
+    const r = await _post('/api/xsense/camaras', body).then(r=>r.json());
+    if(r.error) falhas++; else ok++;
+  }
+  btn.disabled = false; btn.textContent = '📥 Importar selecionadas';
+  toast(falhas
+    ? `✅ ${ok} importada(s), ❌ ${falhas} falharam (provavelmente sem faixa detectada — importe pelo botão individual pra preencher na mão)`
+    : `✅ ${ok} câmara(s) importada(s)`);
+  await carregarDashboard();
+  await consultarPortalSensores();
+}
+function _inferirTipoSensores(tipoSensores, descricao){
+  const t = (tipoSensores||'').toUpperCase();
+  const d = (descricao||'').toLowerCase();
+  if(d.includes('ambiente')) return 'ambiente';
+  if(t==='ROOM' || d.includes('ante')) return 'antecamara';
+  if(t==='FREEZER' || d.includes('congel')) return 'congelada';
+  if(t==='REFRIGERATOR' || d.includes('resfr')) return 'resfriada';
+  return '';
+}
+// Nome + Nome do grupo (mesma dupla coluna da tabela do portal de sensores) —
+// pedido do usuário 29/08/2026: sugerir isso como rótulo padrão, igual já
+// era feito manualmente pras câmaras do CDA. "Item monitorado" é o nome
+// de grupo genérico do próprio portal quando ninguém customizou lá —
+// nesse caso não agrega nada, cai só no nome.
+function _rotuloSugerido(nome, nomeGrupo){
+  const grupo = (nomeGrupo||'').trim();
+  if(!grupo || grupo.toLowerCase()==='item monitorado') return nome;
+  return `${nome} - ${grupo}`;
+}
+function importarItemSync(i){
+  const it = _syncItens[i];
+  if(!it) return;
+  fecharModal('modal-sincronizar');
+  abrirModalCamara(null, {
+    id: it.provider_ref,
+    nome: it.nome,
+    rotulo: _rotuloSugerido(it.nome, it.nome_grupo),
+    tipo: _inferirTipoSensores(it.tipo, it.descricao),
+    local: it.local || '',
+    node_id: it.node_id || '',
+    temp_min: it.temp_min,
+    temp_max: it.temp_max,
+    provider: 'xsense',
+    provider_ref: it.provider_ref,
+  });
+}
+
+// ── DESTINATÁRIOS ───────────────────────────────────────
+async function abrirDestinatarios(){
+  abrirModal('modal-destinatarios');
+  document.getElementById('bloco-admin-destinatarios').classList.toggle('hidden', !_isAdmin);
+  if(_isAdmin){
+    document.getElementById('contatos-pendentes-body').innerHTML = '';
+    const tg = await fetch('/api/master/xsense/telegram').then(r=>r.json()).catch(()=>({}));
+    const linkBot = document.getElementById('link-bot-telegram');
+    linkBot.href = tg.bot_username ? `https://t.me/${tg.bot_username}` : '#';
+    linkBot.textContent = tg.bot_username ? `abrir @${tg.bot_username}` : 'bot ainda não configurado';
+  }
+  await Promise.all([recarregarPendentes(), recarregarDestinatarios()]);
+}
+function _podeMexerNoLocal(local){
+  return _isAdmin || local === _meuCd;
+}
+async function recarregarPendentes(){
+  const r = await fetch('/api/xsense/destinatarios/pendentes').then(r=>r.json()).catch(()=>({pendentes:[]}));
+  const el = document.getElementById('lista-pendentes');
+  const itens = r.pendentes || [];
+  document.getElementById('pend-resumo').textContent = itens.length ? ` — ${itens.length} aguardando` : '';
+  el.innerHTML = itens.length ? itens.map(p=>`
+    <div class="list-item">
+      <span class="nome">${escHtml(p.nome)}</span>
+      <span class="meta">📍 solicitou <b>${escHtml(p.local_solicitado)}</b>${p.telegram_chat_id?' · ✈️ Telegram ok':''}</span>
+      <button class="btn ok sm" onclick="aprovarPendente(${p.id})">✅ Aprovar</button>
+      <button class="btn ghost sm" onclick="rejeitarPendente(${p.id})">✕ Rejeitar</button>
+    </div>`).join('') : '<p class="muted">Nenhuma solicitação pendente.</p>';
+}
+async function aprovarPendente(id){
+  const r = await _post('/api/xsense/destinatarios/'+id+'/aprovar', {}).then(r=>r.json());
+  if(r.error){ toast('❌ '+r.error); return; }
+  toast('✅ Aprovado.');
+  await Promise.all([recarregarPendentes(), recarregarDestinatarios()]);
+}
+async function rejeitarPendente(id){
+  if(!confirm('Rejeitar essa solicitação? A pessoa vai precisar mandar /start de novo se mudar de ideia.')) return;
+  const r = await _post('/api/xsense/destinatarios/'+id+'/rejeitar', {}).then(r=>r.json());
+  if(r.error){ toast('❌ '+r.error); return; }
+  await recarregarPendentes();
+}
+async function recarregarDestinatarios(){
+  const r = await fetch('/api/xsense/destinatarios').then(r=>r.json()).catch(()=>({destinatarios:[], locais_conhecidos:[]}));
+  const el = document.getElementById('lista-destinatarios');
+  const itens = r.destinatarios || [];
+  const locais = r.locais_conhecidos || [];
+  el.innerHTML = itens.length ? itens.map(d=>{
+    const gerenteChip = d.eh_gerente
+      ? `<label class="cd-chip on" style="font-weight:800" title="Vê todos os CDs, inclusive os que forem cadastrados depois">👑 Gerente (vê tudo)</label>`
+      : '';
+    // Sem CD marcado a pessoa não recebe alerta nem resumo — a tela diz isso
+    // em vez de deixar a lista de chips apagada falar sozinha
+    const semCd = !d.eh_gerente && d.status !== 'pendente' && !(d.camaras||[]).length;
+    const avisoSemCd = semCd
+      ? `<span class="cd-chip" style="border-color:#d97706;color:#92400e;background:#fffbeb;font-weight:700"
+           title="Marque ao menos um CD para esta pessoa voltar a receber">⚠️ Nenhum CD marcado — não recebe alertas</span>`
+      : '';
+    const chips = d.eh_gerente ? '' : locais.map(local=>{
+      const marcado = d.locais.includes(local);
+      const editavel = _podeMexerNoLocal(local);
+      return `<label class="cd-chip${marcado?' on':''}${editavel?'':' disabled'}" title="${editavel?'':'Só o responsável por '+escHtml(local)+' (ou um gerente) mexe aqui'}">
+        <input type="checkbox" ${marcado?'checked':''} ${editavel?'':'disabled'}
+          onchange="toggleLocalDestinatario(${d.id},'${escHtml(local).replace(/'/g,"\\'")}',this.checked)">
+        ${escHtml(local)}</label>`;
+    }).join('');
+    const toggleGerenteBtn = _isAdmin
+      ? `<button class="btn ghost sm" onclick="toggleGerenteDestinatario(${d.id},${d.eh_gerente?'false':'true'})">
+          ${d.eh_gerente?'👑 Remover gerente':'👑 Marcar como gerente'}</button>`
+      : '';
+    return `<div class="list-item" style="flex-wrap:wrap">
+      <span class="nome">${escHtml(d.nome)}</span>
+      <span class="meta">${d.telegram_chat_id?'✈️ Telegram ok':'sem Telegram'}${d.whatsapp_num?' · '+escHtml(d.whatsapp_num):''} · sev. mín. ${d.severidade_min}</span>
+      <div style="width:100%;display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${gerenteChip}${avisoSemCd}${chips}</div>
+      ${toggleGerenteBtn}
+      ${_isAdmin?`<button class="btn ghost sm" onclick="excluirDestinatario(${d.id})">🗑️ Excluir</button>`:''}
+    </div>`;
+  }).join('') : '<p class="muted">Nenhum destinatário aprovado ainda.</p>';
+}
+async function toggleGerenteDestinatario(id, marcar){
+  const r = await _post(`/api/xsense/destinatarios/${id}/gerente`, {eh_gerente: marcar}).then(r=>r.json());
+  if(r.error){ toast('❌ '+r.error); return; }
+  toast(marcar ? '👑 Marcado como gerente.' : 'Removido de gerente.');
+  await recarregarDestinatarios();
+}
+async function toggleLocalDestinatario(id, local, incluir){
+  const r = await _post(`/api/xsense/destinatarios/${id}/local`, {local, incluir}).then(r=>r.json());
+  if(r.error){ toast('❌ '+r.error); await recarregarDestinatarios(); return; }
+  await recarregarDestinatarios();
+}
+async function salvarDestinatario(){
+  const nome = document.getElementById('dest-nome').value.trim();
+  if(!nome){ toast('Informe o nome.'); return; }
+  const body = {
+    nome,
+    telegram_chat_id: document.getElementById('dest-telegram').value.trim(),
+    whatsapp_num: document.getElementById('dest-whatsapp').value.trim(),
+    severidade_min: document.getElementById('dest-severidade').value,
+  };
+  const r = await _post('/api/xsense/destinatarios', body).then(r=>r.json());
+  if(r.error){ toast('❌ '+r.error); return; }
+  document.getElementById('dest-nome').value='';
+  document.getElementById('dest-telegram').value='';
+  document.getElementById('dest-whatsapp').value='';
+  await recarregarDestinatarios(); toast('✅ Destinatário salvo.');
+}
+async function verPreviaResumo(){
+  const el = document.getElementById('resumo-previa');
+  el.textContent = 'Montando…';
+  const r = await fetch('/api/xsense/resumo/previa').then(x=>x.json()).catch(()=>null);
+  if(!r || r.error){ el.textContent = (r && r.error) || 'Não foi possível montar o resumo.'; return; }
+  const envios = (r.envios||[]).map(e=>`${escHtml(e.slot.slice(8,10)+'/'+e.slot.slice(5,7)+' '+e.slot.slice(11))}: `
+    + `${e.entregues} de ${e.elegiveis}`).join(' · ');
+  // o texto já vem escapado pelo servidor, com <b> do próprio resumo
+  el.innerHTML = (r.resumos||[]).map(x=>`<div style="white-space:pre-wrap;font-size:12.5px;line-height:1.45;
+      border:1px solid var(--glass-b);border-radius:8px;padding:10px 12px;margin:6px 0">${x.texto}</div>`).join('')
+    + (envios ? `<p class="muted" style="font-size:11.5px">Últimos envios (entregues/previstos): ${envios}</p>`
+              : '<p class="muted" style="font-size:11.5px">Nenhum envio automático registrado ainda.</p>');
+}
+async function excluirDestinatario(id){
+  await _del('/api/xsense/destinatarios/'+id);
+  await recarregarDestinatarios();
+}
+async function verContatosPendentes(){
+  const body = document.getElementById('contatos-pendentes-body');
+  body.innerHTML = '<p class="muted">Consultando o bot…</p>';
+  const r = await _post('/api/xsense/telegram/contatos_pendentes', {}).then(r=>r.json());
+  if(r.error){ body.innerHTML = `<p class="muted">❌ ${escHtml(r.error)}</p>`; return; }
+  const contatos = r.contatos || [];
+  if(!contatos.length){ body.innerHTML = '<p class="muted">Ninguém novo mandou /start desde a última checagem.</p>'; return; }
+  body.innerHTML = contatos.map(c=>`
+    <div class="list-item">
+      <span class="nome">${escHtml(c.nome||'(sem nome)')} ${c.username?'@'+escHtml(c.username):''}</span>
+      <span class="meta">chat_id: ${escHtml(c.chat_id)}</span>
+      <button class="btn ghost sm" onclick="usarChatId('${c.chat_id}','${escHtml(c.nome).replace(/'/g,"\\'")}')">Usar</button>
+    </div>`).join('');
+}
+function usarChatId(chatId, nome){
+  document.getElementById('dest-telegram').value = chatId;
+  if(!document.getElementById('dest-nome').value.trim()) document.getElementById('dest-nome').value = nome;
+  toast('Chat ID preenchido — confira os dados e clique em Adicionar.');
+}
+
+async function enviarBroadcast(){
+  const textoEl = document.getElementById('broadcast-texto');
+  const texto = textoEl.value.trim();
+  const resEl = document.getElementById('broadcast-result');
+  if(!texto){ resEl.textContent = 'Digite uma mensagem primeiro.'; resEl.style.color = '#b91c1c'; return; }
+  if(!confirm('Confirma o envio dessa mensagem pra TODOS os destinatários ativos do bot?\n\n' + texto)) return;
+  resEl.textContent = 'Enviando...'; resEl.style.color = 'var(--text-s)';
+  const r = await _post('/api/xsense/destinatarios/broadcast', {mensagem: texto}).then(r=>r.json());
+  if(r.error){ resEl.textContent = '❌ ' + r.error; resEl.style.color = '#b91c1c'; return; }
+  resEl.textContent = '✓ ' + r.msg;
+  resEl.style.color = '#15803d';
+  toast('📤 ' + r.msg);
+  if(!r.falhas || !r.falhas.length) textoEl.value = '';
+}
+
+// ── HISTÓRICO ────────────────────────────────────────────
+const HIST_RANGES = [
+  {dias:1,  label:'1 dia'},
+  {dias:2,  label:'2 dias'},
+  {dias:3,  label:'3 dias'},
+  {dias:7,  label:'7 dias'},
+  {dias:30, label:'30 dias'},
+  {dias:90, label:'90 dias'},
+];
+let _histCamaraId = null, _histDias = 2;
+
+function abrirHistorico(camaraId){
+  _histCamaraId = camaraId;
+  _histDias = 2;
+  const cam = _camaras.find(c=>c.id===camaraId);
+  document.getElementById('hist-camara-nome').textContent = nomeExibicao(cam);
+  document.getElementById('hist-range-btns').innerHTML = HIST_RANGES.map(r=>
+    `<button class="btn ghost sm${r.dias===_histDias?' active':''}" onclick="mudarRangeHistorico(${r.dias})">${r.label}</button>`
+  ).join('');
+  const podeImportar = _isAdmin && cam && cam.provider==='xsense' && cam.provider_ref;
+  document.getElementById('hist-import-wrap').classList.toggle('hidden', !podeImportar);
+  document.getElementById('hist-import-msg').textContent = '';
+  abrirModal('modal-historico');
+  carregarHistorico();
+}
+
+function mudarRangeHistorico(dias){
+  _histDias = dias;
+  document.querySelectorAll('#hist-range-btns button').forEach((b,i)=>
+    b.classList.toggle('active', HIST_RANGES[i].dias===dias));
+  carregarHistorico();
+}
+
+async function carregarHistorico(){
+  const corpo = document.getElementById('hist-corpo');
+  corpo.textContent = 'Carregando…';
+  const r = await fetch(`/api/xsense/camaras/${_histCamaraId}/historico?dias=${_histDias}`).then(r=>r.json()).catch(()=>null);
+  if(!r || r.error){ corpo.innerHTML = `<p class="muted">❌ ${escHtml((r&&r.error)||'Erro ao carregar histórico.')}</p>`; return; }
+  const cam = r.camara;
+  const temp = r.leituras.temperatura || [];
+  const umid = r.leituras.umidade || [];
+  let html = '';
+  html += `<div class="hist-chart-title">Temperatura (°C)</div>`;
+  html += temp.length ? lineChartSvg(temp, cam.temp_min, cam.temp_max, '°C', 'temp')
+                       : `<div class="hist-vazio">Sem leituras de temperatura nesse período. ${
+                           _isAdmin && cam.provider==='xsense' ? 'Use "Importar histórico do portal de sensores" acima.' : ''
+                         }</div>`;
+  if(umid.length){
+    html += `<div class="hist-chart-title">Umidade Relativa (%)</div>`;
+    html += lineChartSvg(umid, cam.umid_min, cam.umid_max, '%', 'umid');
+  }
+  corpo.innerHTML = html;
+  if(temp.length) attachHistTooltip('temp', temp, '°C');
+  if(umid.length) attachHistTooltip('umid', umid, '%');
+}
+
+async function importarHistoricoSensores(){
+  const btn = document.getElementById('btn-importar-historico');
+  const msg = document.getElementById('hist-import-msg');
+  btn.disabled = true;
+  msg.textContent = 'Consultando o portal (pode levar alguns segundos)…';
+  const r = await _post(`/api/xsense/camaras/${_histCamaraId}/importar_historico`, {dias:90}).then(r=>r.json());
+  btn.disabled = false;
+  if(r.error){ msg.textContent = '❌ ' + r.error; return; }
+  msg.textContent = '✅ ' + r.msg;
+  await carregarHistorico();
+}
+
+// Mesmo padrão do gráfico de temperatura das carretas (index.html,
+// svgSerieTemperatura/attachTempTooltip): SVG puro + círculos de hover
+// invisíveis (maiores que o ponto visível, mais fácil de acertar o mouse)
+// + tooltip posicionada via position:absolute dentro do wrapper (não
+// clientX/clientY direto — os modais usam backdrop-filter, que quebra
+// position:fixed).
+function lineChartSvg(pontos, minimo, maximo, unidade, chartId){
+  if(!pontos.length) return `<div class="hist-vazio">Sem dados.</div>`;
+  const vals = pontos.map(p=>p.valor);
+  const temFaixa = minimo!=null && maximo!=null;
+  const lo = Math.min(...vals, temFaixa?minimo:vals[0]);
+  const hi = Math.max(...vals, temFaixa?maximo:vals[0]);
+  const faixa = (hi-lo) || 1;
+  const w=680, h=180, padL=34, padB=16, plotW=w-padL-4, plotH=h-padB;
+  const yOf = v => padB + plotH - ((v-lo)/faixa)*plotH;
+  const xOf = i => pontos.length===1 ? padL+plotW/2 : padL + (i/(pontos.length-1))*plotW;
+  const pts = pontos.map((p,i)=>`${xOf(i).toFixed(1)},${yOf(p.valor).toFixed(1)}`).join(' ');
+  const faixaRect = temFaixa
+    ? `<rect x="${padL}" y="${yOf(maximo).toFixed(1)}" width="${plotW}" height="${(yOf(minimo)-yOf(maximo)).toFixed(1)}"
+         fill="rgba(34,197,94,.08)"/>`
+    : '';
+  const linhasFaixa = temFaixa
+    ? `<line x1="${padL}" y1="${yOf(minimo).toFixed(1)}" x2="${w-4}" y2="${yOf(minimo).toFixed(1)}" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,3"/>
+       <line x1="${padL}" y1="${yOf(maximo).toFixed(1)}" x2="${w-4}" y2="${yOf(maximo).toFixed(1)}" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,3"/>`
+    : '';
+  const rotulos = `<text x="2" y="${(padB+4).toFixed(1)}" font-size="9" fill="#8a8a9a">${hi.toFixed(1)}</text>
+    <text x="2" y="${(padB+plotH).toFixed(1)}" font-size="9" fill="#8a8a9a">${lo.toFixed(1)}</text>`;
+  const primeiro = fmtTs(pontos[0].ts), ultimo = fmtTs(pontos[pontos.length-1].ts);
+  const rotulosX = `<text x="${padL}" y="${h-2}" font-size="9" fill="#8a8a9a">${primeiro}</text>
+    <text x="${w-4}" y="${h-2}" font-size="9" fill="#8a8a9a" text-anchor="end">${ultimo}</text>`;
+  const marcas = pontos.map((p,i)=>
+    `<circle cx="${xOf(i).toFixed(1)}" cy="${yOf(p.valor).toFixed(1)}" r="1.6" fill="#007AFF" opacity=".6" pointer-events="none"/>`).join('');
+  const ultimoIdx = pontos.length-1;
+  // até ~120 áreas de hover — com 15-16 mil pontos (90 dias a cada 8 min)
+  // renderizar um <circle> hit-area por ponto pesaria o DOM à toa; a curva
+  // já é densa o bastante pra passar a informação, o hover vira "amostra"
+  const passo = Math.max(1, Math.ceil(pontos.length/150));
+  const hitAreas = pontos.map((p,i)=>(i%passo===0||i===ultimoIdx)
+    ? `<circle class="hist-pt" data-chart="${chartId}" data-i="${i}"
+        cx="${xOf(i).toFixed(1)}" cy="${yOf(p.valor).toFixed(1)}" r="10" fill="transparent" style="cursor:crosshair"/>`
+    : '').join('');
+  return `<div id="hist-chart-wrap-${chartId}" style="position:relative">
+  <svg class="hist-chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    ${faixaRect}${linhasFaixa}
+    <polyline points="${pts}" fill="none" stroke="#007AFF" stroke-width="1.6"/>
+    ${marcas}
+    <circle cx="${xOf(ultimoIdx).toFixed(1)}" cy="${yOf(pontos[ultimoIdx].valor).toFixed(1)}" r="3" fill="#007AFF" pointer-events="none"/>
+    ${rotulos}${rotulosX}
+    ${hitAreas}
+  </svg>
+  <div id="hist-tooltip-${chartId}" style="position:absolute;display:none;pointer-events:none;background:rgba(20,20,30,.92);
+    color:#fff;font-size:11px;line-height:1.5;padding:5px 9px;border-radius:8px;z-index:5000;white-space:nowrap;
+    box-shadow:0 4px 14px rgba(0,0,0,.25)"></div>
+  </div>`;
+}
+
+function attachHistTooltip(chartId, pontos, unidade){
+  const wrap = document.getElementById('hist-chart-wrap-'+chartId);
+  const tooltip = document.getElementById('hist-tooltip-'+chartId);
+  if(!wrap || !tooltip) return;
+  const posicionar = e=>{
+    const rect = wrap.getBoundingClientRect();
+    const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+    const ttW = tooltip.offsetWidth;
+    const left = (mx+14+ttW>rect.width) ? Math.max(0,mx-14-ttW) : mx+14;
+    tooltip.style.left = left+'px';
+    tooltip.style.top = Math.max(0,my-12)+'px';
+  };
+  wrap.querySelectorAll(`.hist-pt[data-chart="${chartId}"]`).forEach(circ=>{
+    const p = pontos[parseInt(circ.dataset.i)];
+    circ.addEventListener('mouseenter', e=>{
+      tooltip.innerHTML = `<b>${p.valor.toFixed(1)}${unidade}</b><br>${fmtTs(p.ts)}`;
+      tooltip.style.display = 'block';
+      posicionar(e);
+    });
+    circ.addEventListener('mousemove', posicionar);
+    circ.addEventListener('mouseleave', ()=>{ tooltip.style.display = 'none'; });
+  });
+}
+
+// ── EVENTOS ──────────────────────────────────────────────
+// "Push?" dizia ✅ quando o motor DECIDIA notificar, antes do envio — a CG8
+// aparecia com ✅ sem chegar a ninguém (09/10/2026). Eventos novos trazem
+// quantos destinatários receberam de fato (canais = "telegram:entregues/elegíveis").
+function htmlPush(e){
+  if(!e.notificado) return '—';
+  const m = /^telegram:(\d+)\/(\d+)$/.exec(e.canais || '');
+  if(!m) return '✅';
+  const ent = +m[1], eleg = +m[2];
+  if(!eleg) return '<span title="Nenhum destinatário acompanha esta câmara">⚠️ ninguém</span>';
+  if(ent < eleg) return `<span title="${ent} de ${eleg} destinatário(s) receberam">⚠️ ${ent}/${eleg}</span>`;
+  return `<span title="Entregue a ${ent} destinatário(s)">✅ ${ent}</span>`;
+}
+async function abrirEventos(camaraId){
+  abrirModal('modal-eventos');
+  document.getElementById('eventos-body').textContent = 'Carregando…';
+  const qs = camaraId ? ('?camara_id='+encodeURIComponent(camaraId)) : '';
+  const r = await fetch('/api/xsense/eventos'+qs).then(r=>r.json()).catch(()=>({eventos:[]}));
+  const itens = r.eventos || [];
+  const body = document.getElementById('eventos-body');
+  if(!itens.length){ body.innerHTML = '<p class="muted">Nenhum evento registrado ainda.</p>'; return; }
+  body.innerHTML = `<table class="ev-table"><thead><tr>
+      <th>Quando</th><th>Câmara</th><th>Tipo</th><th>Sev.</th><th>Valor</th><th>Detalhe</th><th>Push?</th>
+    </tr></thead><tbody>${itens.map(e=>`
+      <tr><td>${fmtTs(e.ts_inicio)}</td><td>${escHtml(nomeExibicao(_camaras.find(c=>c.id===e.camara_id)) || e.camara_id)}</td><td>${e.tipo}</td>
+        <td><span class="sev-tag ${e.severidade}">${e.severidade}</span></td>
+        <td>${e.valor!=null?e.valor.toFixed(1):'–'}</td><td>${escHtml(e.detalhe)}</td>
+        <td>${htmlPush(e)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+init();
+</script>
+</body>
+</html>

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import io
+import math
 import random
 from pathlib import Path
 
@@ -400,6 +401,31 @@ def _notas_das_carretas(hoje: _dt.date, semente: int = 31):
     return saida
 
 
+def historico_temperatura_carretas(agora: _dt.datetime, semente: int = 31) -> list[tuple]:
+    """Leituras do baú de cada carreta, a cada 15 min desde a saída da fábrica
+    (até 48 h), terminando na temperatura que o painel de rastreio mostra.
+    Uma carreta tem abertura de porta no caminho (salto brusco), como o
+    painel detecta na operação."""
+    hoje = agora.date()
+    rnd = random.Random(semente * 3 + hoje.toordinal())
+    saida = []
+    for n, car in enumerate(_carretas(hoje)):
+        alvo = car["temp_medida"]
+        horas = min(48, 6 + int(car["fracao"] * 40))
+        pontos = horas * 4
+        porta = n == 2                       # a terceira carreta abriu a porta no caminho
+        for k in range(pontos + 1):
+            ts = agora - _dt.timedelta(minutes=15 * (pontos - k))
+            base = alvo + (0.6 if car["temperatura"] == "RESFRIADO" else 1.2) * math.sin(k / 7) \
+                + rnd.uniform(-0.25, 0.25)
+            if porta and pontos // 2 <= k <= pontos // 2 + 1:
+                base += 9.0 if car["temperatura"] == "RESFRIADO" else 11.0
+            if k == pontos:
+                base = alvo
+            saida.append((car["placa"], round(base, 1), ts.strftime("%Y-%m-%d %H:%M:%S")))
+    return saida
+
+
 def estoque_faturado(hoje: _dt.date | None = None, semente: int = 31) -> bytes:
     """Relatório "Estoque Faturado" do ERP: uma linha por produto de cada NF,
     cabeçalho em dois níveis (grupo > coluna)."""
@@ -674,6 +700,48 @@ def entregas(agora: _dt.datetime | None = None, semente: int = 41) -> dict:
             linhas_n.append(";".join(b))
     return {"notas": "\n".join(linhas_n) + "\n", "itens": "\n".join(linhas_i) + "\n",
             "posicoes": posicoes, "dia": dia}
+
+
+# ── Câmaras frias: sensores de temperatura das câmaras do CD ─────────
+CAMARAS = [
+    # id, nome, tipo, mínimo, máximo, limite duro, alvo, comportamento recente
+    ("C01", "Câmara 01 · Resfriado", "resfriada", 0.0, 4.0, 8.0, 2.0, "normal"),
+    ("C02", "Câmara 02 · Resfriado", "resfriada", 0.0, 4.0, 8.0, 2.4, "porta"),
+    ("C03", "Câmara 03 · Congelado", "congelada", -22.0, -16.0, -12.0, -19.0, "normal"),
+    ("C04", "Câmara 04 · Congelado", "congelada", -22.0, -16.0, -12.0, -19.5, "excursao"),
+    ("C05", "Câmara 05 · Congelado", "congelada", -22.0, -16.0, -12.0, -18.6, "normal"),
+    ("ANT", "Antecâmara · Expedição", "antecamara", 2.0, 10.0, 14.0, 6.5, "normal"),
+]
+
+
+def leituras_camaras(agora: _dt.datetime, dias: int = 30, passo_min: int = 10, semente: int = 51) -> dict:
+    """{id: [(ts, valor)]} — uma leitura a cada `passo_min` minutos nos últimos
+    `dias`. Degelo programado a cada 6 h (sobe e volta), portas abrindo no
+    horário de expedição e, nas últimas horas, uma câmara oscilando (porta
+    aberta de novo e de novo) e outra numa excursão sustentada."""
+    rnd = random.Random(semente + agora.date().toordinal())
+    fim = agora.replace(second=0, microsecond=0)
+    fim = fim - _dt.timedelta(minutes=fim.minute % passo_min)
+    n = dias * 24 * 60 // passo_min
+    saida = {}
+    for cid, _nome, tipo, tmin, tmax, _duro, alvo, recente in CAMARAS:
+        serie = []
+        amp = 0.5 if tipo != "congelada" else 0.8
+        for k in range(n + 1):
+            ts = fim - _dt.timedelta(minutes=passo_min * (n - k))
+            v = alvo + amp * math.sin(k / 9) + rnd.uniform(-0.25, 0.25)
+            if ts.hour % 6 == 0 and ts.minute < 30 and tipo == "congelada":
+                v += 2.2                                  # degelo programado
+            if 19 <= ts.hour <= 23 and rnd.random() < 0.06:
+                v += rnd.uniform(1.5, 3.0)                # porta na expedição
+            falta = (fim - ts).total_seconds() / 60
+            if recente == "porta" and falta <= 150 and (falta // 20) % 2 == 0:
+                v = tmax + rnd.uniform(0.6, 2.2)          # oscila fora e volta
+            if recente == "excursao" and falta <= 100:
+                v = tmax + (100 - falta) / 100 * 4.0 + rnd.uniform(0, 0.4)
+            serie.append((ts.strftime("%Y-%m-%d %H:%M:%S"), round(v, 2)))
+        saida[cid] = serie
+    return saida
 
 
 def gravar(destino: Path | str = "planilhas_modelo", hoje: _dt.date | None = None) -> list[Path]:

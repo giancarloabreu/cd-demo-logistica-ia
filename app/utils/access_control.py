@@ -18,7 +18,7 @@ MODULOS = {
     "monitoramento": "Monitoramento",
     "adensamento": "Adensamento",
     "armazem": "Painel do Armazém",
-    "xsense": "Xsense (Câmaras)",
+    "xsense": "Câmaras frias",
     "fifo": "Devolução & Vencimento",
     "mapa_estoque": "Mapa de Estoque",
     "giro": "Giro de Estoque",

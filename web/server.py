@@ -136,6 +136,13 @@ _is_prod = bool(_secret_env) or not any(
     for p in ("localhost",)
 )
 # Em produção usa a chave do ambiente; em dev usa uma fixa (ok para localhost)
+if not _secret_env and os.environ.get("DEMO_MODE", "").strip().lower() in ("1", "true", "sim", "yes"):
+    # Demo pública sem SECRET_KEY configurada: chave estável, igual em todas
+    # as instâncias da Vercel — com uma chave aleatória por processo, a
+    # sessão aberta numa instância não vale na outra e o visitante volta para
+    # o login. Na demo a sessão só dá acesso ao usuário visitante.
+    import hashlib as _hl
+    _secret_env = _hl.sha256(("cd-demo-publica:" + os.environ.get("VERCEL_PROJECT_ID", "")).encode()).hexdigest()
 app.secret_key = _secret_env or secrets.token_hex(32)  # sem SECRET_KEY: chave aleatória por processo
 app.permanent_session_lifetime = timedelta(hours=8)
 

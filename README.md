@@ -30,6 +30,7 @@ resultado pronto em tela, Excel ou imagem.
 |---|---|
 | 🚛 **Abastecimento CD** | Painel das carretas que as fábricas faturaram para o CD. Cruza as notas do ERP com o rastreador de frota pela placa e mostra, por carreta, posição, km restante, temperatura do baú, previsão de chegada e de descarga (com horário de corte e dias úteis), as NFs e os pedidos, a validação de regra de data e o mapa. |
 | 🚚 **Entregas** | Uma linha por veículo de distribuição e uma bolinha por cliente, na sequência programada: entregue, reentrega, devolução (total ou parcial), baixa fora do raio do cliente, entrega fora de sequência, parada não prevista e o trajeto com a temperatura do baú no mapa. Na operação os dados chegam por uma extensão do Chrome que coleta o portal de rastreamento com a sessão do operador. |
+| 🌡️ **Câmaras frias** | Temperatura de cada câmara pelos sensores, a cada 10 min. Um motor de detecção com três estados separa excursão sustentada, oscilação (porta abrindo várias vezes numa janela) e transitório (degelo, uma abertura), com limite crítico, tempo de recuperação e intervalo mínimo entre alertas por câmara. Histórico de eventos e dashboard mensal de eficiência (tempo na faixa) por câmara e por CD. Na operação os alertas e um resumo a cada 8 h saem por Telegram. |
 | 🧭 **Expedito** (com IA) | Cruza o follow up de pedidos do ERP com o estoque do WMS e monta o **plano de abastecimento do picking**: quais pallets descer, em que ordem (FEFO), o que já está no chão e o que vai faltar. A conversa com IA (Gemini) analisa a operação da noite. |
 | 🧊 **Adensamento FEFO** | Sugere empilhar pallets inteiros do mesmo código, local, temperatura e janela de produção, respeitando o limite de caixas e de peso por código e a capacidade de cada box. Sobras viram pallets mistos. |
 | 📦 **Devolução & Vencimento** | Separa o que está no local de devolução e o que vence dentro de uma janela configurável, agrupado por reserva e produto. |
@@ -78,8 +79,8 @@ web/templates/coletor.html  simulador do app do coletor no navegador (/demo/cole
 
 ### O que ficou fora da versão pública
 
-Em produção o sistema também tem a coleta automática dos portais de rastreamento de frota,
-monitoramento de temperatura das câmaras por sensores, alertas
+Em produção o sistema também tem a coleta automática dos portais de rastreamento de frota e dos
+sensores das câmaras, alertas
 automáticos por Telegram, SLAs e termos contratuais. Esses módulos dependem de credenciais e
 dados reais da operação, então aparecem aqui só como arquivos de contorno
 (ver o cabeçalho de `app/services/xsense_service.py`, por exemplo).

@@ -17,6 +17,7 @@
   .topo h1{margin:0;font-size:24px}
   .topo p{margin:4px 0 0;color:#9FB0CC;font-size:14px;max-width:720px}
   .topo .voltar{margin-left:auto;font-size:13px}
+  .rodape-demo{max-width:1200px;margin:0 auto;padding:0 22px 30px;color:#9FB0CC;font-size:13px}
   .palco{max-width:1200px;margin:0 auto;padding:22px;display:grid;grid-template-columns:auto 1fr;gap:28px;align-items:start}
   @media (max-width:900px){.palco{grid-template-columns:1fr}}
 
@@ -158,7 +159,11 @@
        do scanner; aqui, clique num código do painel ao lado (ou selecione e aperte <b>GATILHO</b>) para simular o bipe.
        Dados fictícios.</p>
   </div>
-  <a class="voltar" href="/demo">← Sobre o projeto</a>
+  <div class="voltar" style="display:flex;gap:6px;align-items:center;background:#0f172a;border:1px solid #22304a;border-radius:12px;padding:5px">
+    <span style="font-size:11px;font-weight:800;letter-spacing:.08em;color:#9FB0CC;padding:0 6px">PROJETO ATUAL</span>
+    <a href="/" style="text-decoration:none;color:#E6EBF5;padding:7px 10px;border-radius:8px">🚛 Monitoramento CDs</a>
+    <a href="/demo/coletor" style="text-decoration:none;color:#fff;background:#14532D;padding:7px 10px;border-radius:8px">📱 Operação expedição</a>
+  </div>
 </div>
 
 <div class="palco">
@@ -188,6 +193,7 @@
   </div>
 </div>
 
+<div class="rodape-demo"><a href="/demo">Sobre o projeto</a> · dados fictícios</div>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    Estado (fictício). Espelha o modelo do servidor: instrução → NFs →

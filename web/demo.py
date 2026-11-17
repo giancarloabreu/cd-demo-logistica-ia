@@ -33,7 +33,7 @@ SENHA = "demo"
 NOME = "Visitante da demo"
 
 # módulos que aparecem no menu lateral da demo
-MODULOS_DEMO = ["monitoramento", "entregas", "adensamento", "armazem", "fifo", "expedito"]
+MODULOS_DEMO = ["monitoramento", "entregas", "xsense", "adensamento", "armazem", "fifo", "expedito"]
 
 # rotas liberadas (prefixos). O resto devolve para a página da demo.
 _LIBERADOS = (
@@ -44,6 +44,7 @@ _LIBERADOS = (
     "/api/romaneio_regra", "/api/preferencias", "/api/opentech/status", "/api/ravex/status",
     "/api/descarga", "/api/limpar", "/api/exportar_excel",
     "/entregas", "/api/entregas",
+    "/xsense", "/api/xsense/camaras", "/api/xsense/dashboard", "/api/xsense/eventos",
     "/adensamento", "/api/adensamento",
     "/armazem", "/api/armazem",
     "/fifo", "/api/fifo",
@@ -172,10 +173,24 @@ def _semear(app):
                                         "painel_rastreio.xlsx")}),
        "painel das carretas")
 
+    # histórico de temperatura do baú de cada carreta (o gráfico do card);
+    # na operação é gravado a cada ciclo do rastreador
+    from demo.gerar_dados import historico_temperatura_carretas
+    from app.services.entregas_ravex import _agora as _agora_brt
+    with get_db() as db:
+        db.executemany("INSERT INTO historico_temperatura (placa, temperatura, timestamp) VALUES (?,?,?)",
+                       historico_temperatura_carretas(_agora_brt()))
+
     # 0b. Entregas: viagens de distribuição do dia, com as notas, os itens e
     #     o trajeto. Na operação chegam pela extensão "Coletor" do Chrome e
     #     entram por estas mesmas funções de gravação.
     _semear_entregas()
+
+    # 0c. Câmaras frias: leituras dos sensores dos últimos 30 dias. As das
+    #     últimas horas passam pelo motor de detecção da operação
+    #     (excursão sustentada / oscilação / transitório), que gera o estado
+    #     de cada câmara e os eventos.
+    _semear_camaras()
 
     # 1. Painel do Armazém: o local de devolução é classificado como tal
     #    (é o que alimenta o relatório de Devolução & Vencimento)
@@ -271,6 +286,28 @@ def _semear_entregas():
                         ignicao, "", temp))
 
 
+def _semear_camaras():
+    from app.database import get_db
+    from app.services.entregas_ravex import _agora as _agora_brt
+    from demo.gerar_dados import CAMARAS, leituras_camaras
+    from web.xsense import processar_leitura
+    leituras = leituras_camaras(_agora_brt())
+    corte = 12 * 6                       # últimas 12 h (leitura a cada 10 min)
+    with get_db() as db:
+        for cid, nome, tipo, tmin, tmax, duro, _alvo, _r in CAMARAS:
+            db.execute("""INSERT OR REPLACE INTO xsense_camaras
+                            (id, nome, rotulo, provider, ativo, alertas_ativos, tipo, local, temp_min, temp_max,
+                             temp_limite_duro, n_sustentado, k_oscilacao, w_janela_min, cooldown_min, m_recuperacao)
+                          VALUES (?,?,?,?,1,1,?,?,?,?,?,2,4,120,60,2)""",
+                       (cid, nome, cid, "sensores", tipo, "CDA", tmin, tmax, duro))
+            db.executemany("INSERT OR IGNORE INTO xsense_leituras(camara_id, dimensao, ts, valor) "
+                           "VALUES (?, 'temperatura', ?, ?)",
+                           [(cid, ts, v) for ts, v in leituras[cid][:-corte]])
+    for cid, *_ in CAMARAS:
+        for ts, v in leituras[cid][-corte:]:
+            processar_leitura(cid, "temperatura", v, ts)
+
+
 # ── integração com a aplicação ───────────────────────────────────────
 def instalar(app):
     if not ATIVO:
@@ -302,10 +339,22 @@ def instalar(app):
         if caminho in ("/api/armazem/exportar", "/api/exportar_imagem"):
             return jsonify({"error": "A exportação em imagem não está disponível na demonstração. "
                                      "Use o Excel."}), 400
+        if caminho.startswith("/xsense/miniapp"):          # mini-app do Telegram: fora da demo
+            return redirect("/xsense")
+        if caminho.startswith(("/api/xsense/destinatarios", "/api/xsense/resumo")):
+            return jsonify({"destinatarios": [], "pendentes": [], "texto": "",
+                            "aviso": "Alertas por Telegram ficam fora da demonstração."})
         if caminho != "/" and not caminho.startswith(_LIBERADOS):
             if caminho.startswith("/api/"):
                 return jsonify({"error": "Esta função não faz parte da demonstração."}), 404
             return redirect("/")
+        # Rede de segurança: se a sessão se perder entre instâncias da
+        # hospedagem, o visitante continua no módulo em vez de voltar ao login.
+        # A entrada pela raiz continua sendo a tela de login.
+        if (not session.get("user") and caminho not in ("/", "/login", "/api/login", "/api/logout")
+                and not caminho.startswith("/demo")):
+            _garantir_usuario()
+            _abrir_sessao(session)
         return None
 
     @app.after_request
@@ -331,7 +380,30 @@ def instalar(app):
 
 
 _FAIXA = """
-<style>#btn-espelhar,#btn-exportar,[onclick^="abrirEspelho"],[onclick^="abrirColetor"]{display:none!important}</style>
+<style>
+  .demo-projeto{margin:0 10px 12px;padding:10px;border-radius:12px;background:rgba(0,122,255,.07);
+                border:1px solid rgba(0,122,255,.18)}
+  .demo-projeto .rot{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+                     color:#64748b;margin:0 2px 6px}
+  .demo-projeto a{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;
+                  text-decoration:none;color:inherit;font-size:13.5px;font-weight:600}
+  .demo-projeto a:hover{background:rgba(0,122,255,.08)}
+  .demo-projeto a.on{background:#007aff;color:#fff}
+  .demo-projeto a small{display:block;font-weight:500;font-size:11px;opacity:.75}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var nav = document.getElementById('sidebar-nav');
+  if(!nav || document.getElementById('demo-projeto')) return;
+  var box = document.createElement('div');
+  box.id = 'demo-projeto'; box.className = 'demo-projeto';
+  box.innerHTML = '<div class="rot">Projeto atual</div>' +
+    '<a class="on" href="/">🚛<span>Monitoramento CDs<small>recebimento, entregas, armazém, expedição</small></span></a>' +
+    '<a href="/demo/coletor">📱<span>Operação expedição<small>app do coletor: separação de redespacho</small></span></a>';
+  nav.parentNode.insertBefore(box, nav);
+});
+</script>
+<style>#btn-destinatarios,#btn-sincronizar,#btn-coletar-agora,#btn-importar-historico-todas,#sidebar-config-wrap,#btn-espelhar,#btn-exportar,[onclick^="abrirEspelho"],[onclick^="abrirColetor"]{display:none!important}</style>
 <a id="demo-faixa" href="/demo" title="Sobre esta demonstração"
    style="position:fixed;right:14px;bottom:14px;z-index:99999;background:#111827;color:#fff;
           padding:8px 14px;border-radius:999px;font:600 12.5px system-ui,sans-serif;

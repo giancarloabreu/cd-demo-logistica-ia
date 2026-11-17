@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Câmaras frias — Dashboard Mensal — CD Demo</title>
+<style>
+:root{
+  --glass:rgba(255,255,255,0.62); --glass-b:rgba(255,255,255,0.28);
+  --text:#1a1a2e; --text-s:rgba(26,26,46,0.58);
+  --accent:#007AFF; --accent-l:rgba(0,122,255,0.10);
+  --ok:#28a745; --warn:#ff9500; --danger:#ff3b30;
+  --radius:16px; --rsm:10px; --shadow:0 4px 24px rgba(0,0,0,0.12);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Inter,sans-serif;
+  font-size:13px;color:var(--text);
+  background:linear-gradient(135deg,#eef2f7 0%,#e6ecf5 60%,#eaf0f8 100%)}
+.wrap{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 18px;height:52px;flex-shrink:0;
+  background:var(--glass);backdrop-filter:blur(18px) saturate(1.6);border-bottom:1px solid var(--glass-b)}
+.topbar a.back{text-decoration:none;color:var(--accent);font-weight:600;font-size:13px}
+.topbar-logo{font-size:22px}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.topbar-sub{font-size:12px;color:var(--text-s)}
+.spacer{flex:1}
+.btn{border:none;border-radius:var(--rsm);padding:8px 14px;font-size:13px;font-family:inherit;
+  cursor:pointer;font-weight:600;background:var(--accent);color:#fff;transition:.15s}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:rgba(0,0,0,.05);color:var(--text)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* ── SIDEBAR DE MÓDULOS (padrão idêntico aos outros módulos) ── */
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);
+  z-index:998;opacity:0;pointer-events:none;transition:opacity .2s}
+.sidebar-overlay.show{opacity:1;pointer-events:auto}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:240px;z-index:999;
+  background:var(--glass);backdrop-filter:blur(20px) saturate(1.6);
+  border-right:1px solid var(--glass-b);box-shadow:4px 0 24px rgba(0,0,0,.15);
+  transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;padding:14px 0}
+.sidebar.show{transform:translateX(0)}
+.sidebar-header{display:flex;align-items:center;gap:8px;padding:0 16px 14px;
+  border-bottom:1px solid var(--glass-b);margin-bottom:8px}
+.sidebar-header .sidebar-logo{font-size:20px}
+.sidebar-header .sidebar-title{font-size:14px;font-weight:700;flex:1}
+.sidebar-close{background:none;border:none;font-size:16px;color:var(--text-s);cursor:pointer;padding:4px;line-height:1}
+.sidebar-nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.sidebar-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;
+  text-decoration:none;color:var(--text);font-size:13px;font-weight:500;transition:.15s}
+.sidebar-link:hover{background:rgba(0,122,255,.08)}
+.sidebar-spacer{flex:1}
+.sidebar-config{border-top:1px solid var(--glass-b);padding:8px 10px 4px}
+.sidebar-config-toggle{width:100%;background:none;border:none;text-align:left;padding:10px 12px;
+  border-radius:10px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;
+  display:flex;align-items:center;gap:10px;font-family:inherit}
+.sidebar-config-toggle:hover{background:rgba(0,122,255,.08)}
+.sidebar-config-toggle .arrow{margin-left:auto;font-size:11px;color:var(--text-s);transition:transform .15s}
+.sidebar-config-toggle.open .arrow{transform:rotate(90deg)}
+.sidebar-config-sub{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px 10px}
+.sidebar-sublink{display:block;padding:8px 12px;border-radius:8px;text-decoration:none;
+  color:var(--text-s);font-size:12.5px}
+.sidebar-sublink:hover{background:rgba(0,122,255,.08);color:var(--text)}
+.sidebar-link.active{background:var(--accent-l);color:var(--accent);font-weight:700}
+.hidden{display:none}
+
+.body{flex:1;overflow:auto;padding:16px 18px 40px;max-width:1000px;margin:0 auto;width:100%}
+.card{background:var(--glass);backdrop-filter:blur(14px) saturate(1.5);
+  border:1px solid var(--glass-b);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:14px 16px;margin-bottom:14px}
+.muted{color:var(--text-s)}
+
+.dm-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.dm-nav strong{min-width:150px;text-align:center;font-size:15px}
+.dm-nav .muted{font-size:11.5px;margin-left:6px}
+
+.dm-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.dm-kpi{background:var(--glass);backdrop-filter:blur(14px) saturate(1.5);border:1px solid var(--glass-b);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.dm-kpi .dm-kpi-label{font-size:10.5px;color:var(--text-s);text-transform:uppercase;letter-spacing:.3px;font-weight:700}
+.dm-kpi .dm-kpi-val{font-size:24px;font-weight:800;margin-top:4px;letter-spacing:-.5px}
+.dm-kpi .dm-kpi-delta{font-size:11.5px;font-weight:600;margin-top:4px}
+.dm-kpi .dm-kpi-delta.up{color:#b91c1c}
+.dm-kpi .dm-kpi-delta.down{color:#1a7a36}
+
+.card h3{margin:0 0 10px;font-size:12px;font-weight:700;color:var(--text-s);text-transform:uppercase;letter-spacing:.4px}
+.dm-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.dm-table th{text-align:left;padding:6px 8px;border-bottom:2px solid var(--glass-b);white-space:nowrap;
+  font-size:10.5px;color:var(--text-s);text-transform:uppercase;letter-spacing:.3px}
+.dm-table td{padding:7px 8px;border-bottom:1px solid rgba(0,0,0,.05)}
+.risk-tag{font-size:9.5px;font-weight:800;padding:2px 8px;border-radius:20px;letter-spacing:.3px;text-transform:uppercase}
+.risk-tag.alto{background:rgba(255,59,48,.16);color:#b91c1c}
+.risk-tag.medio{background:rgba(255,149,0,.18);color:#8a5200}
+input[type=number],select{border:1px solid var(--glass-b);background:rgba(255,255,255,.75);border-radius:8px;
+  padding:6px 9px;font-size:12.5px;font-family:inherit;color:var(--text)}
+input[type=number]:focus,select:focus{outline:1.5px solid var(--accent)}
+.dm-params-field label{display:block;font-size:11px;color:var(--text-s);margin-bottom:3px}
+.dm-params-msg{font-size:11.5px;margin-top:8px}
+.dm-params-msg.ok{color:#1a7a36}
+.dm-params-msg.err{color:#b91c1c}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR DE MÓDULOS -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="fecharSidebar()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <span class="sidebar-logo">🚛</span>
+    <span class="sidebar-title">CD Demo</span>
+    <button class="sidebar-close" onclick="fecharSidebar()">✕</button>
+  </div>
+  <nav class="sidebar-nav" id="sidebar-nav"></nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-config" id="sidebar-config-wrap">
+    <button class="sidebar-config-toggle" id="sidebar-config-toggle" onclick="toggleSidebarConfig()">
+      ⚙️ Configurações <span class="arrow">▸</span>
+    </button>
+    <div class="sidebar-config-sub hidden" id="sidebar-config-sub">
+      <a class="sidebar-sublink" href="/configuracoes?config=senha">🔑 Trocar minha senha</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=cd">📍 Localizações dos CDs</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/mapa-estoque/layout">🗺️ Layout de Estoque</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=opentech">🔐 OpenTech</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=ravex">🔐 Ravex</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=xsense">🔐 Sensores</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=telegram">🔐 Bot Telegram</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/configuracoes?config=expedito-ia">🔐 IA do Expedito</a>
+      <a class="sidebar-sublink hidden sidebar-sublink-admin" href="/admin">🛠 Administração</a>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="topbar">
+    <button class="btn ghost sm icon" onclick="abrirSidebar()" title="Módulos">☰</button>
+    <a class="back" href="/xsense">‹ Câmaras</a>
+    <span class="topbar-logo">📊</span>
+    <span class="topbar-title">Dashboard Mensal</span>
+    <span class="topbar-sub">Indicadores de câmaras frias por mês</span>
+    <span class="spacer"></span>
+    <button class="btn ghost sm hidden" id="btn-params" onclick="toggleParametros()">⚙ Parâmetros de risco</button>
+  </div>
+
+  <div class="body">
+    <div class="card hidden" id="dm-params-card">
+      <h3>Parâmetros de risco</h3>
+      <p class="muted" style="margin:0 0 10px">Definem a partir de qual % de eficiência (tempo dentro da faixa segura no mês) uma câmara aparece como risco Médio ou Alto. Vale pra todo o painel, não só o seu CD.</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+        <div class="dm-params-field">
+          <label>Risco Alto abaixo de (%)</label>
+          <input type="number" id="param-alto" min="0" max="100" step="0.1" style="width:90px">
+        </div>
+        <div class="dm-params-field">
+          <label>Risco Médio abaixo de (%)</label>
+          <input type="number" id="param-medio" min="0" max="100" step="0.1" style="width:90px">
+        </div>
+        <button class="btn sm" onclick="salvarParametros()">Salvar</button>
+      </div>
+      <p class="muted" style="margin:14px 0 8px">Quais tipos de câmara entram nos indicadores do mês (grupo cadastrado no portal de sensores):</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="param-tipo-congelada" value="congelada"> Congelada</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="param-tipo-resfriada" value="resfriada"> Resfriada</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="param-tipo-antecamara" value="antecamara"> Antecâmara</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="param-tipo-ambiente" value="ambiente"> Ambiente</label>
+      </div>
+
+      <p class="muted" style="margin:14px 0 8px">
+        <a href="#" id="dm-excl-toggle" onclick="toggleExclusaoCamaras(); return false;" style="color:var(--accent);text-decoration:none">
+          ⚙ Não considerar câmaras específicas no dashboard ▾</a>
+        — pra câmara já instalada/monitorada mas ainda sem uso real, por exemplo.
+      </p>
+      <div class="hidden" id="dm-excl-camaras-wrap"
+           style="display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto;
+                  border:1px solid var(--glass-b);border-radius:8px;padding:8px;margin-bottom:8px">
+        <span class="muted" id="dm-excl-loading">Carregando câmaras…</span>
+      </div>
+
+      <div id="dm-params-msg" class="dm-params-msg"></div>
+    </div>
+
+    <div class="dm-nav">
+      <button class="btn ghost sm" onclick="navegarMes(-1)">‹</button>
+      <strong id="dm-mes-label">—</strong>
+      <button class="btn ghost sm" onclick="navegarMes(1)">›</button>
+      <select id="dm-local-select" class="hidden" onchange="mudarLocalFiltro(this.value)"></select>
+      <span class="muted" id="dm-locais-label"></span>
+    </div>
+
+    <div id="dm-conteudo">Carregando…</div>
+  </div>
+</div>
+
+<script>
+const TODOS_MODULOS = [
+  {id:'monitoramento', label:'📦 Abastecimento CD', href:'/'},
+  {id:'adensamento',   label:'🧊 Adensamento',      href:'/adensamento'},
+  {id:'armazem',       label:'🏭 Painel do Armazém', href:'/armazem'},
+  {id:'xsense',        label:'🌡️ Câmaras frias', href:'/xsense'},
+  {id:'fifo',          label:'📦 Devolução & Vencimento', href:'/fifo'},
+  {id:'mapa_estoque',  label:'🗺️ Mapa de Estoque', href:'/mapa-estoque'},
+  {id:'giro',          label:'🔄 Giro de Estoque', href:'/giro'},
+  {id:'produtividade', label:'⏱️ Produtividade', href:'/produtividade'},
+  {id:'expedito',      label:'🧭 Expedito', href:'/expedito'},
+  {id:'slas', label:'📋 SLAs', href:'/slas', filhos:[{label:'Acompanhamento', href:'/slas'},{label:'Termo de Avença', href:'/slas/termos'}]},
+  {id:'entregas', label:'🚚 Entregas', href:'/entregas'},
+  {id:'validacao', label:'🧪 Ferramenta de validação', href:'/validacao', filhos:[{label:'Picking', href:'/validacao'},{label:'Adensamento', href:'/validacao/adensamento'}]},
+];
+function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebar-overlay').classList.add('show');}
+function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebar-overlay').classList.remove('show');}
+function toggleSidebarConfig(){
+  document.getElementById('sidebar-config-sub').classList.toggle('hidden');
+  document.getElementById('sidebar-config-toggle').classList.toggle('open');
+}
+function montarConfigSidebar(perfil, isMaster){
+  // admin e master unificados (29/08/2026) — mesmo nível de acesso, sem
+  // distinção de sublinks nenhuma mais (isMaster/'master' mantidos só
+  // como fallback pra sessão antiga em cache até relogar).
+  const admin = perfil==='admin' || perfil==='master' || isMaster;
+  document.querySelectorAll('.sidebar-sublink-admin').forEach(el=>el.classList.toggle('hidden', !admin));
+}
+function montarSidebar(modulosPermitidos, ativoId){
+  const permitidos = Array.isArray(modulosPermitidos) ? modulosPermitidos : [];
+  const nav = document.getElementById('sidebar-nav');
+  // módulo com telas (SLAs, 27/10/2026): o nome abre a lista das telas
+  nav.innerHTML = TODOS_MODULOS
+    .filter(m=>!permitidos.length || permitidos.includes(m.id))
+    .map(m=>!m.filhos
+      ? `<a class="sidebar-link${m.id===ativoId?' active':''}" href="${m.href}">${m.label}</a>`
+      : `<button class="sidebar-link sidebar-grupo${m.id===ativoId?' active':''}" type="button"
+           style="width:100%;border:none;background:${m.id===ativoId?'':'none'};font:inherit;cursor:pointer;text-align:left"
+           onclick="const s=this.nextElementSibling;s.style.display=s.style.display==='none'?'flex':'none'">${m.label}<span style="margin-left:auto;font-size:11px;opacity:.6">▾</span></button>
+         <div style="display:${m.id===ativoId?'flex':'none'};flex-direction:column;gap:2px;padding:0 0 4px 22px">
+           ${m.filhos.map(f=>`<a class="sidebar-link" style="padding:7px 12px;font-size:12.5px${
+             location.pathname===f.href?';font-weight:700;color:var(--accent)':''}" href="${f.href}">${f.label}</a>`).join('')}
+         </div>`)
+    .join('');
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ fecharSidebar(); } });
+function escHtml(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let _ano = null, _mes = null;
+let _paramsCamarasExcluidas = [];
+let _camarasCarregadas = null;  // cache: [{id,nome,local}] — carregado sob demanda, 1x
+const MESES_PT = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function navegarMes(delta){
+  _mes += delta;
+  if(_mes < 1){ _mes = 12; _ano--; }
+  else if(_mes > 12){ _mes = 1; _ano++; }
+  carregarDashboard();
+}
+function _deltaHtml(atual, anterior, menorEhMelhor){
+  if(anterior === null || anterior === undefined || anterior === 0){
+    return (anterior === 0 && atual === 0) ? '' : '<span class="dm-kpi-delta muted">sem dado do mês anterior</span>';
+  }
+  const pct = Math.round(((atual - anterior) / anterior) * 100);
+  if(pct === 0) return '<span class="dm-kpi-delta muted">= mês anterior</span>';
+  const subiu = pct > 0;
+  const ruim = menorEhMelhor ? subiu : !subiu;
+  return `<span class="dm-kpi-delta ${ruim?'up':'down'}">${subiu?'▲':'▼'} ${Math.abs(pct)}% vs mês anterior</span>`;
+}
+const RISCO_LABEL = {alto:'Alto', medio:'Médio'};
+const RISCO_RANK = {alto:2, medio:1};
+function _riskTag(risco){
+  if(!risco || risco==='sem_risco') return '';
+  return `<span class="risk-tag ${risco}">${RISCO_LABEL[risco]}</span>`;
+}
+let _csrf = '', _isAdmin = false, _paramsAbertos = false, _localFiltro = '';
+
+function mudarLocalFiltro(v){
+  _localFiltro = v;
+  carregarDashboard();
+}
+async function carregarDashboard(){
+  document.getElementById('dm-mes-label').textContent = `${MESES_PT[_mes]} de ${_ano}`;
+  const conteudo = document.getElementById('dm-conteudo');
+  conteudo.innerHTML = 'Carregando…';
+  const sel = document.getElementById('dm-local-select');
+  const label = document.getElementById('dm-locais-label');
+  label.textContent = '';
+  const qsLocal = _localFiltro ? `&local=${encodeURIComponent(_localFiltro)}` : '';
+  const r = await fetch(`/api/xsense/dashboard_mensal?ano=${_ano}&mes=${_mes}${qsLocal}`).then(r=>r.json()).catch(()=>null);
+  if(!r || r.error){
+    if(r && r.error){ _localFiltro = ''; }
+    conteudo.innerHTML = `<p class="muted">${r&&r.error?escHtml(r.error):'Erro ao carregar.'}</p>`;
+    return;
+  }
+  if(r.locais_disponiveis.length > 1){
+    sel.classList.remove('hidden');
+    sel.innerHTML = ['<option value="">Todos os CDs</option>']
+      .concat(r.locais_disponiveis.map(l=>`<option value="${escHtml(l)}"${l===_localFiltro?' selected':''}>${escHtml(l)}</option>`))
+      .join('');
+  } else {
+    sel.classList.add('hidden');
+    label.textContent = r.locais_disponiveis.length
+      ? `CD: ${r.locais_disponiveis[0]}` : 'Nenhum CD com câmara cadastrada no seu acesso.';
+  }
+  if(r.parametros){
+    document.getElementById('param-alto').value = r.parametros.eficiencia_alto;
+    document.getElementById('param-medio').value = r.parametros.eficiencia_medio;
+    const tipos = r.parametros.tipos_dashboard || ['congelada','resfriada'];
+    for(const t of ['congelada','resfriada','antecamara','ambiente']){
+      document.getElementById('param-tipo-'+t).checked = tipos.includes(t);
+    }
+    _paramsCamarasExcluidas = r.parametros.camaras_excluidas || [];
+    _aplicarExclusaoNaLista();
+  }
+  const a = r.atual, ant = r.anterior;
+  const uptimeTxt = a.uptime_medio!=null ? a.uptime_medio+'%' : '—';
+  const eficTxt = a.eficiencia_media!=null ? a.eficiencia_media+'%' : '—';
+  const emRisco = a.por_camara.filter(c=>c.risco==='alto'||c.risco==='medio')
+    .sort((x,y)=> (RISCO_RANK[y.risco]-RISCO_RANK[x.risco]) || (x.eficiencia-y.eficiencia));
+
+  conteudo.innerHTML = `
+    <div class="dm-kpis">
+      <div class="dm-kpi"><div class="dm-kpi-label">Eficiência (tempo na faixa)</div>
+        <div class="dm-kpi-val">${eficTxt}</div>
+        ${_deltaHtml(a.eficiencia_media, ant.eficiencia_media, false)}</div>
+      <div class="dm-kpi"><div class="dm-kpi-label">Excursões/Oscilações</div>
+        <div class="dm-kpi-val">${a.total_eventos}</div>
+        ${_deltaHtml(a.total_eventos, ant.total_eventos, true)}</div>
+      <div class="dm-kpi"><div class="dm-kpi-label">Tempo fora da faixa</div>
+        <div class="dm-kpi-val">${a.total_fmt}</div>
+        ${_deltaHtml(a.total_minutos_fora, ant.total_minutos_fora, true)}</div>
+      <div class="dm-kpi"><div class="dm-kpi-label">Uptime médio</div>
+        <div class="dm-kpi-val">${uptimeTxt}</div>
+        ${_deltaHtml(a.uptime_medio, ant.uptime_medio, false)}</div>
+      <div class="dm-kpi"><div class="dm-kpi-label">Câmara campeã</div>
+        <div class="dm-kpi-val" style="font-size:15px">${a.camara_campea?escHtml(a.camara_campea.nome):'—'}</div>
+        <div class="dm-kpi-delta muted">${a.camara_campea?a.camara_campea.eventos+' evento(s)':'nenhum problema no mês'}</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Câmaras com maior risco</h3>
+      ${emRisco.length ? `<table class="dm-table"><thead><tr>
+          <th>Câmara</th><th>CD</th><th>Risco</th><th>Eficiência</th><th>Eventos</th><th>Tempo fora</th>
+        </tr></thead><tbody>${emRisco.map(c=>`<tr>
+          <td>${escHtml(c.nome)}</td><td>${escHtml(c.local)}</td><td>${_riskTag(c.risco)}</td>
+          <td>${c.eficiencia!=null?c.eficiencia+'%':'—'}</td>
+          <td>${c.eventos}</td>
+          <td>${c.fora_fmt}${c.em_andamento?' <span class="muted">(+'+c.em_andamento+' em andamento)</span>':''}</td>
+        </tr>`).join('')}</tbody></table>`
+        : `<p class="muted" style="margin:0">Nenhuma câmara em risco Médio/Alto no período (limiares: Alto &lt; ${r.parametros?.eficiencia_alto}%, Médio &lt; ${r.parametros?.eficiencia_medio}%).</p>`}
+    </div>
+
+    <div class="card">
+      <h3>Por CD</h3>
+      ${a.por_local.length ? `<table class="dm-table"><thead><tr>
+          <th>CD</th><th>Eficiência</th><th>Eventos</th><th>Tempo fora</th>
+        </tr></thead><tbody>${a.por_local.map(l=>`<tr>
+          <td>${escHtml(l.local)}</td><td>${l.eficiencia!=null?l.eficiencia+'%':'—'}</td><td>${l.eventos}</td><td>${l.fora_fmt}</td>
+        </tr>`).join('')}</tbody></table>`
+        : '<p class="muted" style="margin:0">Nenhum evento no período.</p>'}
+    </div>
+  `;
+}
+
+function toggleParametros(){
+  _paramsAbertos = !_paramsAbertos;
+  document.getElementById('dm-params-card').classList.toggle('hidden', !_paramsAbertos);
+}
+
+async function toggleExclusaoCamaras(){
+  const wrap = document.getElementById('dm-excl-camaras-wrap');
+  wrap.classList.toggle('hidden');
+  if(wrap.classList.contains('hidden') || _camarasCarregadas) return;
+  const r = await fetch('/api/xsense/camaras').then(r=>r.json()).catch(()=>null);
+  _camarasCarregadas = (r && r.camaras) ? r.camaras.slice().sort((a,b)=>
+    (a.local||'').localeCompare(b.local||'') || a.nome.localeCompare(b.nome)) : [];
+  if(!_camarasCarregadas.length){
+    wrap.innerHTML = '<span class="muted">Nenhuma câmara cadastrada.</span>';
+    return;
+  }
+  wrap.innerHTML = _camarasCarregadas.map(c => `
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+      <input type="checkbox" class="dm-excl-cb" value="${escHtml(c.id)}">
+      ${escHtml(c.rotulo || c.nome)} <span class="muted">— ${escHtml(c.local || 'sem CD')}</span>
+    </label>`).join('');
+  _aplicarExclusaoNaLista();
+}
+
+function _aplicarExclusaoNaLista(){
+  document.querySelectorAll('.dm-excl-cb').forEach(cb => {
+    cb.checked = _paramsCamarasExcluidas.includes(cb.value);
+  });
+}
+
+async function salvarParametros(){
+  const alto = parseFloat(document.getElementById('param-alto').value);
+  const medio = parseFloat(document.getElementById('param-medio').value);
+  const msg = document.getElementById('dm-params-msg');
+  msg.textContent = ''; msg.className = 'dm-params-msg';
+  if(isNaN(alto) || isNaN(medio)){ msg.textContent = 'Preencha os dois valores.'; msg.classList.add('err'); return; }
+  const tipos = ['congelada','resfriada','antecamara','ambiente']
+    .filter(t=>document.getElementById('param-tipo-'+t).checked);
+  if(!tipos.length){ msg.textContent = 'Selecione ao menos um tipo de câmara.'; msg.classList.add('err'); return; }
+  // se a lista nunca foi aberta nessa sessão, mantém a exclusão salva antes
+  // (não força carregar só pra salvar os outros campos)
+  const camarasExcluidas = _camarasCarregadas
+    ? Array.from(document.querySelectorAll('.dm-excl-cb')).filter(cb=>cb.checked).map(cb=>cb.value)
+    : _paramsCamarasExcluidas;
+  const resp = await fetch('/api/xsense/dashboard_mensal/parametros', {
+    method: 'POST', headers: {'Content-Type':'application/json','X-CSRF-Token':_csrf},
+    body: JSON.stringify({eficiencia_alto: alto, eficiencia_medio: medio, tipos_dashboard: tipos,
+                          camaras_excluidas: camarasExcluidas}),
+  }).then(r=>r.json()).catch(()=>({error:'Falha de conexão.'}));
+  if(resp.error){ msg.textContent = resp.error; msg.classList.add('err'); return; }
+  msg.textContent = 'Salvo — recarregando indicadores…'; msg.classList.add('ok');
+  carregarDashboard();
+}
+
+async function init(){
+  const me = await fetch('/api/me').then(r=>r.json()).catch(()=>({}));
+  _csrf = me.csrf_token || '';
+  _isAdmin = me.perfil==='admin' || me.perfil==='master';
+  if(_isAdmin) document.getElementById('btn-params').classList.remove('hidden');
+  montarSidebar(me.modulos_permitidos, 'xsense');
+  montarConfigSidebar(me.perfil, me.is_master);
+  const hoje = new Date();
+  _ano = hoje.getFullYear(); _mes = hoje.getMonth()+1;
+  carregarDashboard();
+}
+init();
+</script>
+</body>
+</html>
